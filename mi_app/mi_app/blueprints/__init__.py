@@ -1,0 +1,3 @@
+# Este archivo hace que Python reconozca este directorio como un paquete 
+from .clientes import clientes_bp
+# ... otros blueprints ... 

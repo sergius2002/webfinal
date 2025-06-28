@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4 pagos-section">
+  <h1>Nuevo Pago</h1>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div id="alert-exito" class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ messages[0] }}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% if advertencia_duplicado %}
+    <!-- Modal Bootstrap estándar para advertencia de duplicado o alto valor -->
+    <div class="modal fade" id="modalDuplicado" tabindex="-1" aria-labelledby="modalDuplicadoLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+            <span class="me-2" style="font-size:1.5rem;">&#9888;</span>
+            <h5 class="modal-title" id="modalDuplicadoLabel">Advertencia</h5>
+            <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body text-center" style="font-size:1.1rem;">
+            {{ mensaje_advertencia|safe }}
+          </div>
+          <div class="modal-footer d-flex justify-content-center gap-3">
+            <form method="post" action="{{ url_for('pagos.nuevo') }}" style="margin:0;">
+              <input type="hidden" name="cliente" value="{{ cliente }}">
+              <input type="hidden" name="monto" value="{{ monto }}">
+              <input type="hidden" name="fecha" value="{{ fecha }}">
+              <input type="hidden" name="forzar_guardado" value="1">
+              <button type="submit" class="btn btn-danger px-4">Continuar de todos modos</button>
+            </form>
+            <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var modal = new bootstrap.Modal(document.getElementById('modalDuplicado'));
+        modal.show();
+      });
+    </script>
+  {% endif %}
+  <form method="post" action="{{ url_for('pagos.nuevo') }}" id="form-nuevo-pago" autocomplete="off">
+    <div class="mb-3">
+      <label for="fecha" class="form-label">Fecha</label>
+      <input type="date" name="fecha" id="fecha" class="form-control" value="{{ today_date }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="cliente" class="form-label">Cliente</label>
+      <select name="cliente" id="cliente" class="form-select" required autofocus>
+        <option value="">Seleccione un cliente</option>
+        {% for c in clientes %}
+          <option value="{{ c }}" {% if request.form.get('cliente') == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="monto_display" class="form-label">Monto</label>
+      <input type="text" id="monto_display" class="form-control" autocomplete="off" placeholder="Ingrese el monto">
+      <input type="hidden" id="monto" name="monto" required>
+    </div>
+    <div class="mb-4 d-flex align-items-center gap-2">
+      <button type="submit" class="btn btn-success" id="btn-guardar">
+        <span id="spinner-guardar" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+        Guardar Pago
+      </button>
+      <button type="button" class="btn btn-secondary d-none" id="btn-limpiar">Limpiar formulario</button>
+    </div>
+    <div class="mt-4">
+      <a href="{{ url_for('pagos.index') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Enfoque automático
+  document.getElementById('cliente').focus();
+
+  // Formateo en tiempo real para el monto
+  const displayInput = document.getElementById('monto_display');
+  const hiddenInput = document.getElementById('monto');
+  if (displayInput) {
+    displayInput.addEventListener('input', function(e) {
+      let value = this.value.replace(/[^\d]/g, '');
+      if (value) {
+        this.value = parseInt(value, 10).toLocaleString('de-DE');
+        hiddenInput.value = value;
+      } else {
+        hiddenInput.value = '';
+      }
+    });
+  }
+
+  // Validación en tiempo real
+  const form = document.getElementById('form-nuevo-pago');
+  const btnGuardar = document.getElementById('btn-guardar');
+  function validarFormulario() {
+    const cliente = document.getElementById('cliente').value;
+    const monto = hiddenInput.value;
+    btnGuardar.disabled = !(cliente && monto && parseInt(monto) > 0);
+  }
+  document.getElementById('cliente').addEventListener('change', validarFormulario);
+  displayInput.addEventListener('input', validarFormulario);
+  validarFormulario();
+
+  // Feedback visual en el botón
+  form.addEventListener('submit', function(e) {
+    btnGuardar.disabled = true;
+    document.getElementById('spinner-guardar').classList.remove('d-none');
+  });
+
+  // Mostrar botón limpiar solo tras guardar
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      document.getElementById('btn-limpiar').classList.remove('d-none');
+    {% endif %}
+  {% endwith %}
+
+  // Limpiar formulario (mantener cliente)
+  document.getElementById('btn-limpiar').addEventListener('click', function() {
+    document.getElementById('monto_display').value = '';
+    document.getElementById('monto').value = '';
+    document.getElementById('fecha').value = '{{ today_date }}';
+    validarFormulario();
+    this.classList.add('d-none');
+  });
+
+  // Alert Bootstrap desaparece automáticamente
+  const alertExito = document.getElementById('alert-exito');
+  if (alertExito) {
+    setTimeout(() => {
+      alertExito.classList.remove('show');
+      alertExito.classList.add('fade');
+    }, 2500);
+  }
+
+  // Inicializar Select2 para el campo cliente
+  $('#cliente').select2({
+    width: '100%',
+    placeholder: 'Seleccione un cliente',
+    allowClear: true,
+    minimumResultsForSearch: 0
+  });
+  // Foco automático en el campo de búsqueda al abrir el select de cliente
+  $('#cliente').on('select2:open', function (e) {
+    setTimeout(function() {
+      document.querySelector('.select2-container--open .select2-search__field').focus();
+    }, 0);
+  });
+});
+</script>
+{% endblock %} 

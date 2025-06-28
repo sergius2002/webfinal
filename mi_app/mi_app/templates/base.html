@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title if title else "San Cristobal" }}</title>
+
+  <!-- FontAwesome para los íconos -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Select2 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <!-- Toastr CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" />
+  <!-- Archivo de estilos personalizado -->
+  <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/icon.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/icon.png') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='img/icon.ico') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon.png') }}">
+
+  <style>
+    /* Estilos generales */
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    /* Estilos para el spinner de carga */
+    #spinner-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .btn-actualizar i {
+      transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-actualizar:hover i,
+    .btn-actualizar:focus i,
+    .btn-actualizar:active i {
+      transform: rotate(360deg);
+    }
+  </style>
+</head>
+<body class="container">
+  <!-- Menú de navegación -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+    <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" style="height: 80px; margin-right: 10px;">
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link {% if active_page=='transferencias' %}active{% endif %}" href="{{ url_for('transferencias.index') }}">
+            <i class="fas fa-exchange-alt"></i> Transferencias
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_page=='pedidos' %}active{% endif %}" href="{{ url_for('pedidos.index') }}">
+            <i class="fas fa-box"></i> Pedidos
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_page == 'pagos' %}active{% endif %}" href="{{ url_for('pagos.index') }}">
+            <i class="fas fa-money-bill-wave"></i> Pagos
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_page=='dashboard' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_page=='clientes' %}active{% endif %}" href="{{ url_for('clientes.index') }}">
+            <i class="fas fa-users"></i> Clientes
+          </a>
+        </li>
+        {% if is_admin %}
+          <li class="nav-item">
+            <a class="nav-link {% if active_page=='admin' %}active{% endif %}" href="{{ url_for('admin.index') }}">
+              <i class="fas fa-user-shield"></i> Módulo Restringido
+            </a>
+          </li>
+        {% endif %}
+        <li class="nav-item">
+          <a class="nav-link {% if active_page=='utilidades' %}active{% endif %}" href="{{ url_for('utilidades.index') }}">
+            <i class="fas fa-cogs"></i> Utilidades
+          </a>
+        </li>
+      </ul>
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <a class="nav-link btn btn-danger text-white ms-2" href="{{ url_for('logout') }}" onclick="return confirm('¿Estás seguro de cerrar sesión?');">
+            Cerrar Sesión
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  {% block breadcrumbs %}{% endblock %}
+  {% block content %}{% endblock %}
+
+  <!-- Spinner de carga (overlay) -->
+  <div id="spinner-overlay" style="display: none;">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/autonumeric@4.6.0/dist/autoNumeric.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Librería interact.js para mover y redimensionar -->
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+
+  <script>
+    $(document).ready(function(){
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for message in messages %}
+            toastr.options = {
+              "closeButton": true,
+              "progressBar": true,
+              "positionClass": "toast-top-right",
+              "timeOut": "5000"
+            };
+            toastr.info("{{ message }}");
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      $(document).ajaxStart(function(){
+        $("#spinner-overlay").show();
+      }).ajaxStop(function(){
+        $("#spinner-overlay").hide();
+      });
+
+      // Botón de actualizar con animación y recarga de página
+      const btnActualizar = document.querySelector('.btn-actualizar');
+      if (btnActualizar) {
+        btnActualizar.addEventListener('click', function(e) {
+          e.preventDefault();
+          const icon = this.querySelector('i');
+          if (icon) {
+            icon.classList.add('fa-spin');
+          }
+          fetch('/dashboard/limpiar_cache', {method: 'POST'})
+            .then(() => {
+              if (icon) icon.classList.remove('fa-spin');
+              location.reload();
+            })
+            .catch(() => {
+              if (icon) icon.classList.remove('fa-spin');
+              location.reload();
+            });
+        });
+      }
+    });
+  </script>
+</body>
+</html>

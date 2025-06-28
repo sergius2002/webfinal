@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Inicio</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+  </ol>
+</nav>
+{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h1>Resumen de pedidos por cliente</h1>
+  <div class="d-flex justify-content-end align-items-center mb-2" style="gap:1rem;">
+    <label class="mb-0">Actualizar cada 
+      <select id="refresh-interval" class="form-select form-select-sm d-inline-block w-auto" style="width:auto;">
+        <option value="3">3 seg</option>
+        <option value="5">5 seg</option>
+        <option value="30">30 seg</option>
+        <option value="60" selected>60 seg</option>
+      </select>
+    </label>
+    <button id="refresh-manual" class="btn btn-outline-primary btn-sm" title="Actualizar ahora"><i class="fas fa-sync-alt"></i></button>
+    <button id="toggle-auto" class="btn btn-outline-secondary btn-sm" title="Desactivar actualización automática"><i class="fas fa-pause"></i></button>
+  </div>
+  <form method="get" class="mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label for="fecha" class="form-label">Fecha:</label>
+        <input type="date" id="fecha" name="fecha" class="form-control" value="{{ fecha }}" onchange="this.form.submit()">
+      </div>
+      <div class="col-auto">
+        <label for="cliente" class="form-label">Cliente:</label>
+        <select id="cliente" name="cliente" class="form-select" onchange="this.form.submit()">
+          <option value="">Todos</option>
+          {% for c in clientes %}
+            <option value="{{ c }}" {% if c == cliente_filtro %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </form>
+  <div class="card shadow-lg">
+    <div class="card-body">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Deuda anterior</th>
+            <th>BRS</th>
+            <th>Deuda de hoy</th>
+            <th>Pagos</th>
+            <th>Saldo Final</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in resumen %}
+          <tr>
+            <td>{{ r.cliente }}</td>
+            <td>{{ r.deuda_anterior | format_int }}</td>
+            <td>{{ r.brs | format_int }}</td>
+            <td>{{ r.clp | format_int }}</td>
+            <td>{{ r.pagos | format_int }}</td>
+            <td>{{ r.diferencia | format_int }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center">No hay pedidos para la fecha seleccionada.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+// Leer valor guardado en localStorage (si existe)
+let savedInterval = localStorage.getItem('dashboard_refresh_interval');
+if (savedInterval) {
+  document.getElementById('refresh-interval').value = savedInterval;
+}
+let savedAuto = localStorage.getItem('dashboard_auto_refresh');
+let autoRefresh = savedAuto === null ? true : (savedAuto === 'true');
+let refreshInterval = parseInt(document.getElementById('refresh-interval').value);
+let refreshTimer = null;
+let lastUserAction = Date.now();
+const AUTO_OFF = 3600; // 1 hora
+
+function setRefreshInterval(segundos) {
+  refreshInterval = segundos;
+  if (refreshTimer) clearInterval(refreshTimer);
+  if (autoRefresh) {
+    refreshTimer = setInterval(() => {
+      if (autoRefresh && (Date.now() - lastUserAction < AUTO_OFF * 1000)) {
+        localStorage.setItem('dashboard_refresh_interval', refreshInterval);
+        localStorage.setItem('dashboard_auto_refresh', autoRefresh);
+        location.reload();
+      } else if (autoRefresh) {
+        autoRefresh = false;
+        localStorage.setItem('dashboard_auto_refresh', autoRefresh);
+        document.getElementById('toggle-auto').innerHTML = '<i class="fas fa-play"></i>';
+        document.getElementById('toggle-auto').title = 'Activar actualización automática';
+        if (refreshTimer) clearInterval(refreshTimer);
+      }
+    }, refreshInterval * 1000);
+  }
+}
+document.getElementById('refresh-interval').addEventListener('change', function() {
+  let val = parseInt(this.value);
+  localStorage.setItem('dashboard_refresh_interval', val);
+  setRefreshInterval(val);
+});
+document.getElementById('refresh-manual').onclick = function(e) {
+  e.preventDefault();
+  localStorage.setItem('dashboard_refresh_interval', refreshInterval);
+  localStorage.setItem('dashboard_auto_refresh', autoRefresh);
+  location.reload();
+};
+document.getElementById('toggle-auto').onclick = function(e) {
+  e.preventDefault();
+  autoRefresh = !autoRefresh;
+  localStorage.setItem('dashboard_auto_refresh', autoRefresh);
+  if (autoRefresh) {
+    this.innerHTML = '<i class="fas fa-pause"></i>';
+    this.title = 'Desactivar actualización automática';
+    setRefreshInterval(refreshInterval);
+  } else {
+    this.innerHTML = '<i class="fas fa-play"></i>';
+    this.title = 'Activar actualización automática';
+    if (refreshTimer) clearInterval(refreshTimer);
+  }
+};
+// Al cargar, reflejar el estado de pausa/play
+if (!autoRefresh) {
+  document.getElementById('toggle-auto').innerHTML = '<i class="fas fa-play"></i>';
+  document.getElementById('toggle-auto').title = 'Activar actualización automática';
+  if (refreshTimer) clearInterval(refreshTimer);
+}
+// Detectar actividad del usuario
+['mousemove','keydown','click','scroll','touchstart'].forEach(ev => {
+  window.addEventListener(ev, () => { lastUserAction = Date.now(); });
+});
+// Inicializar
+setRefreshInterval(refreshInterval);
+
+// Pausar actualización automática mientras se interactúa con los filtros
+let pauseTimeout = null;
+function pauseAutoRefreshTemporal() {
+  if (autoRefresh) {
+    autoRefresh = false;
+    localStorage.setItem('dashboard_auto_refresh', autoRefresh);
+    document.getElementById('toggle-auto').innerHTML = '<i class="fas fa-play"></i>';
+    document.getElementById('toggle-auto').title = 'Activar actualización automática';
+    if (refreshTimer) clearInterval(refreshTimer);
+  }
+  if (pauseTimeout) clearTimeout(pauseTimeout);
+  pauseTimeout = setTimeout(() => {
+    autoRefresh = true;
+    localStorage.setItem('dashboard_auto_refresh', autoRefresh);
+    document.getElementById('toggle-auto').innerHTML = '<i class="fas fa-pause"></i>';
+    document.getElementById('toggle-auto').title = 'Desactivar actualización automática';
+    setRefreshInterval(refreshInterval);
+  }, 5000); // 5 segundos después de terminar la interacción
+}
+document.getElementById('fecha').addEventListener('focus', pauseAutoRefreshTemporal);
+document.getElementById('fecha').addEventListener('input', pauseAutoRefreshTemporal);
+document.getElementById('cliente').addEventListener('focus', pauseAutoRefreshTemporal);
+document.getElementById('cliente').addEventListener('input', pauseAutoRefreshTemporal);
+</script>
+{% endblock %}

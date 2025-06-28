@@ -1,0 +1,488 @@
+{% extends "base.html" %}
+{% block title %}Nuevo Pedido{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-center">
+    <div class="card shadow-lg" style="max-width: 400px; width: 100%;">
+      <div class="card-header bg-azul-oscuro text-white text-center">
+        <h5 class="mb-0">Nuevo Pedido</h5>
+      </div>
+      <div class="card-body">
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              {% if 'Error' in message or 'error' in message.lower() %}
+                <div id="alert-error" class="alert alert-danger alert-dismissible fade show" role="alert">
+                  <i class="fas fa-exclamation-triangle me-2"></i>
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+              {% else %}
+                <div id="alert-exito" class="alert alert-success alert-dismissible fade show" role="alert">
+                  <i class="fas fa-check-circle me-2"></i>
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        
+        <!-- Indicador de carga -->
+        <div id="loading-indicator" class="text-center d-none">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="mt-2 text-muted">Procesando pedido...</p>
+        </div>
+        
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        <form id="form-nuevo-pedido" action="{{ url_for('pedidos.nuevo') }}" method="post" novalidate autocomplete="off">
+          <div class="mb-3">
+            <label for="cliente" class="form-label">
+              <i class="fas fa-user me-1"></i>Cliente
+            </label>
+            <select name="cliente" id="cliente" class="form-select" required autofocus>
+              <option value="">Seleccione un cliente</option>
+              {% for client in cliente_pagadores %}
+                <option value="{{ client }}" {% if request.form.get('cliente') == client %}selected{% endif %}>{{ client }}</option>
+              {% endfor %}
+            </select>
+            <div class="invalid-feedback">Por favor seleccione un cliente.</div>
+          </div>
+          <div class="mb-3">
+            <label for="brs_display" class="form-label">
+              <i class="fas fa-coins me-1"></i>BRS
+            </label>
+            <input type="text" id="brs_display" class="form-control" autocomplete="off" placeholder="Ingrese BRS" required>
+            <input type="hidden" id="brs" name="brs" required>
+            <div id="brs-warning" class="form-text text-warning" style="display: none;">
+              <i class="fas fa-exclamation-triangle me-1"></i>Advertencia: BRS superior a 50,000
+            </div>
+            <div class="invalid-feedback">Por favor ingrese un valor válido para BRS.</div>
+          </div>
+          <div class="mb-3">
+            <label for="tasa" class="form-label">
+              <i class="fas fa-percentage me-1"></i>Tasa
+            </label>
+            <input type="text" name="tasa" id="tasa" class="form-control" required value="{{ tasa_venezuela }}">
+            <div id="tasa-warning" class="form-text text-warning" style="display: none;">
+              <i class="fas fa-exclamation-triangle me-1"></i>Advertencia: Valor de tasa fuera de rango
+            </div>
+            <div class="invalid-feedback">Por favor ingrese una tasa válida.</div>
+          </div>
+          <!-- Campo de CLP calculado automáticamente -->
+          <div class="mb-3">
+            <label for="clp_calculado" class="form-label">
+              <i class="fas fa-calculator me-1"></i>CLP Calculado
+            </label>
+            <input type="text" id="clp_calculado" class="form-control" readonly placeholder="Se calcula automáticamente">
+            <div id="clp-maximo-info" class="form-text text-info" style="display: none;">
+              <i class="fas fa-info-circle me-1"></i>Límite del cliente: <span id="clp-limite"></span> CLP
+            </div>
+            <div id="clp-exceso-warning" class="form-text text-danger" style="display: none;">
+              <i class="fas fa-exclamation-triangle"></i> ¡ADVERTENCIA! El CLP excede el límite del cliente
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="fecha" class="form-label">
+              <i class="fas fa-calendar me-1"></i>Fecha
+            </label>
+            <input type="date" name="fecha" id="fecha" class="form-control" value="{{ current_date }}" required>
+            <div class="invalid-feedback">Por favor seleccione una fecha válida.</div>
+          </div>
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <button type="submit" class="btn btn-primary w-100" id="btn-guardar">
+              <span id="spinner-guardar" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+              <i class="fas fa-save me-1"></i>Guardar Pedido
+            </button>
+            <button type="button" class="btn btn-secondary d-none" id="btn-limpiar">
+              <i class="fas fa-eraser me-1"></i>Limpiar
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="card-footer text-center">
+        <a href="{{ url_for('pedidos.index') }}" class="btn btn-lg btn-custom">
+          <i class="fas fa-arrow-left me-1"></i>Volver
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de advertencia por diferencia de tasa -->
+<div class="modal fade" id="modalAdvertenciaTasa" tabindex="-1" aria-labelledby="modalAdvertenciaTasaLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title" id="modalAdvertenciaTasaLabel"><i class="fas fa-exclamation-triangle me-2"></i>Advertencia de Tasa</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p>La tasa ingresada (<span id="tasa-nueva-modal"></span>) difiere en más de <b>1%</b> respecto a la tasa por defecto (<span id="tasa-defecto-modal"></span>).</p>
+        <p>¿Deseas continuar con este valor?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="btn-cancelar-tasa">Cancelar</button>
+        <button type="button" class="btn btn-warning" id="btn-confirmar-tasa">Continuar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de advertencia por exceso de CLP -->
+<div class="modal fade" id="modalAdvertenciaCLP" tabindex="-1" aria-labelledby="modalAdvertenciaCLPLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="modalAdvertenciaCLPLabel"><i class="fas fa-exclamation-triangle me-2"></i>¡ADVERTENCIA!</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>El CLP calculado excede el límite del cliente:</strong></p>
+        <ul>
+          <li><strong>CLP Calculado:</strong> <span id="clp-calculado-modal"></span></li>
+          <li><strong>Límite del Cliente:</strong> <span id="clp-limite-modal"></span></li>
+          <li><strong>Exceso:</strong> <span id="clp-exceso-modal"></span></li>
+        </ul>
+        <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> <strong>¿Estás seguro de que quieres continuar?</strong></p>
+        <p class="text-muted small">Verifica que no haya un error tipográfico en el monto de BRS.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="btn-cancelar-clp">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btn-confirmar-clp">Continuar de todas formas</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Variables globales de Jinja2 -->
+<script>
+  // Variables globales de Jinja2
+  window.currentDate = '{{ current_date }}';
+  window.tasaVenezuela = '{{ tasa_venezuela|replace(",", ".") }}';
+  window.hasMessages = {% if get_flashed_messages() %}true{% else %}false{% endif %};
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Variables de Jinja2 convertidas a JavaScript
+  const currentDate = window.currentDate;
+  const tasaVenezuela = window.tasaVenezuela;
+  const hasMessages = window.hasMessages;
+
+  // Enfoque automático
+  document.getElementById('cliente').focus();
+
+  // Variables globales
+  let clpMaximoCliente = 0;
+  let clpExcesoConfirmado = false;
+  let submitPendienteTasa = false;
+
+  // Formateo en tiempo real para BRS
+  const displayInput = document.getElementById('brs_display');
+  const hiddenInput = document.getElementById('brs');
+  if (displayInput) {
+    displayInput.addEventListener('input', function(e) {
+      let value = this.value.replace(/[^\d]/g, '');
+      if (value) {
+        this.value = parseInt(value, 10).toLocaleString('de-DE');
+        hiddenInput.value = value;
+      } else {
+        hiddenInput.value = '';
+      }
+      calcularCLP();
+    });
+  }
+
+  // Función para calcular CLP automáticamente
+  function calcularCLP() {
+    const brs = parseFloat(hiddenInput.value.replace(/[^\d]/g, '')) || 0;
+    const tasa = parseFloat(document.getElementById('tasa').value.replace(',', '.')) || 0;
+    const clpCalculado = document.getElementById('clp_calculado');
+    
+    if (brs > 0 && tasa > 0) {
+      const clp = brs / tasa;
+      clpCalculado.value = clp.toLocaleString('de-DE', { maximumFractionDigits: 0 });
+      
+      // Verificar límite del cliente
+      if (clpMaximoCliente > 0) {
+        if (clp > clpMaximoCliente) {
+          document.getElementById('clp-exceso-warning').style.display = 'block';
+          document.getElementById('clp-exceso-warning').innerHTML = 
+            `<i class="fas fa-exclamation-triangle"></i> ¡ADVERTENCIA! El CLP (${clp.toLocaleString('de-DE')}) excede el límite del cliente (${clpMaximoCliente.toLocaleString('de-DE')})`;
+        } else {
+          document.getElementById('clp-exceso-warning').style.display = 'none';
+        }
+      }
+    } else {
+      clpCalculado.value = '';
+      document.getElementById('clp-exceso-warning').style.display = 'none';
+    }
+  }
+
+  // Función para obtener el CLP máximo del cliente
+  async function obtenerCLPMaximoCliente(cliente) {
+    try {
+      // Mostrar indicador de carga para CLP
+      const infoElement = document.getElementById('clp-maximo-info');
+      const limiteElement = document.getElementById('clp-limite');
+      
+      infoElement.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Consultando límite...';
+      infoElement.style.display = 'block';
+      
+      const url = `/pedidos/clp_maximo/${encodeURIComponent(cliente)}`;
+      console.log('Consultando CLP máximo en:', url);
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        clpMaximoCliente = data.clp_maximo;
+        
+        if (clpMaximoCliente > 0) {
+          infoElement.innerHTML = `<i class="fas fa-info-circle me-1"></i>Límite del cliente: <span id="clp-limite">${clpMaximoCliente.toLocaleString('de-DE')}</span> CLP`;
+          infoElement.style.display = 'block';
+        } else {
+          infoElement.style.display = 'none';
+        }
+        // Recalcular CLP si ya hay valores
+        calcularCLP();
+      } else {
+        console.warn('Error al obtener CLP máximo:', data.error);
+        infoElement.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Error al obtener CLP máximo:', error);
+      infoElement.style.display = 'none';
+      // Mostrar mensaje de error temporal
+      const errorMsg = document.createElement('div');
+      errorMsg.className = 'alert alert-warning alert-dismissible fade show mt-2';
+      errorMsg.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-1"></i>Error al consultar límite del cliente
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+      document.getElementById('clp_calculado').parentNode.appendChild(errorMsg);
+      
+      // Remover mensaje después de 5 segundos
+      setTimeout(() => {
+        if (errorMsg.parentNode) {
+          errorMsg.remove();
+        }
+      }, 5000);
+    }
+  }
+
+  // Event listener para cambio de cliente
+  document.getElementById('cliente').addEventListener('change', function() {
+    const cliente = this.value;
+    if (cliente) {
+      obtenerCLPMaximoCliente(cliente);
+    } else {
+      clpMaximoCliente = 0;
+      document.getElementById('clp-maximo-info').style.display = 'none';
+      document.getElementById('clp-exceso-warning').style.display = 'none';
+    }
+  });
+
+  // Event listener para cambio de tasa
+  document.getElementById('tasa').addEventListener('input', function() {
+    calcularCLP();
+  });
+
+  // Validación en tiempo real
+  const form = document.getElementById('form-nuevo-pedido');
+  const btnGuardar = document.getElementById('btn-guardar');
+  function validarFormulario() {
+    const cliente = document.getElementById('cliente').value;
+    const brs = hiddenInput.value;
+    const tasa = document.getElementById('tasa').value;
+    const fecha = document.getElementById('fecha').value;
+    
+    const isValid = cliente && brs && parseInt(brs) > 0 && tasa && fecha;
+    btnGuardar.disabled = !isValid;
+    
+    // Agregar clases de validación visual
+    const fields = [
+      { element: document.getElementById('cliente'), value: cliente },
+      { element: document.getElementById('brs_display'), value: brs },
+      { element: document.getElementById('tasa'), value: tasa },
+      { element: document.getElementById('fecha'), value: fecha }
+    ];
+    
+    fields.forEach(field => {
+      if (field.element) {
+        if (field.value) {
+          field.element.classList.remove('is-invalid');
+          field.element.classList.add('is-valid');
+        } else {
+          field.element.classList.remove('is-valid');
+          field.element.classList.add('is-invalid');
+        }
+      }
+    });
+  }
+  document.getElementById('cliente').addEventListener('change', validarFormulario);
+  displayInput.addEventListener('input', validarFormulario);
+  document.getElementById('tasa').addEventListener('input', validarFormulario);
+  document.getElementById('fecha').addEventListener('input', validarFormulario);
+  validarFormulario();
+
+  // Mostrar botón limpiar solo tras guardar
+  if (hasMessages) {
+      document.getElementById('btn-limpiar').classList.remove('d-none');
+  }
+
+  // Limpiar formulario (mantener cliente)
+  document.getElementById('btn-limpiar').addEventListener('click', function() {
+    document.getElementById('brs_display').value = '';
+    document.getElementById('brs').value = '';
+    document.getElementById('tasa').value = '';
+    document.getElementById('fecha').value = currentDate;
+    document.getElementById('clp_calculado').value = '';
+    document.getElementById('clp-exceso-warning').style.display = 'none';
+    validarFormulario();
+    this.classList.add('d-none');
+  });
+
+  // Alert Bootstrap desaparece automáticamente
+  const alertExito = document.getElementById('alert-exito');
+  if (alertExito) {
+    setTimeout(() => {
+      alertExito.classList.remove('show');
+      alertExito.classList.add('fade');
+    }, 2500);
+  }
+
+  // Inicializar Select2 para el campo cliente
+  $('#cliente').select2({
+    width: '100%',
+    placeholder: 'Seleccione un cliente',
+    allowClear: true,
+    minimumResultsForSearch: 0
+  });
+  
+  // Foco automático en el campo de búsqueda al abrir el select de cliente
+  $('#cliente').on('select2:open', function (e) {
+    setTimeout(function() {
+      document.querySelector('.select2-container--open .select2-search__field').focus();
+    }, 0);
+  });
+
+  // Manejo del envío del formulario con validaciones
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Mostrar indicador de carga
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const formContent = document.querySelector('.card-body form');
+    const btnGuardar = document.getElementById('btn-guardar');
+    const spinnerGuardar = document.getElementById('spinner-guardar');
+    
+    function showLoading() {
+      loadingIndicator.classList.remove('d-none');
+      formContent.classList.add('d-none');
+      btnGuardar.disabled = true;
+      spinnerGuardar.classList.remove('d-none');
+    }
+    
+    function hideLoading() {
+      loadingIndicator.classList.add('d-none');
+      formContent.classList.remove('d-none');
+      btnGuardar.disabled = false;
+      spinnerGuardar.classList.add('d-none');
+    }
+    
+    // Si ya se confirmó el exceso de CLP, continuar
+    if (clpExcesoConfirmado) {
+      clpExcesoConfirmado = false;
+      showLoading();
+      setTimeout(() => {
+        form.submit();
+      }, 500);
+      return;
+    }
+
+    // Verificar exceso de CLP
+    const brs = parseFloat(hiddenInput.value.replace(/[^\d]/g, '')) || 0;
+    const tasa = parseFloat(document.getElementById('tasa').value.replace(',', '.')) || 0;
+    const clpCalculado = brs / tasa;
+    
+    console.log('DEBUG - CLP máximo cliente:', clpMaximoCliente);
+    console.log('DEBUG - CLP calculado:', clpCalculado);
+    
+    if (clpMaximoCliente > 0 && clpCalculado > clpMaximoCliente) {
+      console.log('SUPERÓ EL LÍMITE. Mostrando modal de advertencia CLP.');
+      
+      // Actualizar contenido del modal
+      document.getElementById('clp-calculado-modal').textContent = clpCalculado.toLocaleString('de-DE');
+      document.getElementById('clp-limite-modal').textContent = clpMaximoCliente.toLocaleString('de-DE');
+      document.getElementById('clp-exceso-modal').textContent = (clpCalculado - clpMaximoCliente).toLocaleString('de-DE');
+      
+      // Mostrar modal
+      console.log('Intentando mostrar el modal CLP');
+      const modalCLP = new bootstrap.Modal(document.getElementById('modalAdvertenciaCLP'));
+      modalCLP.show();
+      
+      // Configurar botones del modal
+      document.getElementById('btn-confirmar-clp').onclick = function() {
+        clpExcesoConfirmado = true;
+        modalCLP.hide();
+        setTimeout(() => {
+          showLoading();
+          form.submit();
+        }, 200);
+      };
+      
+      document.getElementById('btn-cancelar-clp').onclick = function() {
+        modalCLP.hide();
+      };
+      
+      return;
+    }
+
+    // Verificar diferencia de tasa
+    const tasaDefecto = parseFloat(tasaVenezuela);
+    if (!isNaN(tasa) && tasaDefecto > 0) {
+      const diferencia = Math.abs(tasa - tasaDefecto) / tasaDefecto;
+      if (diferencia > 0.01) {
+        document.getElementById('tasa-nueva-modal').textContent = tasa;
+        document.getElementById('tasa-defecto-modal').textContent = tasaDefecto;
+        const modal = new bootstrap.Modal(document.getElementById('modalAdvertenciaTasa'));
+        modal.show();
+        
+        document.getElementById('btn-confirmar-tasa').onclick = function() {
+          submitPendienteTasa = true;
+          modal.hide();
+          setTimeout(() => {
+            showLoading();
+            form.submit();
+          }, 200);
+        };
+        
+        document.getElementById('btn-cancelar-tasa').onclick = function() {
+          modal.hide();
+        };
+        
+        return;
+      }
+    }
+
+    // Si no hay advertencias, enviar formulario
+    showLoading();
+    setTimeout(() => {
+      form.submit();
+    }, 500);
+  });
+});
+</script>
+<!-- Bootstrap JS Bundle (necesario para modales) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

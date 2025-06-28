@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4 pagos-section">
+  <h1>Editar Pago</h1>
+  <form method="post">
+    <div class="mb-3">
+      <label for="fecha" class="form-label">Fecha</label>
+      <input type="date" name="fecha" id="fecha" class="form-control" value="{{ fecha_form }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="cliente" class="form-label">Cliente</label>
+      <select name="cliente" id="cliente" class="form-select" required>
+        {% for c in clientes %}
+          <option value="{{ c }}" {% if c == pago.cliente %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="monto_display" class="form-label">Monto</label>
+      <input type="text" id="monto_display" class="form-control" autocomplete="off" placeholder="Ingrese el monto" value="{{ pago.monto_total | format_int }}">
+      <input type="hidden" id="monto" name="monto" value="{{ pago.monto_total }}">
+    </div>
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+      <button type="submit" class="btn btn-success">Guardar Cambios</button>
+      <button type="button" class="btn btn-danger ms-3" data-bs-toggle="modal" data-bs-target="#modalEliminarPago">Eliminar Pago</button>
+    </div>
+    <div class="mt-4">
+      <a href="{{ url_for('pagos.index') }}" class="btn btn-secondary">Volver</a>
+    </div>
+  </form>
+
+  <!-- Modal de advertencia: el form de eliminación está FUERA del form principal -->
+  <div class="modal fade" id="modalEliminarPago" tabindex="-1" aria-labelledby="modalEliminarPagoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="modalEliminarPagoLabel">⚠️ Advertencia</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body text-center">
+          <strong>Esta acción marcará el pago como eliminado, pero <u>no lo borrará de la base de datos</u>.</strong><br><br>
+          ¿Estás seguro de continuar?
+        </div>
+        <div class="modal-footer justify-content-center">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <form method="post" action="{{ url_for('pagos.eliminar', pago_id=pago.id) }}" style="display:inline;">
+            <button type="submit" class="btn btn-danger">Confirmar eliminación</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if advertencia_duplicado %}
+    <!-- Modal Bootstrap estándar para advertencia de duplicado o alto valor -->
+    <div class="modal fade" id="modalDuplicado" tabindex="-1" aria-labelledby="modalDuplicadoLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+            <span class="me-2" style="font-size:1.5rem;">&#9888;</span>
+            <h5 class="modal-title" id="modalDuplicadoLabel">Advertencia</h5>
+            <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body text-center" style="font-size:1.1rem;">
+            {{ mensaje_advertencia|safe }}
+          </div>
+          <div class="modal-footer d-flex justify-content-center gap-3">
+            <form method="post" action="{{ url_for('pagos.editar', pago_id=pago.id) }}" style="margin:0;">
+              <input type="hidden" name="cliente" value="{{ cliente }}">
+              <input type="hidden" name="monto" value="{{ monto }}">
+              <input type="hidden" name="fecha" value="{{ fecha }}">
+              <input type="hidden" name="forzar_guardado" value="1">
+              <button type="submit" class="btn btn-danger px-4">Continuar de todos modos</button>
+            </form>
+            <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var modal = new bootstrap.Modal(document.getElementById('modalDuplicado'));
+        modal.show();
+      });
+    </script>
+  {% endif %}
+
+  <hr>
+  <h3>Historial de Modificaciones</h3>
+  {% if historial %}
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Usuario</th>
+          <th>Campo</th>
+          <th>Valor Anterior</th>
+          <th>Valor Nuevo</th>
+          <th>Comentario</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in historial %}
+        <tr>
+          <td>{{ h.fecha_modificacion[:19].replace('T', ' ') }}</td>
+          <td>{{ h.usuario }}</td>
+          <td>{{ h.campo_modificado }}</td>
+          <td>{{ h.valor_anterior }}</td>
+          <td>{{ h.valor_nuevo }}</td>
+          <td>{{ h.comentario }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p class="text-muted">No hay historial de modificaciones para este pago.</p>
+  {% endif %}
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const displayInput = document.getElementById('monto_display');
+  const hiddenInput = document.getElementById('monto');
+  if (displayInput) {
+    displayInput.addEventListener('input', function(e) {
+      let value = this.value.replace(/[^\d]/g, '');
+      if (value) {
+        this.value = parseInt(value, 10).toLocaleString('de-DE');
+        hiddenInput.value = value;
+      } else {
+        hiddenInput.value = '';
+      }
+    });
+  }
+});
+</script>
+{% endblock %} 

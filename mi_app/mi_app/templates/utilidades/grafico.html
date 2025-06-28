@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>Gráfico en Tiempo Real USDT/VES</h2>
+                <a href="{{ url_for('utilidades.index') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i> Volver Atrás
+                </a>
+            </div>
+            <form id="form-fecha" class="mb-3 d-flex flex-row align-items-center" style="gap: 1rem;">
+                <label for="fecha" class="mb-0">Selecciona día:</label>
+                <input type="date" id="fecha" name="fecha" class="form-control" style="max-width: 180px;" value="{{ fecha|default('') }}">
+            </form>
+            <div class="mb-2" id="selector-bancos">
+                <label class="me-2"><input type="checkbox" class="banco-check" value="Banesco" checked> Banesco</label>
+                <label class="me-2"><input type="checkbox" class="banco-check" value="Venezuela" checked> Venezuela</label>
+                <label class="me-2"><input type="checkbox" class="banco-check" value="Mercantil" checked> Mercantil</label>
+                <label class="me-2"><input type="checkbox" class="banco-check" value="Provincial" checked> Provincial</label>
+            </div>
+            <div class="mb-2 text-end">
+                <button id="toggle-dark" class="btn btn-outline-secondary btn-sm">Modo oscuro</button>
+                <label class="ms-3">Actualizar cada <input id="refresh-interval" type="number" min="2" max="60" value="3" style="width: 3em;"> seg</label>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <div id="grafico-plotly" style="height: 500px;"></div>
+                    <div class="text-center mt-2">
+                        <div id="variaciones" class="mt-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+let plotData = [];
+let lastUpdate = '';
+let modoOscuro = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+let bancosVisibles = {Banesco: true, Venezuela: true, Mercantil: true, Provincial: true};
+let modoOscuroManual = null;
+let refreshInterval = 3;
+let refreshTimer = null;
+
+function colorBanco(banco) {
+    if (banco === 'Banesco') return modoOscuro ? '#4fa3ff' : '#1f77b4';
+    if (banco === 'Venezuela') return modoOscuro ? '#ffb347' : '#ff7f0e';
+    if (banco === 'Mercantil') return modoOscuro ? '#6be36b' : '#2ca02c';
+    if (banco === 'Provincial') return modoOscuro ? '#ff6b6b' : '#d62728';
+    return '#888';
+}
+
+function fetchAndPlot() {
+    fetch("{{ url_for('utilidades.grafico_datos') }}")
+        .then(response => response.json())
+        .then(data => {
+            if (data.datos && data.datos.length > 0) {
+                const tiempos = data.datos.map(d => d.tiempo);
+                const banesco = data.datos.map(d => d.precio_banesco);
+                const venezuela = data.datos.map(d => d.precio_venezuela);
+                const mercantil = data.datos.map(d => d.precio_mercantil);
+                const provincial = data.datos.map(d => d.precio_provincial);
+                // Cambios bruscos
+                function puntosBruscos(arr) {
+                    let puntos = [];
+                    for (let i = 1; i < arr.length; i++) {
+                        if (Math.abs(arr[i] - arr[i-1]) > 0.5) {
+                            puntos.push({x: tiempos[i], y: arr[i]});
+                        }
+                    }
+                    return puntos;
+                }
+                // Variación porcentual respecto al inicio del día
+                function variacionPorcentual(arr) {
+                    if (arr.length < 2) return 0;
+                    return ((arr[arr.length-1] - arr[0]) / arr[0]) * 100;
+                }
+                // Trazas principales (solo bancos visibles)
+                const traces = [];
+                if (bancosVisibles.Banesco) {
+                    traces.push({
+                        x: tiempos, y: banesco, type: 'scatter', mode: 'lines+markers', name: 'Banesco',
+                        line: { color: colorBanco('Banesco'), width: 2, shape: 'spline' },
+                        marker: { size: 3 },
+                        hovertemplate: 'Banesco<br>Hora: %{x}<br>Precio: %{y:.2f} VES<extra></extra>'
+                    });
+                }
+                if (bancosVisibles.Venezuela) {
+                    traces.push({
+                        x: tiempos, y: venezuela, type: 'scatter', mode: 'lines+markers', name: 'Venezuela',
+                        line: { color: colorBanco('Venezuela'), width: 2, shape: 'spline' },
+                        marker: { size: 3 },
+                        hovertemplate: 'Venezuela<br>Hora: %{x}<br>Precio: %{y:.2f} VES<extra></extra>'
+                    });
+                }
+                if (bancosVisibles.Mercantil) {
+                    traces.push({
+                        x: tiempos, y: mercantil, type: 'scatter', mode: 'lines+markers', name: 'Mercantil',
+                        line: { color: colorBanco('Mercantil'), width: 2, shape: 'spline' },
+                        marker: { size: 3 },
+                        hovertemplate: 'Mercantil<br>Hora: %{x}<br>Precio: %{y:.2f} VES<extra></extra>'
+                    });
+                }
+                if (bancosVisibles.Provincial) {
+                    traces.push({
+                        x: tiempos, y: provincial, type: 'scatter', mode: 'lines+markers', name: 'Provincial',
+                        line: { color: colorBanco('Provincial'), width: 2, shape: 'spline' },
+                        marker: { size: 3 },
+                        hovertemplate: 'Provincial<br>Hora: %{x}<br>Precio: %{y:.2f} VES<extra></extra>'
+                    });
+                }
+                // Puntos de cambios bruscos
+                [
+                    {arr: banesco, name: 'Banesco'},
+                    {arr: venezuela, name: 'Venezuela'},
+                    {arr: mercantil, name: 'Mercantil'},
+                    {arr: provincial, name: 'Provincial'}
+                ].forEach((serie, idx) => {
+                    if (!bancosVisibles[serie.name]) return;
+                    const puntos = puntosBruscos(serie.arr);
+                    if (puntos.length > 0) {
+                        traces.push({
+                            x: puntos.map(p => p.x),
+                            y: puntos.map(p => p.y),
+                            mode: 'markers',
+                            name: `Salto ${serie.name}`,
+                            marker: { color: colorBanco(serie.name), size: 10, symbol: 'star' },
+                            showlegend: false,
+                            hoverinfo: 'skip'
+                        });
+                    }
+                });
+                // Anotaciones para el último valor de cada línea
+                const anotaciones = [];
+                if (bancosVisibles.Banesco && banesco.length > 0) {
+                    anotaciones.push({
+                        x: tiempos[tiempos.length - 1],
+                        y: banesco[banesco.length - 1],
+                        xanchor: 'left', yanchor: 'middle',
+                        text: banesco[banesco.length - 1].toFixed(2),
+                        font: { color: colorBanco('Banesco'), size: 14, family: 'Arial' },
+                        showarrow: false
+                    });
+                }
+                if (bancosVisibles.Venezuela && venezuela.length > 0) {
+                    anotaciones.push({
+                        x: tiempos[tiempos.length - 1],
+                        y: venezuela[venezuela.length - 1],
+                        xanchor: 'left', yanchor: 'middle',
+                        text: venezuela[venezuela.length - 1].toFixed(2),
+                        font: { color: colorBanco('Venezuela'), size: 14, family: 'Arial' },
+                        showarrow: false
+                    });
+                }
+                if (bancosVisibles.Mercantil && mercantil.length > 0) {
+                    anotaciones.push({
+                        x: tiempos[tiempos.length - 1],
+                        y: mercantil[mercantil.length - 1],
+                        xanchor: 'left', yanchor: 'middle',
+                        text: mercantil[mercantil.length - 1].toFixed(2),
+                        font: { color: colorBanco('Mercantil'), size: 14, family: 'Arial' },
+                        showarrow: false
+                    });
+                }
+                if (bancosVisibles.Provincial && provincial.length > 0) {
+                    anotaciones.push({
+                        x: tiempos[tiempos.length - 1],
+                        y: provincial[provincial.length - 1],
+                        xanchor: 'left', yanchor: 'middle',
+                        text: provincial[provincial.length - 1].toFixed(2),
+                        font: { color: colorBanco('Provincial'), size: 14, family: 'Arial' },
+                        showarrow: false
+                    });
+                }
+                // Variaciones porcentuales
+                const variaciones = [
+                    {nombre: 'Banesco', valor: variacionPorcentual(banesco), visible: bancosVisibles.Banesco},
+                    {nombre: 'Venezuela', valor: variacionPorcentual(venezuela), visible: bancosVisibles.Venezuela},
+                    {nombre: 'Mercantil', valor: variacionPorcentual(mercantil), visible: bancosVisibles.Mercantil},
+                    {nombre: 'Provincial', valor: variacionPorcentual(provincial), visible: bancosVisibles.Provincial}
+                ];
+                let htmlVar = '';
+                variaciones.forEach(v => {
+                    if (v.visible) {
+                        htmlVar += `<span style="color:${colorBanco(v.nombre)};font-weight:bold;">${v.nombre}: ${(v.valor>0?'+':'')}${v.valor.toFixed(2)}%</span> &nbsp;`;
+                    }
+                });
+                document.getElementById('variaciones').innerHTML = htmlVar;
+                // Preparar ticktext personalizado para el eje X (solo hora)
+                const ticktext = [
+                    tiempos[0].split('\n')[0],
+                    tiempos[tiempos.length-1].split('\n')[0]
+                ];
+                // Layout
+                const layout = {
+                    title: {
+                        text: 'Precios USDT/VES en Tiempo Real',
+                        font: { size: 18 },
+                        xref: 'paper',
+                        x: 0.5,
+                        xanchor: 'center'
+                    },
+                    xaxis: {
+                        title: 'Hora',
+                        tickangle: -45,
+                        tickformat: '', // Usamos ticktext personalizado
+                        automargin: true,
+                        type: 'category',
+                        tickvals: [tiempos[0], tiempos[tiempos.length-1]],
+                        ticktext: ticktext,
+                        color: modoOscuro ? '#F5F5F5' : '#222',
+                        tickfont: { color: modoOscuro ? '#F5F5F5' : '#222' },
+                        linecolor: modoOscuro ? '#F5F5F5' : '#222',
+                        showgrid: false,
+                    },
+                    yaxis: {
+                        title: { text: 'Precio (VES)', standoff: 20 },
+                        tickformat: '.2f',
+                        gridcolor: modoOscuro ? '#444' : '#eee',
+                        zerolinecolor: modoOscuro ? '#888' : '#ccc',
+                        automargin: true,
+                        rangemode: 'tozero',
+                        range: [
+                            Math.min(
+                                ...[bancosVisibles.Banesco ? banesco : Infinity,
+                                   bancosVisibles.Venezuela ? venezuela : Infinity,
+                                   bancosVisibles.Mercantil ? mercantil : Infinity,
+                                   bancosVisibles.Provincial ? provincial : Infinity].flat()
+                            ) - 0.2,
+                            Math.max(
+                                ...[bancosVisibles.Banesco ? banesco : -Infinity,
+                                   bancosVisibles.Venezuela ? venezuela : -Infinity,
+                                   bancosVisibles.Mercantil ? mercantil : -Infinity,
+                                   bancosVisibles.Provincial ? provincial : -Infinity].flat()
+                            ) + 0.2
+                        ],
+                        nticks: 6,
+                        color: modoOscuro ? '#F5F5F5' : '#222',
+                        tickfont: { color: modoOscuro ? '#F5F5F5' : '#222' },
+                        linecolor: modoOscuro ? '#F5F5F5' : '#222',
+                        showgrid: false,
+                    },
+                    legend: {
+                        orientation: 'h',
+                        yanchor: 'top',
+                        y: -0.25,
+                        xanchor: 'center',
+                        x: 0.5,
+                        font: {size: 12},
+                        itemwidth: 60,
+                        itemsizing: 'constant',
+                        bgcolor: modoOscuro ? 'rgba(30,30,30,0.85)' : 'rgba(255,255,255,0.7)',
+                        bordercolor: modoOscuro ? '#444' : '#ccc',
+                        borderwidth: 1
+                    },
+                    margin: { t: 60, b: 80, l: 60, r: 60 },
+                    hovermode: 'x unified',
+                    showlegend: true,
+                    annotations: anotaciones,
+                    plot_bgcolor: modoOscuro ? '#222' : '#fff',
+                    paper_bgcolor: modoOscuro ? '#222' : '#fff',
+                    transition: { duration: 800, easing: 'cubic-in-out' },
+                    font: { color: modoOscuro ? '#F5F5F5' : '#222' },
+                };
+                const config = {
+                    responsive: true,
+                    displayModeBar: true,
+                    displaylogo: false,
+                    toImageButtonOptions: {
+                        format: 'png',
+                        filename: 'grafico_usdt_ves',
+                        bgcolor: modoOscuro ? '#222' : '#fff',
+                    },
+                    modebar: { bgcolor: modoOscuro ? '#222' : '#fff' }
+                };
+                Plotly.newPlot('grafico-plotly', traces, layout, config);
+            }
+        })
+        .catch(error => {
+            console.error('Error al obtener datos:', error);
+        });
+}
+// Guardar y restaurar selección de bancos
+function saveBancos() {
+    localStorage.setItem('bancosVisibles', JSON.stringify(bancosVisibles));
+}
+function loadBancos() {
+    const saved = localStorage.getItem('bancosVisibles');
+    if (saved) {
+        try {
+            const obj = JSON.parse(saved);
+            for (const b in bancosVisibles) {
+                if (typeof obj[b] === 'boolean') bancosVisibles[b] = obj[b];
+            }
+        } catch(e) {}
+    }
+    // Actualizar checkboxes
+    Array.from(document.getElementsByClassName('banco-check')).forEach(cb => {
+        cb.checked = bancosVisibles[cb.value];
+    });
+}
+Array.from(document.getElementsByClassName('banco-check')).forEach(cb => {
+    cb.onchange = function() {
+        bancosVisibles[this.value] = this.checked;
+        saveBancos();
+        fetchAndPlot();
+    };
+});
+// Selector de fecha
+const formFecha = document.getElementById('form-fecha');
+const inputFecha = document.getElementById('fecha');
+inputFecha.onchange = function() {
+    if (this.value) {
+        window.location = `{{ url_for('utilidades.grafico') }}?fecha=${this.value}`;
+    }
+};
+formFecha.onsubmit = function(e) { e.preventDefault(); } // Prevenir submit manual
+// Controlar el intervalo de actualización:
+function setRefreshInterval(segundos) {
+    refreshInterval = segundos;
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(fetchAndPlot, refreshInterval * 1000);
+}
+document.getElementById('refresh-interval').addEventListener('change', function() {
+    let val = parseInt(this.value);
+    if (isNaN(val) || val < 2) val = 2;
+    if (val > 60) val = 60;
+    this.value = val;
+    setRefreshInterval(val);
+});
+// Inicializar el intervalo al cargar:
+setRefreshInterval(refreshInterval);
+// Animación de entrada suave y actualización cada 3 segundos
+fetchAndPlot();
+// Modo oscuro automático
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    if (modoOscuroManual === null) {
+        modoOscuro = e.matches;
+        fetchAndPlot();
+    }
+});
+// JS para alternar modo oscuro manualmente
+document.getElementById('toggle-dark').onclick = function() {
+    if (modoOscuroManual === null) {
+        modoOscuroManual = !modoOscuro;
+    } else {
+        modoOscuroManual = !modoOscuroManual;
+    }
+    modoOscuro = modoOscuroManual;
+    fetchAndPlot();
+};
+
+// --- Lógica de auto-actualización ---
+function startAutoRefresh() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(fetchAndPlot, refreshInterval * 1000);
+}
+
+document.getElementById('refresh-interval').addEventListener('input', function() {
+    let val = parseInt(this.value);
+    if (isNaN(val) || val < 2) val = 2; // Valor mínimo de seguridad
+    refreshInterval = val;
+    this.value = val; // Corrige el valor si es menor al mínimo
+    startAutoRefresh();
+});
+
+// Llamada inicial y arranque del refresco automático
+fetchAndPlot();
+startAutoRefresh();
+</script>
+<style>
+@media (max-width: 600px) {
+  #grafico-plotly { min-width: 400px; }
+  #selector-bancos, #form-fecha { flex-direction: column !important; align-items: flex-start !important; gap: 0.5rem !important; }
+  .card-body { padding: 0.5rem !important; }
+  .legend { font-size: 10px !important; }
+}
+</style>
+{% endblock %} 

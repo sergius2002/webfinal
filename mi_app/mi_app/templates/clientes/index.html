@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+{% block title %}Clientes{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 class="mb-4">Clientes</h1>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <a href="{{ url_for('clientes.nuevo') }}" class="btn btn-success">Nuevo Cliente</a>
+    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limpiarCache()" title="Actualizar datos">
+      <i class="fas fa-sync-alt"></i> Actualizar
+    </button>
+  </div>
+
+  <!-- Panel de resumen de límites -->
+  {% set clientes_con_limite = clientes | selectattr('clp_maximo', 'gt', 0) | list %}
+  {% set clientes_superados = clientes | selectattr('supera_limite', 'eq', true) | list %}
+  {% if clientes_con_limite %}
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card border-primary">
+        <div class="card-body text-center">
+          <h5 class="card-title text-primary">
+            <i class="fas fa-users"></i> Clientes con Límite
+          </h5>
+          <h3 class="text-primary">{{ clientes_con_limite | length }}</h3>
+          <small class="text-muted">de {{ clientes | length }} total</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-success">
+        <div class="card-body text-center">
+          <h5 class="card-title text-success">
+            <i class="fas fa-check-circle"></i> Dentro del Límite
+          </h5>
+          <h3 class="text-success">{{ (clientes_con_limite | length) - (clientes_superados | length) }}</h3>
+          <small class="text-muted">clientes</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-danger">
+        <div class="card-body text-center">
+          <h5 class="card-title text-danger">
+            <i class="fas fa-exclamation-triangle"></i> Límite Superado
+          </h5>
+          <h3 class="text-danger">{{ clientes_superados | length }}</h3>
+          <small class="text-muted">clientes</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Filtro de búsqueda -->
+  <div class="mb-3">
+    <input type="text" id="filtro-cliente" class="form-control" placeholder="Buscar cliente...">
+  </div>
+
+  <!-- Filtro de estado de límites -->
+  {% if clientes_con_limite %}
+  <div class="mb-3">
+    <div class="btn-group" role="group" aria-label="Filtros de estado">
+      <input type="radio" class="btn-check" name="filtro-estado" id="todos" value="todos" checked>
+      <label class="btn btn-outline-primary" for="todos">
+        <i class="fas fa-list"></i> Todos ({{ clientes | length }})
+      </label>
+      
+      <input type="radio" class="btn-check" name="filtro-estado" id="con-limite" value="con-limite">
+      <label class="btn btn-outline-primary" for="con-limite">
+        <i class="fas fa-users"></i> Con Límite ({{ clientes_con_limite | length }})
+      </label>
+      
+      <input type="radio" class="btn-check" name="filtro-estado" id="superados" value="superados">
+      <label class="btn btn-outline-danger" for="superados">
+        <i class="fas fa-exclamation-triangle"></i> Límite Superado ({{ clientes_superados | length }})
+      </label>
+      
+      <input type="radio" class="btn-check" name="filtro-estado" id="dentro-limite" value="dentro-limite">
+      <label class="btn btn-outline-success" for="dentro-limite">
+        <i class="fas fa-check-circle"></i> Dentro del Límite ({{ (clientes_con_limite | length) - (clientes_superados | length) }})
+      </label>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Buscador de cliente por RUT -->
+  <div class="mb-4">
+    <label for="buscar-rut" class="form-label">Buscar cliente por RUT</label>
+    <div class="input-group">
+      <input type="text" id="buscar-rut" class="form-control" placeholder="Ej: 12345678-9, 26829547K, 26.829.547-K">
+      <button class="btn btn-primary" type="button" id="btnBuscarRut">Buscar</button>
+    </div>
+    <div id="resultado-busqueda-rut" class="mt-2"></div>
+  </div>
+
+  <style>
+  .btn-accion-cliente {
+    min-width: 100px;
+    max-width: 100px;
+    width: 100px;
+    height: 40px;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+  
+  .loading-spinner {
+    text-align: center;
+  }
+  
+  .table-responsive {
+    min-height: 400px;
+  }
+  </style>
+
+  <!-- Indicador de carga -->
+  <div id="loading-overlay" class="loading-overlay" style="display: none;">
+    <div class="loading-spinner">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando...</span>
+      </div>
+      <p class="mt-2">Cargando clientes...</p>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped" id="tabla-clientes">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>CLP Máximo</th>
+          <th>CLP Total</th>
+          <th>Estado</th>
+          <th>Pagadores asociados</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cliente in clientes %}
+        <tr class="{% if cliente.supera_limite %}table-danger{% endif %}">
+          <td class="col-cliente">{{ cliente.cliente }}</td>
+          <td>
+            {% if cliente.clp_maximo and cliente.clp_maximo > 0 %}
+              {{ cliente.clp_maximo | format_int }} CLP
+            {% else %}
+              <span class="text-muted">Sin límite</span>
+            {% endif %}
+          </td>
+          <td>
+            <strong>{{ cliente.clp_total | format_int }} CLP</strong>
+          </td>
+          <td>
+            {% if cliente.clp_maximo and cliente.clp_maximo > 0 %}
+              {% if cliente.supera_limite %}
+                <span class="badge bg-danger">
+                  <i class="fas fa-exclamation-triangle"></i> 
+                  ¡LÍMITE SUPERADO!
+                </span>
+                <br>
+                <small class="text-danger">
+                  Exceso: {{ cliente.exceso | format_int }} CLP
+                </small>
+              {% else %}
+                <span class="badge bg-success">
+                  <i class="fas fa-check-circle"></i> 
+                  Dentro del límite
+                </span>
+                <br>
+                <small class="text-muted">
+                  Disponible: {{ (cliente.clp_maximo - cliente.clp_total) | format_int }} CLP
+                </small>
+              {% endif %}
+            {% else %}
+              <span class="badge bg-secondary">
+                <i class="fas fa-infinity"></i> 
+                Sin límite
+              </span>
+            {% endif %}
+          </td>
+          <td><a href="{{ url_for('clientes.detalle', cliente_id=cliente.id) }}" class="btn btn-info btn-sm">Ver pagadores ({{ cliente.total_pagadores }})</a></td>
+          <td>
+            <div class="d-flex justify-content-center align-items-center gap-2">
+              <a href="{{ url_for('clientes.editar', cliente_id=cliente.id) }}" class="btn btn-warning btn-sm btn-accion-cliente">Editar</a>
+              {% if is_admin %}
+              <form action="{{ url_for('clientes.eliminar', cliente_id=cliente.id) }}" method="post" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar este cliente?');">
+                <button type="submit" class="btn btn-danger btn-sm btn-accion-cliente">Eliminar</button>
+              </form>
+              {% endif %}
+              <button type="button" class="btn btn-info btn-accion-cliente" onclick="mostrarLinkPagador({{ cliente.id }})">
+                Link pagador
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center">No hay clientes registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Link Pagador -->
+<div class="modal fade" id="modalLinkPagador" tabindex="-1" aria-labelledby="modalLinkPagadorLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalLinkPagadorLabel">Link para agregar pagadores</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="linkPagadorContent" class="mb-3">
+          <input type="text" class="form-control" id="linkPagadorInput" readonly>
+        </div>
+        <button class="btn btn-primary w-100" id="btnCopiarLinkPagador" type="button">
+          Copiar link
+        </button>
+        <div id="copiadoMsg" class="text-success mt-2 d-none">¡Link copiado!</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar indicador de carga al cargar la página
+  const loadingOverlay = document.getElementById('loading-overlay');
+  if (loadingOverlay) {
+    loadingOverlay.style.display = 'flex';
+    
+    // Ocultar después de un breve delay para mostrar que se está procesando
+    setTimeout(() => {
+      loadingOverlay.style.display = 'none';
+    }, 500);
+  }
+
+  const input = document.getElementById('filtro-cliente');
+  const tabla = document.getElementById('tabla-clientes');
+  
+  // Filtro de búsqueda por nombre
+  input.addEventListener('keyup', function() {
+    const filtro = input.value.toLowerCase();
+    const filas = tabla.querySelectorAll('tbody tr');
+    filas.forEach(function(fila) {
+      const textoCliente = fila.querySelector('.col-cliente').textContent.toLowerCase();
+      if (textoCliente.includes(filtro)) {
+        fila.style.display = '';
+      } else {
+        fila.style.display = 'none';
+      }
+    });
+  });
+
+  // Filtros de estado de límites
+  const filtrosEstado = document.querySelectorAll('input[name="filtro-estado"]');
+  filtrosEstado.forEach(function(filtro) {
+    filtro.addEventListener('change', function() {
+      const valor = this.value;
+      const filas = tabla.querySelectorAll('tbody tr');
+      
+      filas.forEach(function(fila) {
+        let mostrar = true;
+        
+        switch(valor) {
+          case 'con-limite':
+            // Mostrar solo clientes que tienen límite establecido
+            const clpMaximo = fila.querySelector('td:nth-child(2)').textContent;
+            mostrar = !clpMaximo.includes('Sin límite');
+            break;
+            
+          case 'superados':
+            // Mostrar solo clientes que han superado su límite
+            mostrar = fila.classList.contains('table-danger');
+            break;
+            
+          case 'dentro-limite':
+            // Mostrar solo clientes con límite que están dentro del límite
+            const clpMaximo2 = fila.querySelector('td:nth-child(2)').textContent;
+            const tieneLimite = !clpMaximo2.includes('Sin límite');
+            const superado = fila.classList.contains('table-danger');
+            mostrar = tieneLimite && !superado;
+            break;
+            
+          case 'todos':
+          default:
+            mostrar = true;
+            break;
+        }
+        
+        fila.style.display = mostrar ? '' : 'none';
+      });
+    });
+  });
+});
+
+function mostrarLinkPagador(clienteId) {
+  // Limpia mensaje anterior
+  document.getElementById('copiadoMsg').classList.add('d-none');
+  document.getElementById('linkPagadorInput').value = 'Cargando...';
+
+  fetch(`/clientes/link_pagador/${clienteId}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('linkPagadorInput').value = data.link;
+      } else {
+        document.getElementById('linkPagadorInput').value = 'Error al generar el link';
+      }
+      var modal = new bootstrap.Modal(document.getElementById('modalLinkPagador'));
+      modal.show();
+    });
+}
+
+function limpiarCache() {
+  const btn = event.target.closest('button');
+  const icon = btn.querySelector('i');
+  const originalText = btn.innerHTML;
+  
+  // Mostrar estado de carga
+  btn.disabled = true;
+  icon.className = 'fas fa-spinner fa-spin';
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
+  
+  fetch('/clientes/limpiar-cache', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Recargar la página para mostrar datos actualizados
+      window.location.reload();
+    } else {
+      alert('Error al actualizar: ' + data.error);
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Error al actualizar los datos');
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  });
+}
+
+document.getElementById('btnCopiarLinkPagador').addEventListener('click', function() {
+  var input = document.getElementById('linkPagadorInput');
+  input.select();
+  input.setSelectionRange(0, 99999); // Para móviles
+  document.execCommand('copy');
+  document.getElementById('copiadoMsg').classList.remove('d-none');
+});
+
+document.getElementById('btnBuscarRut').addEventListener('click', function() {
+  const rut = document.getElementById('buscar-rut').value.trim();
+  const resultadoDiv = document.getElementById('resultado-busqueda-rut');
+  resultadoDiv.innerHTML = '';
+  if (!rut) {
+    resultadoDiv.innerHTML = '<div class="text-danger">Ingrese un RUT para buscar.</div>';
+    return;
+  }
+  fetch('/clientes/buscar_por_rut', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rut: rut })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      let html = '<div class="alert alert-success">';
+      if (data.clientes.length === 1) {
+        html += 'El RUT pertenece al cliente: <b>' + data.clientes[0] + '</b>';
+      } else {
+        html += 'El RUT pertenece a los clientes:<ul>';
+        data.clientes.forEach(function(c) { html += '<li><b>' + c + '</b></li>'; });
+        html += '</ul>';
+      }
+      html += '</div>';
+      resultadoDiv.innerHTML = html;
+    } else {
+      resultadoDiv.innerHTML = '<div class="alert alert-danger">' + data.error + '</div>';
+    }
+  })
+  .catch(() => {
+    resultadoDiv.innerHTML = '<div class="alert alert-danger">Error al buscar el RUT.</div>';
+  });
+});
+</script>
+{% endblock %} 

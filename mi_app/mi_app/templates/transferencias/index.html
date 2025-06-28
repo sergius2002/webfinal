@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+{% block title %}Transferencias{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1 class="mb-4">Transferencias</h1>
+  <a href="{{ url_for('transferencias.nuevo') }}" class="btn btn-success mb-4" style="font-weight:600; font-size:1.1rem;">
+    <i class="fas fa-plus me-2"></i>Nueva Transferencia
+  </a>
+
+  <!-- Filtros y Ordenamiento en dos columnas -->
+  <div class="row mb-4">
+    <div class="col-12 d-flex justify-content-center">
+      <div class="card shadow-lg" style="max-width: 420px; width:100%; border-radius: 18px; background: #fff;">
+        <div class="card-header" style="font-size:1.15rem; color:#0a2c53; background:#f4f6fa; border-radius: 18px 18px 0 0; font-weight:600; letter-spacing:0.5px;">Filtros</div>
+        <div class="card-body p-4">
+          <form action="{{ url_for('transferencias.index') }}" method="get" id="filtros-form">
+            <input type="hidden" name="page" value="1" id="page-reset">
+            <div class="mb-3">
+              <label for="cliente" class="form-label" style="font-size:0.98rem; color:#333;">Cliente</label>
+              <select name="cliente" id="cliente" class="form-select select-custom" style="border-radius:10px;">
+                <option value="">Seleccione un cliente</option>
+                {% for client in cliente %}
+                  <option value="{{ client }}" {% if client in request.args.getlist('cliente') %}selected{% endif %}>{{ client }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="empresa" class="form-label" style="font-size:0.98rem; color:#333;">Empresas</label>
+              <small class="text-muted d-block mb-2">Haz clic en cada empresa que desees seleccionar. Puedes seleccionar hasta 5 empresas.</small>
+              <select name="empresa" id="empresa" class="form-select select-custom" multiple data-placeholder="Seleccione una o más empresas" style="border-radius:10px;">
+                <option value="">Todas</option>
+                {% for emp in empresas %}
+                  {% if emp != "Todas" %}
+                    <option value="{{ emp }}" {% if emp in request.args.getlist('empresa') %}selected{% endif %}>{{ emp }}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="rut" class="form-label" style="font-size:0.98rem; color:#333;">Rut</label>
+              <input type="text" name="rut" id="rut" class="form-control" placeholder="Ej: 12.345.678-9" value="{{ request.args.get('rut','') }}" style="border-radius:10px;">
+            </div>
+            <div class="mb-3">
+              <label for="monto" class="form-label" style="font-size:0.98rem; color:#333;">Monto</label>
+              <input type="text" name="monto" id="monto" class="form-control" placeholder="Ej: 100000" value="{{ request.args.get('monto','') }}" style="border-radius:10px;">
+            </div>
+            <div class="mb-3">
+              <label for="verificada" class="form-label" style="font-size:0.98rem; color:#333;">Estado</label>
+              <select name="verificada" id="verificada" class="form-select" style="border-radius:10px;">
+                <option value="">Todo</option>
+                <option value="true" {% if request.args.get('verificada')=='true' %}selected{% endif %}>Verificada</option>
+                <option value="false" {% if request.args.get('verificada')=='false' %}selected{% endif %}>No verificada</option>
+              </select>
+            </div>
+            <div class="d-flex justify-content-end mt-3">
+              <button type="submit" class="btn btn-primary px-4 py-2" style="border-radius:10px; font-weight:600;">Aplicar filtros</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla de resultados -->
+  <table class="table table-striped mt-4">
+    <thead class="sticky-header">
+      <tr>
+        <th>Cliente</th>
+        <th class="text-end">Monto</th>
+        <th>Empresa</th>
+        <th>Rut</th>
+        <th>Fecha</th>
+        <th>Fecha Detec</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if transfers|length == 0 %}
+        <tr><td colspan="7" class="text-center text-muted">No hay transferencias para mostrar.</td></tr>
+      {% else %}
+      {% for t in transfers %}
+      <tr id="row-{{ t.id }}">
+        <td>{{ t.cliente }}</td>
+        <td class="text-end">{{ t.monto | format_monto }}</td>
+        <td>{{ t.empresa }}</td>
+        <td>{{ t.rut }}</td>
+        <td>{{ t.fecha | format_date }}</td>
+        <td>{{ t.fecha_detec | format_fecha_detec }}</td>
+        <td>
+          {% if t.manual %}
+            <a href="{{ url_for('transferencias.editar_transferencia', transfer_id=t.id) }}" class="btn btn-sm btn-warning">Editar</a>
+          {% endif %}
+          <!-- Dropdown de clientes (siempre visible con Select2) -->
+          <div class="asignar-pago-dropdown mt-2 d-flex align-items-center gap-2" id="dropdown-{{ t.id }}" style="display:block; min-width:220px;">
+            <select class="js-example-basic-single form-select form-select-sm" name="cliente" data-transfer-id="{{ t.id }}" style="width: 160px; min-width: 120px;" {% if t.asignado %}disabled{% endif %}>
+              {% if t.cliente == 'Desconocido' %}
+                <option value="" selected disabled>Seleccionar cliente</option>
+              {% endif %}
+              {% for client in cliente %}
+                <option value="{{ client }}" {% if client == t.cliente and t.cliente != 'Desconocido' %}selected{% endif %}>{{ client }}</option>
+              {% endfor %}
+            </select>
+            {% if t.asignado %}
+              <button class="btn btn-sm btn-danger d-flex align-items-center" type="button" disabled title="Esta transferencia ya fue asignada">
+                <i class="fas fa-check me-1"></i>Asignado
+              </button>
+            {% else %}
+              <button class="btn btn-sm btn-primary asignar-pago-confirmar" type="button" data-transfer-id="{{ t.id }}">
+                Asignar pago
+              </button>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      {% endif %}
+    </tbody>
+  </table>
+  
+  <!-- Información de paginación y filtros -->
+  <div class="row mt-3">
+    <div class="col-md-6">
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Filtro automático:</strong> Mostrando solo transferencias de los últimos 15 días
+        <br>
+        <small class="text-muted">
+          Página {{ pagination.page }} de {{ pagination.total_pages }} 
+          ({{ pagination.total_records }} registros totales, {{ pagination.per_page }} por página)
+        </small>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Controles de paginación -->
+  {% if pagination.total_pages > 1 %}
+  {% set args = request.args.to_dict() %}
+  {% if 'page' in args %}{% set _ = args.pop('page') %}{% endif %}
+  <nav aria-label="Navegación de páginas" class="mt-3">
+    <ul class="pagination justify-content-center">
+      <!-- Botón Anterior -->
+      {% if pagination.has_prev %}
+        <li class="page-item">
+          <a class="page-link btn btn-sm" href="{{ url_for('transferencias.index', page=pagination.prev_page, **args) }}" aria-label="Anterior">
+            <span aria-hidden="true">&laquo;</span>
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link btn btn-sm" aria-hidden="true">&laquo;</span>
+        </li>
+      {% endif %}
+      
+      <!-- Números de página -->
+      {% set start_page = [1, pagination.page - 2] | max %}
+      {% set end_page = [pagination.total_pages, pagination.page + 2] | min %}
+      
+      {% if start_page > 1 %}
+        <li class="page-item">
+          <a class="page-link btn btn-sm" href="{{ url_for('transferencias.index', page=1, **args) }}">1</a>
+        </li>
+        {% if start_page > 2 %}
+          <li class="page-item disabled">
+            <span class="page-link btn btn-sm">...</span>
+          </li>
+        {% endif %}
+      {% endif %}
+      
+      {% for page_num in range(start_page, end_page + 1) %}
+        {% if page_num == pagination.page %}
+          <li class="page-item active">
+            <span class="page-link btn btn-sm">{{ page_num }}</span>
+          </li>
+        {% else %}
+          <li class="page-item">
+            <a class="page-link btn btn-sm" href="{{ url_for('transferencias.index', page=page_num, **args) }}">{{ page_num }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+      
+      {% if end_page < pagination.total_pages %}
+        {% if end_page < pagination.total_pages - 1 %}
+          <li class="page-item disabled">
+            <span class="page-link btn btn-sm">...</span>
+          </li>
+        {% endif %}
+        <li class="page-item">
+          <a class="page-link btn btn-sm" href="{{ url_for('transferencias.index', page=pagination.total_pages, **args) }}">{{ pagination.total_pages }}</a>
+        </li>
+      {% endif %}
+      
+      <!-- Botón Siguiente -->
+      {% if pagination.has_next %}
+        <li class="page-item">
+          <a class="page-link btn btn-sm" href="{{ url_for('transferencias.index', page=pagination.next_page, **args) }}" aria-label="Siguiente">
+            <span aria-hidden="true">&raquo;</span>
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link btn btn-sm" aria-hidden="true">&raquo;</span>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+</div>
+
+<!-- Modal de confirmación de asignación de pago -->
+<div class="modal fade" id="modalAsignarPago" tabindex="-1" aria-labelledby="modalAsignarPagoLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-warning">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="modalAsignarPagoLabel"><i class="fas fa-exclamation-triangle me-2"></i>Advertencia: Asignar pago</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p>Vas a asignar un pago de <strong id="modal-monto"></strong> al cliente <strong id="modal-cliente"></strong>.</p>
+        <p>Fecha y hora de la transferencia: <strong id="modal-fecha"></strong></p>
+        <div class="alert alert-warning mt-3" role="alert">
+          ¿Deseas continuar con la asignación de este pago?
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-warning" id="btn-confirmar-asignacion">Continuar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" />
+
+<script>
+$(document).ready(function(){
+  // Inicializar Select2 para el filtro de Cliente
+  $('#cliente').select2({
+    width: '100%',
+    placeholder: 'Seleccione un cliente',
+    allowClear: true,
+    minimumResultsForSearch: 0
+  });
+
+  // Foco automático en el campo de búsqueda al abrir el select de cliente
+  $('#cliente').on('select2:open', function (e) {
+    setTimeout(function() {
+      document.querySelector('.select2-container--open .select2-search__field').focus();
+    }, 0);
+  });
+
+  // Inicializar Select2 para el filtro de Empresas
+  $('#empresa').select2({
+    width: '100%',
+    placeholder: 'Seleccione una o más empresas',
+    allowClear: true,
+    closeOnSelect: false,
+    multiple: true,
+    maximumSelectionLength: 5,
+    language: {
+      maximumSelected: function (e) {
+        return 'Máximo 5 empresas seleccionadas';
+      },
+      noResults: function() {
+        return "No se encontraron empresas";
+      }
+    },
+    templateResult: function(data) {
+      if (!data.id) return data.text; // Opción "Todas"
+      return $('<span><i class="fas fa-building me-2"></i>' + data.text + '</span>');
+    }
+  });
+
+  // Manejo de la opción "Todas"
+  $('#empresa').on('select2:select', function(e) {
+    if (e.params.data.id === '') {
+      // Si se selecciona "Todas", deseleccionar las demás
+      $(this).val('').trigger('change');
+    } else {
+      // Si se selecciona una empresa específica, deseleccionar "Todas"
+      var values = $(this).val();
+      if (values && values.includes('')) {
+        values = values.filter(function(value) { return value !== ''; });
+        $(this).val(values).trigger('change');
+      }
+    }
+  });
+
+  // Agregar tooltip para mostrar instrucciones
+  $('#empresa').tooltip({
+    title: 'Haz clic en cada empresa que desees seleccionar',
+    placement: 'top',
+    trigger: 'focus'
+  });
+
+  // Resetear página a 1 cuando se apliquen filtros
+  $('#filtros-form').on('submit', function() {
+    $('#page-reset').val('1');
+  });
+
+  // Manejo de los formularios para actualizar (Ajax)
+  $("form.update-form").submit(function(event){
+    event.preventDefault();
+    var form = $(this);
+    var url = form.attr("action");
+    var nuevo_valor = form.find("input[name='nuevo_valor']").val();
+    $.ajax({
+      url: url,
+      type: "POST",
+      data: { nuevo_valor: nuevo_valor },
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      success: function(response){
+        var row = form.closest("tr");
+        var checkbox = row.find("input[type='checkbox']");
+        var button = form.find("button");
+        if(nuevo_valor == "1"){
+          checkbox.prop("checked", true);
+          button.text("Desmarcar");
+          form.find("input[name='nuevo_valor']").val("0");
+        } else {
+          checkbox.prop("checked", false);
+          button.text("Marcar");
+          form.find("input[name='nuevo_valor']").val("1");
+        }
+        toastr.success("Registro actualizado exitosamente.");
+      },
+      error: function(xhr, status, error){
+        toastr.error("Error al actualizar: " + error);
+      }
+    });
+  });
+
+  // Mostrar/ocultar el dropdown de asignar pago (robusto y con log)
+  $(document).on('click', '.asignar-pago-btn', function(){
+    var transferId = $(this).data('transfer-id');
+    console.log('Botón Asignar pago clickeado para transferencia:', transferId);
+    $('.asignar-pago-dropdown').hide(); // Oculta todos
+    $('#dropdown-' + transferId).toggle(); // Muestra solo el correspondiente
+  });
+
+  // Inicializar Select2 en todos los dropdowns de clientes (búsqueda local, siempre visible)
+  $('.js-example-basic-single').select2({
+    minimumResultsForSearch: 0,
+    width: '100%',
+    placeholder: 'Buscar cliente...'
+  });
+
+  let transferenciaSeleccionada = null;
+  let clienteSeleccionado = null;
+
+  // Al hacer clic en 'Asignar pago', mostrar el modal de confirmación
+  $(document).on('click', '.asignar-pago-confirmar', function(){
+    var row = $(this).closest('tr');
+    transferenciaSeleccionada = row.data('transfer-id') || row.attr('id').replace('row-', '');
+    var dropdown = $(this).siblings('.js-example-basic-single');
+    clienteSeleccionado = dropdown.val();
+    var clienteTexto = dropdown.find('option:selected').text();
+    var monto = row.find('td').eq(1).text().trim();
+    var fecha = row.find('td').eq(5).text().trim();
+    $('#modal-monto').text(monto);
+    $('#modal-cliente').text(clienteTexto);
+    $('#modal-fecha').text(fecha);
+    var modal = new bootstrap.Modal(document.getElementById('modalAsignarPago'));
+    modal.show();
+  });
+
+  // Al confirmar en el modal, enviar la petición AJAX
+  $('#btn-confirmar-asignacion').on('click', function(){
+    var transferId = transferenciaSeleccionada;
+    var cliente = clienteSeleccionado;
+    if (!cliente) {
+      toastr.error('Debes seleccionar un cliente.');
+      return;
+    }
+    
+    $.ajax({
+      url: '/transferencias/asignar_pago',
+      type: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ 
+        transferencia_id: transferId, 
+        cliente: cliente 
+      }),
+      success: function(response) {
+        if (response.success) {
+          toastr.success(response.message || 'Pago asignado correctamente.');
+          var modal = bootstrap.Modal.getInstance(document.getElementById('modalAsignarPago'));
+          modal.hide();
+          // Cambiar el botón a rojo y deshabilitarlo sin recargar
+          var row = $('#row-' + transferId);
+          var btn = row.find('.asignar-pago-confirmar[data-transfer-id="' + transferId + '"]');
+          btn.removeClass('btn-primary').addClass('btn-danger').prop('disabled', true).text('Asignado');
+          row.find('.js-example-basic-single').prop('disabled', true);
+        } else {
+          toastr.error(response.message || 'Error al asignar el pago.');
+        }
+      },
+      error: function(xhr) {
+        var errorMsg = 'Error al asignar el pago.';
+        if (xhr.responseJSON && xhr.responseJSON.message) {
+          errorMsg = xhr.responseJSON.message;
+          if (errorMsg.includes('ya tiene un pago asignado')) {
+            errorMsg = 'Pago duplicado, no se asignará';
+          }
+        } else if (xhr.statusText) {
+          errorMsg += ' ' + xhr.statusText;
+        }
+        toastr.error(errorMsg);
+      }
+    });
+  });
+
+  toastr.options = {
+    "positionClass": "toast-top-right",
+    "timeOut": "3000"
+  };
+
+  // Foco automático en el campo de búsqueda al abrir cualquier select2 de cliente en la tabla
+  $(document).on('select2:open', function(e) {
+    setTimeout(function() {
+      document.querySelector('.select2-container--open .select2-search__field').focus();
+    }, 0);
+  });
+});
+</script>
+
+<style>
+  .table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #f8f9fa;
+  }
+  .table th, .table td {
+    vertical-align: middle;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+  }
+  .sticky-header th {
+    position: sticky;
+    top: 0;
+    background: #0a2c53;
+    color: #fff;
+    z-index: 2;
+  }
+  .text-end {
+    text-align: right !important;
+  }
+</style>
+{% endblock %}

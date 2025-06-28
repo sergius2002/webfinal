@@ -1,0 +1,141 @@
+{% extends "admin/admin_base.html" %}
+{% block title %}Ingresar Transaccion{% endblock %}
+{% block admin_title %}{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Inicio</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.index') }}">Módulo Restringido</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Ingresar Transaccion</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block admin_content %}
+<div class="container-fluid mt-2">
+  <div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+      <div class="card shadow-lg">
+        <!-- Cabecera del card con el título único -->
+        <div class="card-header bg-azul-oscuro text-white text-center">
+          <h3 class="mb-0">Ingresar Transaccion</h3>
+        </div>
+        <div class="card-body">
+          <form method="post" action="{{ url_for('admin.ingresar_usdt') }}">
+            <div class="mb-3">
+              <label for="totalprice_display" class="form-label">Total Price</label>
+              <!-- Campo visible para el usuario -->
+              <input type="text" 
+                     class="form-control" 
+                     id="totalprice_display" 
+                     autocomplete="off" 
+                     placeholder="Ingrese el monto"
+                     inputmode="numeric">
+              <!-- Campo oculto real para el formulario -->
+              <input type="hidden" id="totalprice" name="totalprice" required>
+            </div>
+            <div class="mb-3">
+              <label for="tasa" class="form-label">Tasa</label>
+              <input type="number" 
+                     step="0.000001" 
+                     name="tasa" 
+                     id="tasa" 
+                     class="form-control" 
+                     required 
+                     inputmode="decimal"
+                     pattern="[0-9]*[.,]?[0-9]*">
+            </div>
+            <div class="mb-3">
+              <label for="tradetype" class="form-label">Trade Type</label>
+              <select name="tradetype" id="tradetype" class="form-select select-custom" required>
+                {% for option in tradetype_options %}
+                  <option value="{{ option }}">{{ option }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="fiat" class="form-label">Fiat</label>
+              <select name="fiat" id="fiat" class="form-select select-custom" required>
+                {% for option in fiat_options %}
+                  <option value="{{ option }}">{{ option }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="createtime" class="form-label">Fecha y Hora</label>
+              <input type="datetime-local" name="createtime" id="createtime" class="form-control" value="{{ current_datetime }}" required>
+            </div>
+            <button type="submit" class="btn btn-lg btn-custom w-100">Ingresar Compra de USDT</button>
+          </form>
+        </div>
+        <div class="card-footer text-center">
+          <a href="{{ url_for('admin.index') }}" class="btn btn-lg btn-custom">Volver</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const displayInput = document.getElementById('totalprice_display');
+    const hiddenInput = document.getElementById('totalprice');
+    
+    // Formatear número mientras se escribe en el campo visible
+    displayInput.addEventListener('input', function(e) {
+        let value = this.value.replace(/[^\d]/g, '');
+        if (value) {
+            // Formatear para mostrar
+            this.value = parseInt(value, 10).toLocaleString('es-CL');
+            // Guardar valor sin formato en el campo oculto
+            hiddenInput.value = value;
+        } else {
+            hiddenInput.value = '';
+        }
+    });
+
+    // Validar el formulario antes de enviar
+    document.querySelector('form').addEventListener('submit', function(e) {
+        if (!hiddenInput.value) {
+            e.preventDefault();
+            alert('Por favor, ingrese un monto válido');
+        }
+    });
+});
+</script>
+
+<style>
+/* Quitar flechas del input number */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none;
+    margin: 0; 
+}
+input[type=number] {
+    -moz-appearance: textfield;
+}
+
+/* Personalizar select */
+select.form-select.select-custom {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L1 3h10z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 12px !important;
+    padding-right: 2.5rem !important;
+}
+
+select.form-select.select-custom:focus {
+    border-color: #80bdff !important;
+    outline: 0 !important;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25) !important;
+}
+
+select.form-select.select-custom:hover {
+    border-color: #80bdff !important;
+}
+</style>
+{% endblock %}

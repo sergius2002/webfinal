@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+{% block title %}Detalle Cliente{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 class="mb-4">Detalle de Cliente</h1>
+  <div class="mb-3">
+    <strong>Cliente:</strong> {{ cliente.cliente }}
+  </div>
+  <h3 class="mt-4">Pagadores asociados (RUTs únicos)</h3>
+
+  <!-- Botón para agregar pagador -->
+  <div class="mb-3">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgregarPagador">
+      <i class="fas fa-plus"></i> Agregar Pagador
+    </button>
+  </div>
+
+  <!-- Filtro de búsqueda de pagadores -->
+  <div class="mb-3">
+    <input type="text" id="filtro-pagador" class="form-control" placeholder="Buscar RUT...">
+  </div>
+
+  <table class="table table-bordered" id="tabla-pagadores">
+    <thead>
+      <tr>
+        <th>RUT</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rut in ruts %}
+      <tr>
+        <td>{{ rut }}</td>
+        <td>
+          <button class="btn btn-sm btn-danger" onclick="eliminarPagador('{{ rut }}')">
+            <i class="fas fa-trash"></i> Eliminar
+          </button>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="2" class="text-center">No hay pagadores asociados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <a href="{{ url_for('clientes.index') }}" class="btn btn-secondary">Volver</a>
+</div>
+
+<!-- Modal para agregar pagador -->
+<div class="modal fade" id="modalAgregarPagador" tabindex="-1" aria-labelledby="modalAgregarPagadorLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalAgregarPagadorLabel">Agregar Pagador</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="formAgregarPagador">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="rutPagador" class="form-label">RUT del Pagador</label>
+            <input type="text" class="form-control" id="rutPagador" name="rut" 
+                   placeholder="Ej: 26829547K, 26.829.547-K, 15608975" required>
+            <div class="form-text">Ingrese el RUT en cualquier formato. El sistema lo normalizará automáticamente. Si falta el dígito verificador, se calculará.</div>
+            <div id="errorMsg" class="alert alert-danger mt-2 d-none" role="alert" style="padding: 6px 12px; font-size: 0.95em;"></div>
+          </div>
+          <div id="loadingMessage" class="alert alert-info" style="display: none;">
+            <i class="fas fa-spinner fa-spin"></i> Verificando duplicados y agregando pagador...
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-secondary flex-fill me-2" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary flex-fill" id="btnSubmit">
+            <i class="fas fa-plus"></i> Agregar Pagador
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Filtro de búsqueda
+  const input = document.getElementById('filtro-pagador');
+  const tabla = document.getElementById('tabla-pagadores');
+  input.addEventListener('keyup', function() {
+    const filtro = input.value.toLowerCase();
+    const filas = tabla.querySelectorAll('tbody tr');
+    filas.forEach(function(fila) {
+      const texto = fila.textContent.toLowerCase();
+      if (texto.includes(filtro)) {
+        fila.style.display = '';
+      } else {
+        fila.style.display = 'none';
+      }
+    });
+  });
+
+  // Formulario para agregar pagador
+  const formAgregarPagador = document.getElementById('formAgregarPagador');
+  const loadingMessage = document.getElementById('loadingMessage');
+  const btnSubmit = document.getElementById('btnSubmit');
+  const rutInput = document.getElementById('rutPagador');
+  
+  // Validación en tiempo real del RUT
+  rutInput.addEventListener('input', function() {
+    const rut = this.value;
+    if (rut.length > 0) {
+      const resultado = normalizarYValidarRUT(rut);
+      
+      // Limpiar mensajes anteriores
+      this.classList.remove('is-valid', 'is-invalid');
+      const feedbackElement = this.parentNode.querySelector('.invalid-feedback, .valid-feedback');
+      if (feedbackElement) {
+        feedbackElement.remove();
+      }
+      
+      if (resultado.valido) {
+        this.classList.add('is-valid');
+        const feedback = document.createElement('div');
+        feedback.className = 'valid-feedback';
+        feedback.textContent = resultado.mensaje || 'RUT válido';
+        this.parentNode.appendChild(feedback);
+        
+        // Si se calculó el dígito verificador, actualizar el campo
+        if (resultado.rutNormalizado) {
+          this.value = resultado.rutNormalizado;
+        }
+      } else {
+        this.classList.add('is-invalid');
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        feedback.textContent = resultado.error;
+        this.parentNode.appendChild(feedback);
+      }
+    }
+  });
+  
+  formAgregarPagador.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(formAgregarPagador);
+    const rut = formData.get('rut');
+    const errorMsgDiv = document.getElementById('errorMsg');
+    errorMsgDiv.classList.add('d-none');
+    errorMsgDiv.textContent = '';
+    
+    // Validar RUT con la nueva función
+    const resultado = normalizarYValidarRUT(rut);
+    if (!resultado.valido) {
+      errorMsgDiv.textContent = 'RUT inválido: ' + resultado.error;
+      errorMsgDiv.classList.remove('d-none');
+      return;
+    }
+    
+    // Usar el RUT normalizado
+    const rutFinal = resultado.rutNormalizado || rut;
+    
+    // Mostrar mensaje de carga y deshabilitar botón
+    loadingMessage.style.display = 'block';
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+    
+    // Enviar solicitud
+    fetch('{{ url_for("clientes.agregar_pagador", cliente_id=cliente.id) }}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        rut: rutFinal
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      loadingMessage.style.display = 'none';
+      btnSubmit.disabled = false;
+      btnSubmit.innerHTML = '<i class="fas fa-plus"></i> Agregar Pagador';
+
+      if (data.success) {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalAgregarPagador'));
+        modal.hide();
+        formAgregarPagador.reset();
+        errorMsgDiv.classList.add('d-none');
+        errorMsgDiv.textContent = '';
+        location.reload();
+      } else {
+        // Mejorar el mensaje de error
+        let errorMsg = data.error;
+        try {
+          // Si el error es un objeto (no string), extraer el campo message
+          if (typeof errorMsg === 'object' && errorMsg !== null) {
+            if (errorMsg.message) errorMsg = errorMsg.message;
+            else errorMsg = JSON.stringify(errorMsg);
+          }
+          // Si el error es un string tipo diccionario de Python, extraer el campo message con regex
+          if (typeof errorMsg === 'string' && errorMsg.includes("'message':")) {
+            const match = errorMsg.match(/'message':\s*'([^']+)'/);
+            if (match && match[1]) errorMsg = match[1];
+          }
+          // Si el mensaje contiene 'duplicado' o 'duplicados', mostrar mensaje personalizado
+          if (typeof errorMsg === 'string' && errorMsg.toLowerCase().includes('duplicad')) {
+            // Extraer el nombre del cliente si está en el mensaje
+            let cliente = '';
+            const clienteMatch = errorMsg.match(/cliente ([^\.]+)\./i);
+            if (clienteMatch && clienteMatch[1]) {
+              cliente = clienteMatch[1].trim();
+              errorMsg = `RUT duplicado: ya está asociado al cliente ${cliente}.`;
+            } else {
+              errorMsg = 'RUT duplicado';
+            }
+          }
+        } catch (e) {}
+        errorMsgDiv.textContent = errorMsg;
+        errorMsgDiv.classList.remove('d-none');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      loadingMessage.style.display = 'none';
+      btnSubmit.disabled = false;
+      btnSubmit.innerHTML = '<i class="fas fa-plus"></i> Agregar Pagador';
+      errorMsgDiv.textContent = 'Error al agregar el pagador';
+      errorMsgDiv.classList.remove('d-none');
+    });
+  });
+
+  // Ocultar mensaje de error al cerrar el modal
+  document.getElementById('modalAgregarPagador').addEventListener('hidden.bs.modal', function () {
+    const errorMsgDiv = document.getElementById('errorMsg');
+    errorMsgDiv.classList.add('d-none');
+    errorMsgDiv.textContent = '';
+  });
+});
+
+// Función para normalizar y validar RUT chileno
+function normalizarYValidarRUT(rut) {
+    // Eliminar espacios, puntos y guiones
+    let rutLimpio = rut.replace(/[\s\.\-]/g, '');
+    
+    // Verificar que solo contenga números y posiblemente una K al final
+    if (!/^[0-9]+[0-9kK]?$/.test(rutLimpio)) {
+        return { valido: false, error: 'El RUT solo puede contener números y una K al final' };
+    }
+    
+    // Separar número y dígito verificador
+    let numero, dv;
+    if (rutLimpio.length === 1) {
+        return { valido: false, error: 'RUT demasiado corto' };
+    }
+    
+    // Si termina en K, separar
+    if (rutLimpio.slice(-1).toUpperCase() === 'K') {
+        numero = rutLimpio.slice(0, -1);
+        dv = 'K';
+    } else {
+        // Si no termina en K, el último dígito es el verificador
+        numero = rutLimpio.slice(0, -1);
+        dv = rutLimpio.slice(-1);
+    }
+    
+    // Verificar que el número tenga entre 7 y 8 dígitos
+    if (numero.length < 7 || numero.length > 8) {
+        return { valido: false, error: 'El número del RUT debe tener entre 7 y 8 dígitos' };
+    }
+    
+    // Verificar que el número no exceda 99999999
+    if (parseInt(numero) > 99999999) {
+        return { valido: false, error: 'El número del RUT no puede exceder 99999999' };
+    }
+    
+    // Si no se proporcionó dígito verificador, calcularlo
+    if (!dv) {
+        dv = calcularDigitoVerificador(numero);
+        return { 
+            valido: true, 
+            rutNormalizado: numero + '-' + dv,
+            mensaje: `Dígito verificador calculado: ${dv}`
+        };
+    }
+    
+    // Verificar que el dígito verificador sea correcto
+    let dvCalculado = calcularDigitoVerificador(numero);
+    if (dv.toUpperCase() !== dvCalculado) {
+        return { 
+            valido: false, 
+            error: `Dígito verificador incorrecto. Debería ser: ${dvCalculado}` 
+        };
+    }
+    
+    return { 
+        valido: true, 
+        rutNormalizado: numero + '-' + dv.toUpperCase() 
+    };
+}
+
+// Función para calcular el dígito verificador (algoritmo módulo 11)
+function calcularDigitoVerificador(numero) {
+    let suma = 0;
+    let multiplicador = 2;
+    for (let i = numero.length - 1; i >= 0; i--) {
+        suma += parseInt(numero[i]) * multiplicador;
+        multiplicador++;
+        if (multiplicador > 7) multiplicador = 2;
+    }
+    let resto = suma % 11;
+    let dv = 11 - resto;
+    if (dv === 11) return '0';
+    if (dv === 10) return 'K';
+    return dv.toString();
+}
+
+// Función para validar RUT (versión simplificada para compatibilidad)
+function validarRUT(rut) {
+    const resultado = normalizarYValidarRUT(rut);
+    return resultado.valido;
+}
+
+// Función para eliminar pagador
+function eliminarPagador(rut) {
+  if (confirm('¿Está seguro de que desea eliminar el pagador ' + rut + '?')) {
+    fetch('{{ url_for("clientes.eliminar_pagador", cliente_id=cliente.id) }}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        rut: rut
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error al eliminar el pagador');
+    });
+  }
+}
+</script>
+{% endblock %} 

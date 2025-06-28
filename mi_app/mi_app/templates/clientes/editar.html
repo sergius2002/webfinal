@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Editar Cliente{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 class="mb-4">Editar Cliente</h1>
+  <form method="post">
+    <div class="mb-3">
+      <label for="cliente" class="form-label">Cliente</label>
+      <input type="text" name="cliente" id="cliente" class="form-control" value="{{ cliente.cliente }}" required autofocus>
+    </div>
+    <div class="mb-3">
+      <label for="clp_maximo" class="form-label">CLP Máximo</label>
+      <input type="number" name="clp_maximo" id="clp_maximo" class="form-control" 
+             value="{{ cliente.clp_maximo or 0 }}" step="0.01" min="0" 
+             placeholder="0 = Sin límite">
+      <div class="form-text">
+        <i class="fas fa-info-circle"></i> 
+        Límite máximo en CLP que puede tener este cliente. 
+        <strong>0 = Sin límite</strong>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-success">Guardar Cambios</button>
+    <a href="{{ url_for('clientes.index') }}" class="btn btn-secondary">Cancelar</a>
+  </form>
+</div>
+{% endblock %} 

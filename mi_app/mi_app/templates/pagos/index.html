@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid mt-2 pagos-section">
+  <h1 class="mb-4">Pagos</h1>
+  <a href="{{ url_for('pagos.nuevo') }}" class="btn btn-success mb-3">Nuevo Pago</a>
+  <div class="card shadow-lg">
+    <div class="card-body">
+      <div class="row">
+        <!-- Columna izquierda: Filtros -->
+        <div class="col-md-3">
+          <form method="get">
+            <div class="mb-3">
+              <label for="cliente" class="form-label">Cliente</label>
+              <select name="cliente" id="cliente" class="form-select">
+                <option value="">Seleccione cliente</option>
+                {% for c in clientes %}
+                  <option value="{{ c }}" {% if c == request.args.get('cliente') %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="fecha" class="form-label">Fecha</label>
+              <input type="date" name="fecha" id="fecha" class="form-control" value="{{ request.args.get('fecha','') }}">
+            </div>
+            <div class="mb-3">
+              <label for="clp_display" class="form-label">CLP</label>
+              <!-- Campo visible para el usuario -->
+              <input type="text" id="clp_display" class="form-control" placeholder="CLP" value="{{ request.args.get('clp','') }}">
+              <!-- Campo oculto real para el formulario -->
+              <input type="hidden" id="clp" name="clp" value="{{ request.args.get('clp','') }}">
+            </div>
+            <div class="mb-3">
+              <button type="submit" class="btn btn-success w-100">Filtrar</button>
+            </div>
+          </form>
+        </div>
+        <!-- Columna derecha: Tabla de Pagos -->
+        <div class="col-md-9">
+          <table class="table table-striped">
+            <thead style="background-color: #198754; color: white;">
+              <tr>
+                <th>Cliente</th>
+                <th>Hora</th>
+                <th>Monto</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pago in pagos %}
+              <tr>
+                <td>{{ pago.cliente }}</td>
+                <td>
+                  {% if pago.fecha_registro and pago.fecha_registro|length > 10 %}
+                    {{ pago.fecha_registro[11:16] }}
+                  {% else %}
+                    {{ pago.fecha_registro[:10] if pago.fecha_registro else '' }}
+                  {% endif %}
+                </td>
+                <td>{{ pago.monto_total | format_int }}</td>
+                <td>
+                  <a href="{{ url_for('pagos.editar', pago_id=pago.id) }}" class="btn btn-sm btn-primary">Editar</a>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="text-center">No hay pagos registrados.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+$(document).ready(function(){
+  $('#cliente').select2({
+    width: '100%',
+    placeholder: 'Seleccione un cliente',
+    allowClear: true
+  });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  const clpDisplay = document.getElementById('clp_display');
+  const clpHidden = document.getElementById('clp');
+  function formatMiles(input, hidden) {
+    // Elimina todo lo que no sea dígito
+    let value = (input.value || '').replace(/[^0-9]/g, '');
+    if (value) {
+      // Formatea con separadores de miles
+      input.value = parseInt(value, 10).toLocaleString('de-DE');
+      hidden.value = value;
+    } else {
+      input.value = '';
+      hidden.value = '';
+    }
+  }
+  if (clpDisplay) {
+    clpDisplay.addEventListener('input', function() {
+      formatMiles(clpDisplay, clpHidden);
+    });
+    clpDisplay.addEventListener('paste', function() {
+      setTimeout(function() { formatMiles(clpDisplay, clpHidden); }, 0);
+    });
+    // Formatear valor inicial si existe (por ejemplo, al recargar)
+    formatMiles(clpDisplay, clpHidden);
+  }
+});
+</script>
+{% endblock %} 
