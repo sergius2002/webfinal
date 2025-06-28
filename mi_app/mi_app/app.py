@@ -35,15 +35,15 @@ import aiohttp
 import csv
 import io
 
-from blueprints.utilidades import utilidades_bp
-from blueprints.transferencias import transferencias_bp
-from blueprints.pedidos import pedidos_bp
-from blueprints.dashboard import dashboard_bp, init_cache
-from blueprints.admin import admin_bp
-from blueprints.pagos import pagos_bp
-from blueprints.clientes import clientes_bp
+from mi_app.mi_app.blueprints.utilidades import utilidades_bp
+from mi_app.mi_app.blueprints.transferencias import transferencias_bp
+from mi_app.mi_app.blueprints.pedidos import pedidos_bp
+from mi_app.mi_app.blueprints.dashboard import dashboard_bp, init_cache
+from mi_app.mi_app.blueprints.admin import admin_bp
+from mi_app.mi_app.blueprints.pagos import pagos_bp
+from mi_app.mi_app.blueprints.clientes import clientes_bp
 
-from extensions import cache
+from mi_app.mi_app.extensions import cache
 
 # -----------------------------------------------------------------------------
 # Configuración de logging
