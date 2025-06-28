@@ -7,7 +7,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from supabase import create_client, Client
 from flask_caching import Cache
 import pytz
-from mi_app.extensions import cache
+from mi_app.mi_app.extensions import cache
 
 # Configuración de zona horaria
 chile_tz = pytz.timezone('America/Santiago')

@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from supabase import create_client
 import os
 import re
-from mi_app.extensions import cache, user_allowed
+from mi_app.mi_app.extensions import cache, user_allowed
 import secrets
 from postgrest.exceptions import APIError
 import logging
