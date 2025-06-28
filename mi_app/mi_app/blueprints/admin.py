@@ -8,7 +8,7 @@ from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from supabase import create_client, Client
 import pytz
-from mi_app.usdt_ves import obtener_valor_usdt_por_banco
+from mi_app.mi_app.usdt_ves import obtener_valor_usdt_por_banco
 
 # Configuración de zona horaria
 chile_tz = pytz.timezone('America/Santiago')
