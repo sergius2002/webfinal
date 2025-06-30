@@ -84,6 +84,15 @@ def get_cached_clientes():
                 if rut and rut != "EMPTY":
                     cliente_ruts[cli].add(rut)
         
+        # Crear diccionario cliente -> cantidad de pedidos
+        pedidos_count = {}
+        for pedido in pedidos:
+            cliente = pedido.get("cliente")
+            if cliente:
+                if cliente not in pedidos_count:
+                    pedidos_count[cliente] = 0
+                pedidos_count[cliente] += 1
+
         # Procesar cada cliente
         for cliente in clientes:
             clp_total = clp_por_cliente.get(cliente["cliente"], 0)
@@ -94,7 +103,18 @@ def get_cached_clientes():
             cliente["saldo_final"] = saldo_final
             clp_maximo = float(cliente.get("clp_maximo", 0))
             cliente["disponible"] = clp_maximo - saldo_final
-            
+            # Cantidad de pedidos
+            cliente["cantidad_pedidos"] = pedidos_count.get(cliente["cliente"], 0)
+            # Score manual (si no existe, inicializar en 0)
+            if "score_manual" not in cliente or cliente["score_manual"] is None:
+                cliente["score_manual"] = 0
+            else:
+                try:
+                    cliente["score_manual"] = int(cliente["score_manual"])
+                except Exception:
+                    cliente["score_manual"] = 0
+            # Puntaje total
+            cliente["puntaje_total"] = cliente["cantidad_pedidos"] + cliente["score_manual"]
             # Determinar si ha superado el límite
             if clp_maximo > 0:
                 cliente["supera_limite"] = saldo_final > clp_maximo
@@ -102,9 +122,11 @@ def get_cached_clientes():
             else:
                 cliente["supera_limite"] = False
                 cliente["exceso"] = 0
-            
             # Asignar total de pagadores
             cliente["total_pagadores"] = len(cliente_ruts.get(cliente["cliente"], set()))
+        
+        # Ordenar clientes por puntaje_total descendente
+        clientes.sort(key=lambda c: c["puntaje_total"], reverse=True)
         
         # Actualizar caché
         _clientes_cache = clientes

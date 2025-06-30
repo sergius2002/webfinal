@@ -149,6 +149,8 @@
           <th>CLP Total</th>
           <th>Estado</th>
           <th>Pagadores asociados</th>
+          <!-- <th>Cant. Pedidos</th> -->
+          <!-- <th>Puntaje</th> -->
           <th>Acciones</th>
         </tr>
       </thead>
@@ -195,6 +197,8 @@
             {% endif %}
           </td>
           <td><a href="{{ url_for('clientes.detalle', cliente_id=cliente.id) }}" class="btn btn-info btn-sm">Ver pagadores ({{ cliente.total_pagadores }})</a></td>
+          <!-- <td>{{ cliente.cantidad_pedidos }}</td> -->
+          <!-- <td>{{ cliente.puntaje_total }}</td> -->
           <td>
             <div class="d-flex justify-content-center align-items-center gap-2">
               <a href="{{ url_for('clientes.editar', cliente_id=cliente.id) }}" class="btn btn-warning btn-sm btn-accion-cliente">Editar</a>
