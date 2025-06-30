@@ -80,6 +80,40 @@ def obtener_credenciales():
         'supabase_key': supabase_key
     }
 
+def format_tasa_5_digits(tasa):
+    """
+    Formatea una tasa para que tenga exactamente 5 cifras en total.
+    Ejemplos:
+    - 3.456789 -> 3.4568 (5 cifras: 3,4,5,6,8)
+    - 12.345 -> 12.345 (5 cifras: 1,2,3,4,5)
+    - 1.23 -> 1.2300 (5 cifras: 1,2,3,0,0)
+    """
+    if tasa == 0:
+        return "0.0000"
+    
+    # Convertir a string con muchos decimales
+    tasa_str = f"{tasa:.10f}"
+    
+    # Contar dígitos antes del punto decimal
+    if '.' in tasa_str:
+        parte_entera = tasa_str.split('.')[0]
+        parte_decimal = tasa_str.split('.')[1]
+    else:
+        parte_entera = tasa_str
+        parte_decimal = ""
+    
+    digitos_enteros = len(parte_entera)
+    
+    # Si tiene más de 5 dígitos enteros, truncar
+    if digitos_enteros >= 5:
+        return f"{tasa:.0f}"
+    
+    # Calcular cuántos decimales necesitamos para tener 5 cifras total
+    decimales_necesarios = 5 - digitos_enteros
+    
+    # Formatear con los decimales necesarios
+    return f"{tasa:.{decimales_necesarios}f}"
+
 def adjust_datetime(dt):
     """
     Ajusta un datetime según la configuración de HOUR_ADJUSTMENT.
@@ -271,8 +305,8 @@ async def iniciar_bot():
                 # Construimos la tabla
                 table_data = [
                     ["Banco", "Tasa"],  # Encabezados
-                    ["Banesco", f"{tasa_banesco:.6f}"],
-                    ["Venezuela", f"{tasa_venezuela:.6f}"]
+                    ["Banesco", format_tasa_5_digits(tasa_banesco)],
+                    ["Venezuela", format_tasa_5_digits(tasa_venezuela)]
                 ]
 
                 await send_table_as_image(message.chat.id, table_data)
