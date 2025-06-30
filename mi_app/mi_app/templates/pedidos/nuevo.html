@@ -481,6 +481,30 @@ document.addEventListener('DOMContentLoaded', function() {
       form.submit();
     }, 500);
   });
+
+  // --- ENTER CONFIRMA EN MODALES ---
+  // Modal Advertencia Tasa
+  var modalTasa = document.getElementById('modalAdvertenciaTasa');
+  if (modalTasa) {
+    modalTasa.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var btn = modalTasa.querySelector('#btn-confirmar-tasa');
+        if (btn) btn.click();
+      }
+    });
+  }
+  // Modal Advertencia CLP
+  var modalCLP = document.getElementById('modalAdvertenciaCLP');
+  if (modalCLP) {
+    modalCLP.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var btn = modalCLP.querySelector('#btn-confirmar-clp');
+        if (btn) btn.click();
+      }
+    });
+  }
 });
 </script>
 <!-- Bootstrap JS Bundle (necesario para modales) -->

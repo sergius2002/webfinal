@@ -1,77 +1,114 @@
 {% extends "base.html" %}
+{% block title %}Nuevo Pago{% endblock %}
+
 {% block content %}
-<div class="container mt-4 pagos-section">
-  <h1>Nuevo Pago</h1>
-  {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      <div id="alert-exito" class="alert alert-success alert-dismissible fade show" role="alert">
-        {{ messages[0] }}
+<div class="container">
+  <div class="d-flex justify-content-center">
+    <div class="card shadow-lg" style="max-width: 400px; width: 100%;">
+      <div class="card-header bg-success text-white text-center">
+        <h5 class="mb-0">Nuevo Pago</h5>
       </div>
-    {% endif %}
-  {% endwith %}
-  {% if advertencia_duplicado %}
-    <!-- Modal Bootstrap estándar para advertencia de duplicado o alto valor -->
-    <div class="modal fade" id="modalDuplicado" tabindex="-1" aria-labelledby="modalDuplicadoLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header bg-danger text-white">
-            <span class="me-2" style="font-size:1.5rem;">&#9888;</span>
-            <h5 class="modal-title" id="modalDuplicadoLabel">Advertencia</h5>
-            <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      <div class="card-body">
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              {% if 'Error' in message or 'error' in message.lower() %}
+                <div id="alert-error" class="alert alert-danger alert-dismissible fade show" role="alert">
+                  <i class="fas fa-exclamation-triangle me-2"></i>
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+              {% else %}
+                <div id="alert-exito" class="alert alert-success alert-dismissible fade show" role="alert">
+                  <i class="fas fa-check-circle me-2"></i>
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        {% if advertencia_duplicado %}
+          <!-- Modal Bootstrap estándar para advertencia de duplicado o alto valor -->
+          <div class="modal fade" id="modalDuplicado" tabindex="-1" aria-labelledby="modalDuplicadoLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                  <span class="me-2" style="font-size:1.5rem;">&#9888;</span>
+                  <h5 class="modal-title" id="modalDuplicadoLabel">Advertencia</h5>
+                  <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body text-center" style="font-size:1.1rem;">
+                  {{ mensaje_advertencia|safe }}
+                </div>
+                <div class="modal-footer d-flex justify-content-center gap-3">
+                  <form method="post" action="{{ url_for('pagos.nuevo') }}" style="margin:0;">
+                    <input type="hidden" name="cliente" value="{{ cliente }}">
+                    <input type="hidden" name="monto" value="{{ monto }}">
+                    <input type="hidden" name="fecha" value="{{ fecha }}">
+                    <input type="hidden" name="forzar_guardado" value="1">
+                    <button type="submit" class="btn btn-danger px-4">Continuar de todos modos</button>
+                  </form>
+                  <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="modal-body text-center" style="font-size:1.1rem;">
-            {{ mensaje_advertencia|safe }}
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              var modal = new bootstrap.Modal(document.getElementById('modalDuplicado'));
+              modal.show();
+              // Hacer que Enter confirme (no cancele)
+              var modalElement = document.getElementById('modalDuplicado');
+              modalElement.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  var btn = modalElement.querySelector('form button[type="submit"]');
+                  if (btn) btn.click();
+                }
+              });
+            });
+          </script>
+        {% endif %}
+        <form method="post" action="{{ url_for('pagos.nuevo') }}" id="form-nuevo-pago" autocomplete="off">
+          <div class="mb-3">
+            <label for="fecha" class="form-label"><i class="fas fa-calendar me-1"></i>Fecha</label>
+            <input type="date" name="fecha" id="fecha" class="form-control" value="{{ today_date }}" required>
           </div>
-          <div class="modal-footer d-flex justify-content-center gap-3">
-            <form method="post" action="{{ url_for('pagos.nuevo') }}" style="margin:0;">
-              <input type="hidden" name="cliente" value="{{ cliente }}">
-              <input type="hidden" name="monto" value="{{ monto }}">
-              <input type="hidden" name="fecha" value="{{ fecha }}">
-              <input type="hidden" name="forzar_guardado" value="1">
-              <button type="submit" class="btn btn-danger px-4">Continuar de todos modos</button>
-            </form>
-            <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+          <div class="mb-3">
+            <label for="cliente" class="form-label"><i class="fas fa-user me-1"></i>Cliente</label>
+            <select name="cliente" id="cliente" class="form-select" required autofocus>
+              <option value="">Seleccione un cliente</option>
+              {% for c in clientes %}
+                <option value="{{ c }}" {% if ultimo_cliente == c or request.form.get('cliente') == c %}selected{% endif %}>{{ c }}</option>
+              {% endfor %}
+            </select>
+            <div class="invalid-feedback">Por favor seleccione un cliente.</div>
           </div>
-        </div>
+          <div class="mb-3">
+            <label for="monto_display" class="form-label"><i class="fas fa-dollar-sign me-1"></i>Monto</label>
+            <input type="text" id="monto_display" class="form-control" autocomplete="off" placeholder="Ingrese el monto">
+            <input type="hidden" id="monto" name="monto" required>
+            <div class="invalid-feedback">Por favor ingrese un monto válido.</div>
+          </div>
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <button type="submit" class="btn btn-success w-100" id="btn-guardar">
+              <span id="spinner-guardar" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+              <i class="fas fa-save me-1"></i>Guardar Pago
+            </button>
+            <button type="button" class="btn btn-secondary d-none" id="btn-limpiar">
+              <i class="fas fa-eraser me-1"></i>Limpiar
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="card-footer text-center">
+        <a href="{{ url_for('pagos.index') }}" class="btn btn-lg btn-custom">
+          <i class="fas fa-arrow-left me-1"></i>Cancelar
+        </a>
       </div>
     </div>
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        var modal = new bootstrap.Modal(document.getElementById('modalDuplicado'));
-        modal.show();
-      });
-    </script>
-  {% endif %}
-  <form method="post" action="{{ url_for('pagos.nuevo') }}" id="form-nuevo-pago" autocomplete="off">
-    <div class="mb-3">
-      <label for="fecha" class="form-label">Fecha</label>
-      <input type="date" name="fecha" id="fecha" class="form-control" value="{{ today_date }}" required>
-    </div>
-    <div class="mb-3">
-      <label for="cliente" class="form-label">Cliente</label>
-      <select name="cliente" id="cliente" class="form-select" required autofocus>
-        <option value="">Seleccione un cliente</option>
-        {% for c in clientes %}
-          <option value="{{ c }}" {% if ultimo_cliente == c or request.form.get('cliente') == c %}selected{% endif %}>{{ c }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="mb-3">
-      <label for="monto_display" class="form-label">Monto</label>
-      <input type="text" id="monto_display" class="form-control" autocomplete="off" placeholder="Ingrese el monto">
-      <input type="hidden" id="monto" name="monto" required>
-    </div>
-    <div class="mb-4 d-flex align-items-center gap-2">
-      <button type="submit" class="btn btn-success" id="btn-guardar">
-        <span id="spinner-guardar" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-        Guardar Pago
-      </button>
-      <button type="button" class="btn btn-secondary d-none" id="btn-limpiar">Limpiar formulario</button>
-    </div>
-    <div class="mt-4">
-      <a href="{{ url_for('pagos.index') }}" class="btn btn-secondary">Cancelar</a>
-    </div>
-  </form>
+  </div>
 </div>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
