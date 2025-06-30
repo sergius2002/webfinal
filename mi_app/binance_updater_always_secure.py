@@ -36,9 +36,9 @@ project_dir = '/home/sacristobalspa/webfinal'
 sys.path.insert(0, project_dir)
 
 # Configurar zona horaria
-os.environ['TZ'] = 'America/Argentina/Buenos_Aires'
+os.environ['TZ'] = 'America/Santiago'
 time.tzset()
-local_tz = pytz.timezone('America/Argentina/Buenos_Aires')
+local_tz = pytz.timezone('America/Santiago')
 
 def ahora_ajustada():
     """Retorna la hora local ajustada manualmente -2 horas"""
@@ -146,7 +146,7 @@ def ejecutar_escaneo_binance(fecha_escaneo=None):
                 # Convertir 'createTime' a datetime
                 if 'createTime' in df.columns:
                     df['createTime'] = pd.to_datetime(df['createTime'], unit='ms', errors='coerce', utc=True)
-                    df['createTime'] = df['createTime'].dt.tz_convert('America/Argentina/Buenos_Aires')
+                    df['createTime'] = df['createTime'].dt.tz_convert('America/Santiago')
                     df['createTime'] = df['createTime'].dt.floor('s')
                 else:
                     logging.error("La columna 'createTime' no existe en los datos.")
