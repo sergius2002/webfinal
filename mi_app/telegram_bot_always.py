@@ -80,16 +80,16 @@ def obtener_credenciales():
         'supabase_key': supabase_key
     }
 
-def format_tasa_5_digits(tasa):
+def format_tasa_6_digits(tasa):
     """
-    Formatea una tasa para que tenga exactamente 5 cifras en total.
+    Formatea una tasa para que tenga exactamente 6 cifras en total.
     Ejemplos:
-    - 3.456789 -> 3.4568 (5 cifras: 3,4,5,6,8)
-    - 12.345 -> 12.345 (5 cifras: 1,2,3,4,5)
-    - 1.23 -> 1.2300 (5 cifras: 1,2,3,0,0)
+    - 3.456789 -> 3.45679 (6 cifras: 3,4,5,6,7,9)
+    - 12.345 -> 12.3450 (6 cifras: 1,2,3,4,5,0)
+    - 1.23 -> 1.23000 (6 cifras: 1,2,3,0,0,0)
     """
     if tasa == 0:
-        return "0.0000"
+        return "0.00000"
     
     # Convertir a string con muchos decimales
     tasa_str = f"{tasa:.10f}"
@@ -104,12 +104,12 @@ def format_tasa_5_digits(tasa):
     
     digitos_enteros = len(parte_entera)
     
-    # Si tiene más de 5 dígitos enteros, truncar
-    if digitos_enteros >= 5:
+    # Si tiene más de 6 dígitos enteros, truncar
+    if digitos_enteros >= 6:
         return f"{tasa:.0f}"
     
-    # Calcular cuántos decimales necesitamos para tener 5 cifras total
-    decimales_necesarios = 5 - digitos_enteros
+    # Calcular cuántos decimales necesitamos para tener 6 cifras total
+    decimales_necesarios = 6 - digitos_enteros
     
     # Formatear con los decimales necesarios
     return f"{tasa:.{decimales_necesarios}f}"
@@ -305,8 +305,8 @@ async def iniciar_bot():
                 # Construimos la tabla
                 table_data = [
                     ["Banco", "Tasa"],  # Encabezados
-                    ["Banesco", format_tasa_5_digits(tasa_banesco)],
-                    ["Venezuela", format_tasa_5_digits(tasa_venezuela)]
+                    ["Banesco", format_tasa_6_digits(tasa_banesco)],
+                    ["Venezuela", format_tasa_6_digits(tasa_venezuela)]
                 ]
 
                 await send_table_as_image(message.chat.id, table_data)
@@ -432,4 +432,4 @@ def main():
         logger.error(f"💥 Error crítico en el bot: {e}")
 
 if __name__ == "__main__":
-    main() 
+    main()
