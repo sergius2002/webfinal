@@ -41,7 +41,8 @@
           </div>
           <div class="col-md-3">
             <h6 class="text-muted">Tasa Ponderada</h6>
-            <h4 class="text-warning">{{ tasa_ponderada|format_decimal5 }}</h4>
+            <h4 class="text-warning">{{ tasa_ponderada|default('—') }}</h4>
+            <div class="text-muted small">(Valor crudo: {{ tasa_ponderada }})</div>
           </div>
         </div>
       </div>
