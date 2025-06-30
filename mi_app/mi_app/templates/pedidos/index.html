@@ -311,6 +311,40 @@ document.addEventListener('DOMContentLoaded', function() {
       input.addEventListener('input', function() { validarCifras(input); });
     }
   });
+
+  // Envío AJAX del formulario de tasas
+  const formTasas = document.getElementById('formEditarTasas');
+  if (formTasas) {
+    formTasas.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const tasa_banesco = document.getElementById('tasa_banesco').value;
+      const tasa_venezuela = document.getElementById('tasa_venezuela').value;
+      const tasa_otros = document.getElementById('tasa_otros').value;
+      fetch('/pedidos/editar_tasas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          tasa_banesco: tasa_banesco,
+          tasa_venezuela: tasa_venezuela,
+          tasa_otros: tasa_otros
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          toastr.success('Tasas actualizadas correctamente');
+          setTimeout(() => location.reload(), 1200);
+        } else {
+          toastr.error('Error: ' + (data.error || data.message));
+        }
+      })
+      .catch(error => {
+        toastr.error('Error en la petición: ' + error);
+      });
+    });
+  }
 });
 </script>
 {% endblock %}
