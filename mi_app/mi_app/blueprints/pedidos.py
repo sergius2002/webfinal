@@ -229,13 +229,15 @@ def nuevo():
             tasa_raw = sanitize_input(request.form.get("tasa", ""))
             fecha = sanitize_input(request.form.get("fecha", ""))
             
+            # Prioridad: valor del formulario si existe, si no el de la sesión
+            ultimo_cliente = cliente if cliente else session.get('ultimo_cliente_pedidos', '')
+            
             # Procesar valores con manejo de errores mejorado
             try:
                 brs_num = parse_brs(brs_raw)
                 tasa_num = round(parse_tasa(tasa_raw), 6)
             except ValueError as e:
                 flash(f"Error en los datos ingresados: {str(e)}")
-                ultimo_cliente = session.get('ultimo_cliente_pedidos', '')
                 return render_template("pedidos/nuevo.html", 
                                      cliente_pagadores=cliente_pagadores, 
                                      current_date=adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d"),
@@ -247,7 +249,6 @@ def nuevo():
             is_valid, error_message = validate_pedido_data(cliente, brs_num, tasa_num, fecha)
             if not is_valid:
                 flash(error_message)
-                ultimo_cliente = session.get('ultimo_cliente_pedidos', '')
                 return render_template("pedidos/nuevo.html", 
                                      cliente_pagadores=cliente_pagadores, 
                                      current_date=adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d"),

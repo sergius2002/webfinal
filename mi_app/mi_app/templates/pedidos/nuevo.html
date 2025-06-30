@@ -482,27 +482,39 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 500);
   });
 
-  // --- ENTER CONFIRMA EN MODALES ---
+  // --- ENTER CONFIRMA EN MODALES (mejorado) ---
   // Modal Advertencia Tasa
   var modalTasa = document.getElementById('modalAdvertenciaTasa');
   if (modalTasa) {
-    modalTasa.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        var btn = modalTasa.querySelector('#btn-confirmar-tasa');
-        if (btn) btn.click();
+    $(modalTasa).on('shown.bs.modal', function () {
+      function enterHandlerTasa(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var btn = modalTasa.querySelector('#btn-confirmar-tasa');
+          if (btn) btn.click();
+        }
       }
+      modalTasa.addEventListener('keydown', enterHandlerTasa);
+      $(modalTasa).on('hidden.bs.modal', function () {
+        modalTasa.removeEventListener('keydown', enterHandlerTasa);
+      });
     });
   }
   // Modal Advertencia CLP
   var modalCLP = document.getElementById('modalAdvertenciaCLP');
   if (modalCLP) {
-    modalCLP.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        var btn = modalCLP.querySelector('#btn-confirmar-clp');
-        if (btn) btn.click();
+    $(modalCLP).on('shown.bs.modal', function () {
+      function enterHandlerCLP(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var btn = modalCLP.querySelector('#btn-confirmar-clp');
+          if (btn) btn.click();
+        }
       }
+      modalCLP.addEventListener('keydown', enterHandlerCLP);
+      $(modalCLP).on('hidden.bs.modal', function () {
+        modalCLP.removeEventListener('keydown', enterHandlerCLP);
+      });
     });
   }
 });
