@@ -14,7 +14,7 @@ import time
 import pytz
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 
@@ -60,6 +60,9 @@ def cargar_variables_entorno():
 # Cargar variables de entorno antes de importar módulos
 cargar_variables_entorno()
 
+# Zona horaria
+local_tz = pytz.timezone('America/Santiago')
+
 def obtener_credenciales():
     """Obtiene las credenciales desde variables de entorno o usa valores por defecto"""
     # Credenciales de Telegram
@@ -78,8 +81,25 @@ def obtener_credenciales():
     }
 
 def adjust_datetime(dt):
-    """Ajusta la fecha/hora según la zona horaria"""
-    return dt
+    """
+    Ajusta un datetime según la configuración de HOUR_ADJUSTMENT.
+    Args:
+        dt: datetime a ajustar
+    Returns:
+        datetime ajustado
+    """
+    HOUR_ADJUSTMENT = int(os.getenv('HOUR_ADJUSTMENT', '0'))  # Ajuste de hora en horas
+    
+    if not isinstance(dt, datetime):
+        try:
+            dt = datetime.fromisoformat(dt)
+        except Exception:
+            return dt
+    
+    if dt.tzinfo is None:
+        dt = local_tz.localize(dt)
+    
+    return dt + timedelta(hours=HOUR_ADJUSTMENT)
 
 async def iniciar_bot():
     """Función principal para iniciar el bot de Telegram"""
@@ -92,9 +112,6 @@ async def iniciar_bot():
         
         # Obtener credenciales
         creds = obtener_credenciales()
-        
-        # Zona horaria
-        local_tz = pytz.timezone('America/Santiago')
         
         # Configurar Supabase y Bot
         supabase: Client = create_client(creds['supabase_url'], creds['supabase_key'])
