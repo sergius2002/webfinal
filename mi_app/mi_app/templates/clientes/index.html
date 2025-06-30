@@ -184,7 +184,7 @@
                 </span>
                 <br>
                 <small class="text-muted">
-                  Disponible: {{ (cliente.clp_maximo - cliente.clp_total) | format_int }} CLP
+                  Disponible: {{ cliente.disponible | format_int }} CLP
                 </small>
               {% endif %}
             {% else %}

@@ -39,8 +39,12 @@ def get_cached_clientes():
         # Obtener todos los pedidos en una sola consulta
         pedidos_resp = supabase.table("pedidos").select("cliente, clp").eq("eliminado", False).execute()
         pedidos = pedidos_resp.data if pedidos_resp.data else []
+
+        # Obtener todos los pagos en una sola consulta
+        pagos_resp = supabase.table("pagos_realizados").select("cliente, monto_total, eliminado").eq("eliminado", False).execute()
+        pagos = pagos_resp.data if pagos_resp.data else []
         
-        # Crear diccionario cliente -> suma de CLP
+        # Crear diccionario cliente -> suma de CLP (pedidos)
         clp_por_cliente = {}
         for pedido in pedidos:
             cliente = pedido.get("cliente")
@@ -49,6 +53,16 @@ def get_cached_clientes():
                 if cliente not in clp_por_cliente:
                     clp_por_cliente[cliente] = 0
                 clp_por_cliente[cliente] += clp
+
+        # Crear diccionario cliente -> suma de pagos realizados
+        pagos_por_cliente = {}
+        for pago in pagos:
+            cliente = pago.get("cliente")
+            monto = float(pago.get("monto_total", 0))
+            if cliente:
+                if cliente not in pagos_por_cliente:
+                    pagos_por_cliente[cliente] = 0
+                pagos_por_cliente[cliente] += monto
         
         # Obtener pagadores en una sola consulta
         pagador_fields = [f"pagador{i}" for i in range(1, 201)]
@@ -73,13 +87,18 @@ def get_cached_clientes():
         # Procesar cada cliente
         for cliente in clientes:
             clp_total = clp_por_cliente.get(cliente["cliente"], 0)
+            pagos_total = pagos_por_cliente.get(cliente["cliente"], 0)
+            saldo_final = clp_total - pagos_total
             cliente["clp_total"] = clp_total
+            cliente["pagos_total"] = pagos_total
+            cliente["saldo_final"] = saldo_final
+            clp_maximo = float(cliente.get("clp_maximo", 0))
+            cliente["disponible"] = clp_maximo - saldo_final
             
             # Determinar si ha superado el límite
-            clp_maximo = float(cliente.get("clp_maximo", 0))
             if clp_maximo > 0:
-                cliente["supera_limite"] = clp_total > clp_maximo
-                cliente["exceso"] = clp_total - clp_maximo if clp_total > clp_maximo else 0
+                cliente["supera_limite"] = saldo_final > clp_maximo
+                cliente["exceso"] = saldo_final - clp_maximo if saldo_final > clp_maximo else 0
             else:
                 cliente["supera_limite"] = False
                 cliente["exceso"] = 0
