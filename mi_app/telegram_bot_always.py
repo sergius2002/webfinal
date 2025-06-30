@@ -356,7 +356,7 @@ async def iniciar_bot():
                 for row in compras_data:
                     costo = row.get('costo_no_vendido')
                     if costo and costo != 0:
-                        tasa = round(row['unitprice'] / costo, 6)
+                        tasa = row['unitprice'] / costo
                     else:
                         tasa = 0
                     createtime = row.get('createtime', '')
@@ -368,7 +368,7 @@ async def iniciar_bot():
                         hora,
                         banco,
                         f"{brs:,.0f}",
-                        f"{tasa:.6f}"
+                        format_tasa_6_digits(tasa)
                     ])
 
                 await send_table_as_image(message.chat.id, table_data)
