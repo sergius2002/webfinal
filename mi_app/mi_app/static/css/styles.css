@@ -432,3 +432,53 @@ h1.text-azul-oscuro {
   background-color: #bb2d3b !important;
   color: #fff !important;
 }
+
+/* ===== Ticker de tasas ===== */
+.rate-ticker {
+  background-color: #ffffff;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.ticker-content {
+  display: inline-block;
+  white-space: nowrap;
+  animation: ticker-scroll 25s linear infinite;
+}
+@keyframes ticker-scroll {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(-100%); }
+}
+.rate-ticker .rate-item {
+  padding: 0.25em 1.2em;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.03);
+  transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+  font-weight: 600;
+  margin: 0 0.1em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.rate-ticker .rate-item:hover {
+  background: #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  color: #222;
+}
+.rate-ticker .rate-item strong {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.rate-ticker .rate-item span {
+  font-family: 'Menlo', 'Consolas', 'Liberation Mono', monospace;
+  font-size: 1.08em;
+  font-weight: 600;
+}
+.rate-ticker .divider {
+  font-size: 1.5em;
+  color: #e0e0e0;
+  margin: 0 0.5em;
+  vertical-align: middle;
+  font-weight: bold;
+  content: '\2022'; /* punto grande */
+}
