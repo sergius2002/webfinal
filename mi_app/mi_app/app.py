@@ -42,6 +42,7 @@ from mi_app.mi_app.blueprints.dashboard import dashboard_bp, init_cache
 from mi_app.mi_app.blueprints.admin import admin_bp
 from mi_app.mi_app.blueprints.pagos import pagos_bp
 from mi_app.mi_app.blueprints.clientes import clientes_bp
+from mi_app.mi_app.blueprints.cierre import cierre_bp
 
 from mi_app.mi_app.extensions import cache
 
@@ -108,6 +109,7 @@ app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
 app.register_blueprint(admin_bp, url_prefix="/admin")
 app.register_blueprint(pagos_bp, url_prefix="/pagos")
 app.register_blueprint(clientes_bp, url_prefix="/clientes")
+app.register_blueprint(cierre_bp, url_prefix="/cierre")
 
 # -----------------------------------------------------------------------------
 # Decorador login_required

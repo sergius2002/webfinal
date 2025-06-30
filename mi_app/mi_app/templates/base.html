@@ -94,6 +94,11 @@
             <i class="fas fa-users"></i> Clientes
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_page=='cierre' %}active{% endif %}" href="{{ url_for('cierre.index') }}">
+            <i class="fas fa-archive"></i> Cierre
+          </a>
+        </li>
         {% if is_admin %}
           <li class="nav-item">
             <a class="nav-link {% if active_page=='admin' %}active{% endif %}" href="{{ url_for('admin.index') }}">
