@@ -489,21 +489,22 @@ def editar_tasas():
             except (ValueError, TypeError):
                 return jsonify({"success": False, "error": f"Valor inválido para {tasa}"})
         
-        # Actualizar tasas en la base de datos
-        supabase.table("configuracion").upsert({
-            "clave": "tasa_banesco",
-            "valor": str(tasa_banesco)
-        }).execute()
-        
-        supabase.table("configuracion").upsert({
-            "clave": "tasa_venezuela",
-            "valor": str(tasa_venezuela)
-        }).execute()
-        
-        supabase.table("configuracion").upsert({
-            "clave": "tasa_otros",
-            "valor": str(tasa_otros)
-        }).execute()
+        # Actualizar tasas en la base de datos (workaround manual)
+        for clave, valor in [
+            ("tasa_banesco", tasa_banesco),
+            ("tasa_venezuela", tasa_venezuela),
+            ("tasa_otros", tasa_otros)
+        ]:
+            # Intentar update primero
+            update_result = supabase.table("configuracion").update({
+                "valor": str(valor)
+            }).eq("clave", clave).execute()
+            # Si no se actualizó ninguna fila, hacer insert
+            if not update_result.data or (isinstance(update_result.data, list) and len(update_result.data) == 0):
+                supabase.table("configuracion").insert({
+                    "clave": clave,
+                    "valor": str(valor)
+                }).execute()
         
         return jsonify({"success": True, "message": "Tasas actualizadas correctamente"})
         
