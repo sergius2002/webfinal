@@ -52,7 +52,7 @@
       <select name="cliente" id="cliente" class="form-select" required autofocus>
         <option value="">Seleccione un cliente</option>
         {% for c in clientes %}
-          <option value="{{ c }}" {% if request.form.get('cliente') == c %}selected{% endif %}>{{ c }}</option>
+          <option value="{{ c }}" {% if ultimo_cliente == c or request.form.get('cliente') == c %}selected{% endif %}>{{ c }}</option>
         {% endfor %}
       </select>
     </div>

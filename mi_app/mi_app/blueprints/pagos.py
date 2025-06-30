@@ -148,6 +148,8 @@ def nuevo():
             }).execute()
             
             if result.data:
+                # Guardar el cliente en la sesión para el próximo ingreso
+                session['ultimo_cliente_pagos'] = cliente
                 flash("Pago registrado correctamente.")
                 return redirect(url_for("pagos.nuevo"))
             else:
@@ -157,12 +159,17 @@ def nuevo():
         today_date = datetime.now(chile_tz).strftime("%Y-%m-%d")
         # Si hay POST y se vuelve a mostrar el formulario, mantener la fecha seleccionada
         fecha_form = request.form.get("fecha") if request.method == "POST" else today_date
-        return render_template("pagos/nuevo.html", active_page="pagos", clientes=clientes, today_date=today_date, fecha_form=fecha_form)
+        
+        # Obtener el último cliente de la sesión para preseleccionarlo
+        ultimo_cliente = session.get('ultimo_cliente_pagos', '')
+        
+        return render_template("pagos/nuevo.html", active_page="pagos", clientes=clientes, today_date=today_date, fecha_form=fecha_form, ultimo_cliente=ultimo_cliente)
     except Exception as e:
         logging.error(f"Error en nuevo pago: {e}")
         flash(f"Error al procesar el pago: {str(e)}")
         today_date = datetime.now(chile_tz).strftime("%Y-%m-%d")
-        return render_template("pagos/nuevo.html", active_page="pagos", clientes=clientes, today_date=today_date)
+        ultimo_cliente = session.get('ultimo_cliente_pagos', '')
+        return render_template("pagos/nuevo.html", active_page="pagos", clientes=clientes, today_date=today_date, ultimo_cliente=ultimo_cliente)
 
 @pagos_bp.route("/editar/<int:pago_id>", methods=["GET", "POST"])
 @login_required

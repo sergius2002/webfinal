@@ -235,21 +235,25 @@ def nuevo():
                 tasa_num = round(parse_tasa(tasa_raw), 6)
             except ValueError as e:
                 flash(f"Error en los datos ingresados: {str(e)}")
+                ultimo_cliente = session.get('ultimo_cliente_pedidos', '')
                 return render_template("pedidos/nuevo.html", 
                                      cliente_pagadores=cliente_pagadores, 
                                      current_date=adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d"),
                                      active_page="pedidos", 
-                                     tasa_venezuela=tasa_venezuela)
+                                     tasa_venezuela=tasa_venezuela,
+                                     ultimo_cliente=ultimo_cliente)
             
             # Validar datos usando la función de validación mejorada
             is_valid, error_message = validate_pedido_data(cliente, brs_num, tasa_num, fecha)
             if not is_valid:
                 flash(error_message)
+                ultimo_cliente = session.get('ultimo_cliente_pedidos', '')
                 return render_template("pedidos/nuevo.html", 
                                      cliente_pagadores=cliente_pagadores, 
                                      current_date=adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d"),
                                      active_page="pedidos", 
-                                     tasa_venezuela=tasa_venezuela)
+                                     tasa_venezuela=tasa_venezuela,
+                                     ultimo_cliente=ultimo_cliente)
             
             # Calcular CLP para mostrar al usuario
             clp_calculado = round(brs_num / tasa_num, 2)
@@ -268,6 +272,8 @@ def nuevo():
             }).execute()
             
             if result.data:
+                # Guardar el cliente en la sesión para el próximo ingreso
+                session['ultimo_cliente_pedidos'] = cliente
                 flash(f"Pedido ingresado con éxito. CLP calculado: {clp_calculado:,.0f}")
             else:
                 flash("Error: No se pudo insertar el pedido en la base de datos.")
@@ -280,8 +286,10 @@ def nuevo():
             return redirect(url_for("pedidos.nuevo"))
     
     current_date = adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d")
+    # Obtener el último cliente de la sesión para preseleccionarlo
+    ultimo_cliente = session.get('ultimo_cliente_pedidos', '')
     return render_template("pedidos/nuevo.html", cliente_pagadores=cliente_pagadores, current_date=current_date,
-                           active_page="pedidos", tasa_venezuela=tasa_venezuela)
+                           active_page="pedidos", tasa_venezuela=tasa_venezuela, ultimo_cliente=ultimo_cliente)
 
 @pedidos_bp.route("/editar/<pedido_id>", methods=["GET", "POST"])
 @login_required
