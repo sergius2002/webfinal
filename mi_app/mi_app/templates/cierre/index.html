@@ -3,18 +3,438 @@
 {% block title %}Cierre{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  <div class="row justify-content-center">
-    <div class="col-md-8">
-      <div class="card shadow">
-        <div class="card-header bg-primary text-white text-center">
-          <h3 class="mb-0">Cierre de Caja</h3>
-        </div>
-        <div class="card-body text-center">
-          <p class="lead">Bienvenido al módulo de cierre de caja. Aquí podrás gestionar y visualizar los cierres diarios.</p>
+<style>
+  .cierre-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 2rem 0;
+  }
+  
+  .cierre-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: transform 0.3s ease;
+  }
+  
+  .cierre-card:hover {
+    transform: translateY(-5px);
+  }
+  
+  .cierre-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    padding: 2rem;
+    text-align: center;
+    position: relative;
+  }
+  
+  
+  
+  .cierre-date {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+  
+  .cierre-table {
+    margin: 0;
+  }
+  
+  .cierre-table td, .cierre-table th {
+    padding: 1rem 1.5rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+  }
+  
+  .field-icon {
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+    display: inline-block;
+    width: 1.5rem;
+    text-align: center;
+  }
+  
+  .field-label {
+    font-weight: 500;
+    color: #2c3e50;
+  }
+  
+  .field-value {
+    font-weight: bold;
+    font-size: 1.1rem;
+    text-align: center;
+  }
+  
+  /* Colores semánticos */
+  .positive-value {
+    color: #27ae60;
+  }
+  
+  .negative-value {
+    color: #e74c3c;
+  }
+  
+  .neutral-value {
+    color: #34495e;
+  }
+  
+  /* Campos editables */
+  .editable-field {
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    min-height: 40px;
+    position: relative;
+  }
+  
+  .editable-field:hover {
+    background: #f8f9fa;
+    border-color: #3498db;
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+  }
+  
+  .editable-field:focus {
+    outline: none;
+    background: #ffffff;
+    border-color: #2980b9;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    transform: scale(1.05);
+  }
+  
+  /* Filas especiales */
+  .total-row {
+    background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
+    font-weight: bold;
+  }
+  
+  .total-row td {
+    border-top: 2px solid #95a5a6;
+    border-bottom: 2px solid #95a5a6;
+  }
+  
+  .mayor-row {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    color: white;
+  }
+  
+  .final-row {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+  }
+  
+  .final-row td {
+    border-top: 3px solid #1abc9c;
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+  
+  /* Animaciones para valores calculados */
+  .animated-value {
+    transition: all 0.5s ease;
+  }
+  
+  .value-updated {
+    animation: valueUpdate 0.6s ease;
+  }
+  
+  @keyframes valueUpdate {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); color: #3498db; }
+    100% { transform: scale(1); }
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .cierre-container {
+      padding: 1rem;
+    }
+    
+    .cierre-card {
+      border-radius: 15px;
+    }
+    
+    .cierre-header {
+      padding: 1.5rem;
+    }
+    
+    .cierre-table td, .cierre-table th {
+      padding: 0.8rem 1rem;
+      font-size: 0.9rem;
+    }
+    
+    .field-value {
+      font-size: 1rem;
+    }
+    
+    .editable-field {
+      min-height: 35px;
+      font-size: 1rem;
+    }
+  }
+  
+  /* Indicadores de carga */
+  .loading-indicator {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .loading-indicator.show {
+    opacity: 1;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
+
+<div class="cierre-container">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-10 col-lg-8">
+        <div class="cierre-card">
+          <div class="cierre-header">
+            <h2 class="mb-0">Cierre de Caja</h2>
+          </div>
+                     <div class="cierre-date">
+             28-jun
+           </div>
+          <div class="table-responsive">
+            <table class="table cierre-table">
+              <tbody>
+                                 <tr>
+                   <td class="field-label">
+                     Saldo inicial
+                   </td>
+                   <td class="field-value neutral-value">0</td>
+                 </tr>
+                 <tr>
+                   <td class="field-label">
+                     Ingresos
+                   </td>
+                   <td class="field-value positive-value">{{ ingresos }}</td>
+                 </tr>
+                 <tr class="total-row">
+                   <td class="field-label">
+                     Total ingresos
+                   </td>
+                   <td class="field-value positive-value animated-value" id="total-ingresos">0</td>
+                 </tr>
+                 <tr>
+                   <td class="field-label">
+                     Egresos
+                   </td>
+                   <td class="field-value negative-value">{{ egresos }}</td>
+                 </tr>
+                 <tr>
+                   <td class="field-label">
+                     Egresos detal
+                   </td>
+                   <td>
+                     <input type="text" id="egresos-detal" class="editable-field" inputmode="numeric" placeholder="Ingresa monto...">
+                   </td>
+                 </tr>
+                 <tr>
+                   <td class="field-label">
+                     Gastos
+                   </td>
+                   <td>
+                     <input type="text" id="gastos" class="editable-field" inputmode="numeric" placeholder="Ingresa monto...">
+                   </td>
+                 </tr>
+                 <tr>
+                   <td class="field-label">
+                     Pago móvil
+                   </td>
+                   <td>
+                     <input type="text" id="pago-movil" class="editable-field" inputmode="numeric" placeholder="Ingresa monto...">
+                   </td>
+                 </tr>
+                 <tr class="total-row">
+                   <td class="field-label">
+                     Total egresos
+                   </td>
+                   <td class="field-value negative-value animated-value" id="total-egresos">0</td>
+                 </tr>
+                 <tr class="mayor-row">
+                   <td class="field-label">
+                     Cierre Mayor
+                   </td>
+                   <td class="field-value animated-value" id="cierre-mayor">0</td>
+                 </tr>
+                 <tr>
+                   <td class="field-label">
+                     Cierre Detal
+                   </td>
+                   <td>
+                     <input type="text" id="cierre-detal" class="editable-field" inputmode="numeric" placeholder="Ingresa monto...">
+                   </td>
+                 </tr>
+                 <tr class="final-row">
+                   <td class="field-label">
+                     Cierre Final
+                   </td>
+                   <td class="field-value animated-value" id="cierre-final">0<span class="loading-indicator" id="loading"></span></td>
+                 </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Obtener valores
+  const saldoInicial = 0;
+  const ingresos = {{ ingresos|replace(".", "") }};
+  const egresos = {{ egresos|replace(".", "") }};
+  
+  // Calcular total ingresos
+  const totalIngresos = saldoInicial + ingresos;
+  
+  // Formatear y mostrar con animación
+  function updateValueWithAnimation(elementId, value, isPositive = null) {
+    const element = document.getElementById(elementId);
+    const formattedValue = value.toLocaleString('de-DE');
+    
+    // Mostrar indicador de carga
+    const loading = document.getElementById('loading');
+    if (loading) {
+      loading.classList.add('show');
+    }
+    
+    setTimeout(() => {
+      element.textContent = formattedValue;
+      element.classList.add('value-updated');
+      
+      // Aplicar color semántico
+      if (isPositive === true) {
+        element.className = element.className.replace(/negative-value|neutral-value/g, '') + ' positive-value';
+      } else if (isPositive === false) {
+        element.className = element.className.replace(/positive-value|neutral-value/g, '') + ' negative-value';
+      }
+      
+      // Ocultar indicador de carga
+      if (loading) {
+        loading.classList.remove('show');
+      }
+      
+      setTimeout(() => {
+        element.classList.remove('value-updated');
+      }, 600);
+    }, 200);
+  }
+  
+  // Función para formatear input mientras se escribe
+  function formatInput(input) {
+    input.addEventListener('input', function() {
+      let value = this.value.replace(/[^\d]/g, '');
+      if (value) {
+        this.value = parseInt(value).toLocaleString('de-DE');
+      }
+    });
+    
+    input.addEventListener('focus', function() {
+      this.style.transform = 'scale(1.05)';
+      this.style.boxShadow = '0 0 0 3px rgba(52, 152, 219, 0.1)';
+    });
+    
+    input.addEventListener('blur', function() {
+      this.style.transform = 'scale(1)';
+      this.style.boxShadow = 'none';
+    });
+  }
+  
+  // Aplicar formato a todos los inputs
+  document.querySelectorAll('.editable-field').forEach(formatInput);
+  
+  // Función para calcular total egresos
+  function calcularTotalEgresos() {
+    const egresosDetal = parseInt(document.getElementById('egresos-detal').value.replace(/[^\d]/g, '')) || 0;
+    const gastos = parseInt(document.getElementById('gastos').value.replace(/[^\d]/g, '')) || 0;
+    const pagoMovil = parseInt(document.getElementById('pago-movil').value.replace(/[^\d]/g, '')) || 0;
+    
+    const totalEgresos = egresos + egresosDetal + gastos + pagoMovil;
+    updateValueWithAnimation('total-egresos', totalEgresos, false);
+    
+    return totalEgresos;
+  }
+  
+  // Función para calcular cierre mayor
+  function calcularCierreMayor() {
+    const totalEgresosValue = parseInt(document.getElementById('total-egresos').textContent.replace(/[^\d]/g, '')) || 0;
+    const cierreMayor = totalIngresos - totalEgresosValue;
+    
+    updateValueWithAnimation('cierre-mayor', cierreMayor, cierreMayor >= 0);
+    return cierreMayor;
+  }
+  
+  // Función para calcular cierre final
+  function calcularCierreFinal() {
+    const cierreMayor = parseInt(document.getElementById('cierre-mayor').textContent.replace(/[^\d]/g, '')) || 0;
+    const cierreDetal = parseInt(document.getElementById('cierre-detal').value.replace(/[^\d]/g, '')) || 0;
+    
+    const cierreFinal = cierreMayor + cierreDetal;
+    updateValueWithAnimation('cierre-final', cierreFinal, cierreFinal >= 0);
+  }
+  
+  // Función combinada para recalcular todo
+  function recalcularTodo() {
+    calcularTotalEgresos();
+    setTimeout(() => {
+      calcularCierreMayor();
+      setTimeout(() => {
+        calcularCierreFinal();
+      }, 300);
+    }, 300);
+  }
+  
+  // Inicializar valores
+  updateValueWithAnimation('total-ingresos', totalIngresos, true);
+  setTimeout(() => {
+    recalcularTodo();
+  }, 500);
+  
+  // Event listeners
+  document.getElementById('egresos-detal').addEventListener('input', recalcularTodo);
+  document.getElementById('gastos').addEventListener('input', recalcularTodo);
+  document.getElementById('pago-movil').addEventListener('input', recalcularTodo);
+  document.getElementById('cierre-detal').addEventListener('input', calcularCierreFinal);
+  
+  // Efectos visuales adicionales
+  document.querySelectorAll('tr').forEach(row => {
+    row.addEventListener('mouseenter', function() {
+      this.style.transform = 'translateX(5px)';
+      this.style.transition = 'transform 0.2s ease';
+    });
+    
+    row.addEventListener('mouseleave', function() {
+      this.style.transform = 'translateX(0)';
+    });
+  });
+});
+</script>
 {% endblock %} 
