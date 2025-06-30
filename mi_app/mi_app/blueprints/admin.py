@@ -75,6 +75,29 @@ def generar_hash_transferencia(transferencia):
     data = f"{transferencia.get('id')}-{transferencia.get('fecha')}-{transferencia.get('monto')}"
     return hashlib.sha256(data.encode('utf-8')).hexdigest()
 
+def format_tasa_6_digits(tasa):
+    """
+    Formatea una tasa para que tenga exactamente 6 cifras en total.
+    Ejemplos:
+    - 3.456789 -> 3.45679 (6 cifras: 3,4,5,6,7,9)
+    - 12.345 -> 12.3450 (6 cifras: 1,2,3,4,5,0)
+    - 1.23 -> 1.23000 (6 cifras: 1,2,3,0,0,0)
+    """
+    if tasa == 0:
+        return "0.00000"
+    tasa_str = f"{tasa:.10f}"
+    if '.' in tasa_str:
+        parte_entera = tasa_str.split('.')[0]
+        parte_decimal = tasa_str.split('.')[1]
+    else:
+        parte_entera = tasa_str
+        parte_decimal = ""
+    digitos_enteros = len(parte_entera)
+    if digitos_enteros >= 6:
+        return f"{tasa:.0f}"
+    decimales_necesarios = 6 - digitos_enteros
+    return f"{tasa:.{decimales_necesarios}f}"
+
 # Crear blueprint
 admin_bp = Blueprint("admin", __name__)
 
@@ -215,16 +238,14 @@ def tasa_actual():
                 logging.info("Intentando obtener valor de Banesco...")
                 banesco_val = await obtener_valor_usdt_por_banco("Banesco")
                 logging.info(f"Valor de Banesco obtenido: {banesco_val}")
-                
                 logging.info("Intentando obtener valor de BANK...")
                 bank_val = await obtener_valor_usdt_por_banco("BANK")
                 logging.info(f"Valor de BANK obtenido: {bank_val}")
-                
                 return banesco_val, bank_val
             banesco_val, bank_val = asyncio.run(obtener_valores())
             if banesco_val and bank_val:
-                resultado_banesco = round(float(banesco_val) / float(costo_no_vendido), 6)
-                resultado_bank = round(float(bank_val) / float(costo_no_vendido), 6)
+                resultado_banesco = format_tasa_6_digits(float(banesco_val) / float(costo_no_vendido))
+                resultado_bank = format_tasa_6_digits(float(bank_val) / float(costo_no_vendido))
                 logging.info(f"Tasas calculadas - Banesco: {resultado_banesco}, Venezuela: {resultado_bank}")
             else:
                 logging.warning("No se pudieron obtener los valores de los bancos")
