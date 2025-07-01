@@ -337,6 +337,22 @@
      background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
      color: white;
    }
+
+#fecha-cierre::-webkit-calendar-picker-indicator {
+  filter: invert(0.4) sepia(1) saturate(5) hue-rotate(180deg);
+  cursor: pointer;
+  height: 1.3em;
+  width: 1.3em;
+}
+#fecha-cierre:focus {
+  border-color: #2980b9;
+  box-shadow: 0 0 0 2px #2980b955;
+}
+.input-group-text {
+  background: #fff;
+  border: none;
+  padding: 0.4rem 0.7rem;
+}
 </style>
 
 <div class="cierre-container">
@@ -347,9 +363,23 @@
           <div class="cierre-header">
             <h4 class="mb-0">Cierre de Caja</h4>
           </div>
-                     <div class="cierre-date">
-             28-jun
-           </div>
+          <div class="cierre-date text-center mt-1">
+            <label for="fecha-cierre" class="form-label text-white-50 mb-1" style="font-size: 0.95rem; font-weight: 500;">
+              <i class="fas fa-calendar-alt me-1"></i>Selecciona la fecha del cierre
+            </label>
+            <div class="d-flex justify-content-center align-items-center" style="gap: 0.5rem;">
+              <span class="input-group-text bg-white border-0" style="border-radius: 8px 0 0 8px;">
+                <i class="fas fa-calendar-alt text-primary"></i>
+              </span>
+              <input type="date" id="fecha-cierre"
+                class="form-control form-control-sm text-center"
+                style="width: 160px; font-weight: bold; border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(44,62,80,0.08); border: 1px solid #b2bec3; text-align: center; padding-left: 0.5rem;"
+                value="{{ fecha_iso }}" max="{{ fecha_iso }}">
+            </div>
+            <small class="d-block text-white-50 mt-2" style="font-size: 0.92rem;">
+              Fecha actual: <span style="font-weight: 600;">{{ fecha_mostrar }}</span>
+            </small>
+          </div>
           <div class="table-responsive">
             <table class="table cierre-table">
               <tbody>
@@ -497,11 +527,20 @@
            </div>
          </div>
 
-         <!-- Botón Realizar Cierre -->
+         <!-- Botones de acción -->
          <div class="mt-3 text-center">
-           <button type="button" class="btn btn-success btn-lg px-5 py-3" id="btn-realizar-cierre" style="font-size: 1.1rem; font-weight: bold; border-radius: 15px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
-             <i class="fas fa-save me-2"></i>💾 Realizar Cierre
-           </button>
+           <div class="row justify-content-center">
+             <div class="col-md-6 mb-2">
+               <button type="button" class="btn btn-success btn-lg w-100 py-3" id="btn-realizar-cierre" style="font-size: 1.1rem; font-weight: bold; border-radius: 15px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                 <i class="fas fa-save me-2"></i>💾 Realizar Cierre
+               </button>
+             </div>
+             <div class="col-md-6 mb-2">
+               <a href="{{ url_for('cierre.historial') }}" class="btn btn-info btn-lg w-100 py-3" style="font-size: 1.1rem; font-weight: bold; border-radius: 15px; box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3); text-decoration: none;">
+                 <i class="fas fa-history me-2"></i>📋 Ver Historial
+               </a>
+             </div>
+           </div>
            <div class="mt-2" id="estado-guardado" style="display: none;">
              <small class="text-success">
                <i class="fas fa-check-circle me-1"></i>
@@ -977,6 +1016,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
    // Event listener para el botón de realizar cierre
    document.getElementById('btn-realizar-cierre').addEventListener('click', guardarCierre);
+
+   // Listener para cambio de fecha
+   const fechaInput = document.getElementById('fecha-cierre');
+   if (fechaInput) {
+     fechaInput.addEventListener('change', function() {
+       if (this.value) {
+         const baseUrl = '{{ url_for('cierre.index') }}';
+         window.location.href = baseUrl + '?fecha=' + this.value;
+       }
+     });
+   }
  });
 </script>
 {% endblock %} 

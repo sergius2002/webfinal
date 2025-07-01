@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Historial de Cierres{% endblock %}
+
+{% block content %}
+<style>
+  .historial-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 1rem 0;
+  }
+  
+  .historial-card {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  }
+  
+  .historial-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    padding: 1rem;
+    text-align: center;
+  }
+  
+  .historial-table {
+    margin: 0;
+  }
+  
+  .historial-table td, .historial-table th {
+    padding: 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.9rem;
+  }
+  
+  .historial-table th {
+    background: #f8f9fa;
+    font-weight: bold;
+    text-align: center;
+  }
+  
+  .operacion-insert {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+  
+  .operacion-update {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+  
+  .campo-modificado {
+    background: #f8f9fa;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.8rem;
+  }
+  
+  .valor-anterior {
+    color: #e74c3c;
+    font-weight: bold;
+  }
+  
+  .valor-nuevo {
+    color: #27ae60;
+    font-weight: bold;
+  }
+  
+  .usuario-badge {
+    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+  }
+  
+  .fecha-hora {
+    font-size: 0.8rem;
+    color: #6c757d;
+  }
+  
+  .sin-historial {
+    text-align: center;
+    padding: 3rem;
+    color: #6c757d;
+  }
+  
+  .filtros {
+    background: white;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  
+  .btn-volver {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 1rem;
+  }
+  
+  .btn-volver:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    color: white;
+    text-decoration: none;
+  }
+</style>
+
+<div class="historial-container">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-12">
+        
+        <!-- Botón volver -->
+        <a href="{{ url_for('cierre.index') }}" class="btn-volver">
+          <i class="fas fa-arrow-left me-2"></i>Volver al Cierre
+        </a>
+        
+        <!-- Filtros -->
+        <div class="filtros">
+          <div class="row align-items-center">
+                         <div class="col-md-4">
+               <label for="filtro-fecha" class="form-label">Filtrar por fecha:</label>
+               <input type="date" id="filtro-fecha" class="form-control">
+             </div>
+            <div class="col-md-4">
+              <label for="filtro-usuario" class="form-label">Filtrar por usuario:</label>
+              <select id="filtro-usuario" class="form-select">
+                <option value="">Todos los usuarios</option>
+                {% for item in historial %}
+                  {% if item.usuario not in usuarios_vistos %}
+                    {% set usuarios_vistos = usuarios_vistos + [item.usuario] if usuarios_vistos else [item.usuario] %}
+                    <option value="{{ item.usuario }}">{{ item.usuario }}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="filtro-operacion" class="form-label">Filtrar por operación:</label>
+              <select id="filtro-operacion" class="form-select">
+                <option value="">Todas las operaciones</option>
+                <option value="INSERT">Creaciones</option>
+                <option value="UPDATE">Modificaciones</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tabla de historial -->
+        <div class="historial-card">
+          <div class="historial-header">
+            <h4 class="mb-0">
+              <i class="fas fa-history me-2"></i>
+              Historial de Cambios - Cierres de Caja
+            </h4>
+            <small>Últimos 30 días - Máximo 100 registros</small>
+          </div>
+          
+          <div class="table-responsive">
+            {% if historial %}
+            <table class="table historial-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Operación</th>
+                  <th>Campo</th>
+                  <th>Valor Anterior</th>
+                  <th>Valor Nuevo</th>
+                  <th>Usuario</th>
+                  <th>Fecha/Hora</th>
+                </tr>
+              </thead>
+              <tbody id="historial-tbody">
+                {% for item in historial %}
+                <tr data-fecha="{{ item.fecha_cierre }}" 
+                    data-usuario="{{ item.usuario }}" 
+                    data-operacion="{{ item.tipo_operacion }}">
+                  <td>{{ item.fecha_cierre }}</td>
+                  <td>
+                    <span class="operacion-{{ item.tipo_operacion.lower() }}">
+                      {% if item.tipo_operacion == 'INSERT' %}
+                        <i class="fas fa-plus me-1"></i>CREADO
+                      {% else %}
+                        <i class="fas fa-edit me-1"></i>MODIFICADO
+                      {% endif %}
+                    </span>
+                  </td>
+                  <td>
+                    {% if item.campo_modificado == 'REGISTRO_COMPLETO' %}
+                      <span class="campo-modificado">COMPLETO</span>
+                    {% else %}
+                      <span class="campo-modificado">{{ item.campo_modificado }}</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if item.valor_anterior and item.valor_anterior != 'null' %}
+                      <span class="valor-anterior">{{ item.valor_anterior_formateado or item.valor_anterior }}</span>
+                    {% else %}
+                      <span class="text-muted">-</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if item.valor_nuevo and item.valor_nuevo != 'null' %}
+                      <span class="valor-nuevo">{{ item.valor_nuevo_formateado or item.valor_nuevo }}</span>
+                    {% else %}
+                      <span class="text-muted">-</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="usuario-badge">{{ item.usuario }}</span>
+                  </td>
+                  <td>
+                    <span class="fecha-hora">
+                      {{ item.created_at.strftime('%d/%m/%Y %H:%M:%S') if item.created_at else 'N/A' }}
+                    </span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <div class="sin-historial">
+              <i class="fas fa-history fa-3x mb-3 text-muted"></i>
+              <h5>No hay historial disponible</h5>
+              <p>Aún no se han registrado cambios en los cierres de caja.</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const filtroFecha = document.getElementById('filtro-fecha');
+  const filtroUsuario = document.getElementById('filtro-usuario');
+  const filtroOperacion = document.getElementById('filtro-operacion');
+  const tbody = document.getElementById('historial-tbody');
+  
+  function aplicarFiltros() {
+    const fecha = filtroFecha.value;
+    const usuario = filtroUsuario.value;
+    const operacion = filtroOperacion.value;
+    
+    const filas = tbody.querySelectorAll('tr');
+    
+    filas.forEach(fila => {
+      let mostrar = true;
+      
+      // Filtro por fecha
+      if (fecha && fila.dataset.fecha !== fecha) {
+        mostrar = false;
+      }
+      
+      // Filtro por usuario
+      if (usuario && fila.dataset.usuario !== usuario) {
+        mostrar = false;
+      }
+      
+      // Filtro por operación
+      if (operacion && fila.dataset.operacion !== operacion) {
+        mostrar = false;
+      }
+      
+      fila.style.display = mostrar ? '' : 'none';
+    });
+    
+    // Mostrar mensaje si no hay resultados
+    const filasVisibles = tbody.querySelectorAll('tr[style=""], tr:not([style])');
+    if (filasVisibles.length === 0) {
+      // Crear mensaje temporal si no existe
+      let mensajeNoResultados = tbody.querySelector('.no-resultados');
+      if (!mensajeNoResultados) {
+        mensajeNoResultados = document.createElement('tr');
+        mensajeNoResultados.className = 'no-resultados';
+        mensajeNoResultados.innerHTML = '<td colspan="7" class="text-center text-muted py-4">No se encontraron registros con los filtros aplicados</td>';
+        tbody.appendChild(mensajeNoResultados);
+      }
+      mensajeNoResultados.style.display = '';
+    } else {
+      // Ocultar mensaje si hay resultados
+      const mensajeNoResultados = tbody.querySelector('.no-resultados');
+      if (mensajeNoResultados) {
+        mensajeNoResultados.style.display = 'none';
+      }
+    }
+  }
+  
+  // Event listeners para los filtros
+  filtroFecha.addEventListener('change', aplicarFiltros);
+  filtroUsuario.addEventListener('change', aplicarFiltros);
+  filtroOperacion.addEventListener('change', aplicarFiltros);
+});
+</script>
+
+{% endblock %} 

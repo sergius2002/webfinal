@@ -11,56 +11,66 @@ cierre_bp = Blueprint('cierre', __name__)
 @cierre_bp.route('/')
 @login_required
 def index():
-    # Fecha actual en formato YYYY-MM-DD
-    fecha = datetime.now().strftime('%Y-%m-%d')
-    
-    # Obtener saldo inicial (cierre final del día anterior)
-    fecha_ayer = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
-    saldo_inicial = 0
-    
+    # Obtener fecha desde query param o usar hoy
+    fecha_param = request.args.get('fecha')
     try:
-        # Buscar el cierre del día anterior
-        response_ayer = supabase.table("cierre_caja") \
-            .select("cierre_final") \
-            .eq("fecha", fecha_ayer) \
-            .execute()
-        
+        if fecha_param:
+            fecha_dt = datetime.strptime(fecha_param, '%Y-%m-%d')
+            fecha = fecha_dt.strftime('%Y-%m-%d')
+        else:
+            fecha_dt = datetime.now()
+            fecha = fecha_dt.strftime('%Y-%m-%d')
+    except ValueError:
+        # Formato inválido -> usar hoy
+        fecha_dt = datetime.now()
+        fecha = fecha_dt.strftime('%Y-%m-%d')
+
+    # Formato para mostrar en el header (DD-MMM)
+    fecha_mostrar = fecha_dt.strftime('%d-%b').lower()
+    
+    # Obtener saldo inicial (cierre final del día anterior a la fecha seleccionada)
+    fecha_ayer_dt = fecha_dt - timedelta(days=1)
+    fecha_ayer = fecha_ayer_dt.strftime('%Y-%m-%d')
+    saldo_inicial = 0
+    try:
+        response_ayer = supabase.table("cierre_caja").select("cierre_final").eq("fecha", fecha_ayer).execute()
         if response_ayer.data:
             saldo_inicial = float(response_ayer.data[0].get("cierre_final", 0))
         else:
-            # Si no hay cierre del día anterior, usar valor por defecto
-            saldo_inicial = 215027  # Valor inicial proporcionado
-            
+            saldo_inicial = 215027
     except Exception as e:
-        logging.error(f"Error al obtener saldo inicial: {e}")
-        saldo_inicial = 215027  # Valor de respaldo
+        logging.error("Error al obtener saldo inicial: %s", e)
+        saldo_inicial = 215027
     
-    # Consulta a la tabla compras para obtener el total de BRS cambiados por USDT (tradetype SELL, fiat VES)
-    query = supabase.table("compras") \
-        .select("totalprice") \
-        .eq("fiat", "VES") \
-        .eq("tradetype", "SELL") \
-        .gte("createtime", fecha + "T00:00:00") \
-        .lte("createtime", fecha + "T23:59:59")
-    response = query.execute()
-    total_ingresos = sum(item.get("totalprice", 0) for item in response.data) if response.data else 0
+    # Consulta ingresos (compras)
+    try:
+        resp_ing = supabase.table("compras") \
+            .select("totalprice") \
+            .eq("fiat", "VES") \
+            .eq("tradetype", "SELL") \
+            .gte("createtime", f"{fecha}T00:00:00") \
+            .lte("createtime", f"{fecha}T23:59:59") \
+            .execute()
+        total_ingresos = sum(item.get("totalprice", 0) for item in resp_ing.data) if resp_ing.data else 0
+    except Exception as e:
+        logging.error("Error al obtener ingresos: %s", e)
+        total_ingresos = 0
     formatted_ingresos = format(total_ingresos, ",.0f").replace(",", ".")
     
-    # Consulta a la tabla pedidos para obtener el total de BRS del día
-    query_pedidos = supabase.table("pedidos") \
-        .select("brs") \
-        .eq("fecha", fecha) \
-        .eq("eliminado", False)
-    response_pedidos = query_pedidos.execute()
-    total_egresos_brs = sum(item.get("brs", 0) for item in response_pedidos.data) if response_pedidos.data else 0
+    # Consulta egresos (pedidos)
+    try:
+        resp_ped = supabase.table("pedidos").select("brs").eq("fecha", fecha).eq("eliminado", False).execute()
+        total_egresos_brs = sum(item.get("brs", 0) for item in resp_ped.data) if resp_ped.data else 0
+    except Exception as e:
+        logging.error("Error al obtener egresos: %s", e)
+        total_egresos_brs = 0
     formatted_egresos = format(total_egresos_brs, ",.0f").replace(",", ".")
-    
-    # Formatear saldo inicial
     formatted_saldo_inicial = format(saldo_inicial, ",.0f").replace(",", ".")
-    
-    return render_template('cierre/index.html', active_page='cierre', 
-                         ingresos=formatted_ingresos, egresos=formatted_egresos,
-                         saldo_inicial=formatted_saldo_inicial)
+
+    return render_template('cierre/index.html', active_page='cierre',
+                           ingresos=formatted_ingresos, egresos=formatted_egresos,
+                           saldo_inicial=formatted_saldo_inicial, fecha_iso=fecha,
+                           fecha_mostrar=fecha_mostrar)
 
 @cierre_bp.route('/guardar', methods=['POST'])
 @login_required
@@ -160,4 +170,82 @@ def guardar_cierre():
         return jsonify({'success': False, 'message': 'Error en los datos enviados'}), 400
     except Exception as e:
         logging.error(f"Error inesperado en guardar_cierre: {e}")
-        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500 
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
+
+@cierre_bp.route('/historial')
+@login_required
+def historial():
+    """Muestra el historial de cambios de cierres (últimos 30 días)"""
+    try:
+        fecha_inicio = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        historial = []
+        try:
+            # Primero intentar la vista (si existe)
+            response = supabase.table("vista_historial_cierre") \
+                .select("*") \
+                .gte("created_at", fecha_inicio) \
+                .order("created_at", desc=True) \
+                .limit(100) \
+                .execute()
+            historial = response.data if response.data else []
+        except Exception as e:
+            logging.warning("vista_historial_cierre no disponible, usando cierre_caja_historial: %s", e)
+            # Fallback a la tabla historial si la vista aún no existe
+            response = supabase.table("cierre_caja_historial") \
+                .select("*") \
+                .gte("created_at", fecha_inicio) \
+                .order("created_at", desc=True) \
+                .limit(100) \
+                .execute()
+            historial = response.data if response.data else []
+            # Formatear valores numéricos si es posible
+            for item in historial:
+                for campo in ["valor_anterior", "valor_nuevo"]:
+                    val = item.get(campo)
+                    if val is not None:
+                        try:
+                            num = float(val)
+                            item[f"{campo}_formateado"] = "{:,}".format(int(num)).replace(",", ".")
+                        except ValueError:
+                            # No era numérico
+                            item[f"{campo}_formateado"] = val
+        
+        # Lista auxiliar para los usuarios ya renderizados en el select
+        usuarios_vistos = []
+        
+        return render_template('cierre/historial.html', 
+                             active_page='cierre',
+                             historial=historial,
+                             datetime=datetime,
+                             timedelta=timedelta,
+                             usuarios_vistos=usuarios_vistos)
+        
+    except Exception as e:
+        logging.error(f"Error al obtener historial: {e}")
+        flash("Error al cargar el historial de cambios")
+        return redirect(url_for('cierre.index'))
+
+@cierre_bp.route('/historial/<fecha>')
+@login_required
+def historial_fecha(fecha):
+    """Obtiene el historial de una fecha específica"""
+    try:
+        # Validar formato de fecha
+        datetime.strptime(fecha, '%Y-%m-%d')
+        
+        # Obtener historial de la fecha específica
+        response = supabase.rpc('obtener_historial_cierre', {'fecha_consulta': fecha}).execute()
+        
+        historial = response.data if response.data else []
+        
+        return jsonify({
+            'success': True,
+            'fecha': fecha,
+            'historial': historial
+        })
+        
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Formato de fecha inválido'}), 400
+    except Exception as e:
+        logging.error(f"Error al obtener historial de fecha {fecha}: {e}")
+        return jsonify({'success': False, 'message': 'Error al obtener historial'}), 500 
