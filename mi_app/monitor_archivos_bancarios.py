@@ -1,6 +1,5 @@
 import os
 import time
-import shutil
 import subprocess
 import logging
 
@@ -9,13 +8,6 @@ BASE_DIR = os.path.dirname(__file__)
 
 # Carpeta donde tu web deja los archivos subidos
 UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads', 'transferencias', 'uploads')
-
-# Carpeta esperada por ambos scripts (ahora usan la misma)
-BCI_INPUT_DIR = os.path.join(BASE_DIR, 'Santander_archivos')
-BCI_EXPECTED_NAME = 'excel_detallado.xlsx'
-
-# Carpeta esperada por Santander.py (definida en la variable de entorno CARPETA_ARCHIVOS o carpeta por defecto)
-SANTANDER_INPUT_DIR = os.path.join(BASE_DIR, 'Santander_archivos')
 
 # Palabras clave en nombre de archivo
 BCI_KEYWORD = 'Movimientos_Detallado_Cuenta'
@@ -42,29 +34,30 @@ procesados = set()
 def procesar_archivo(ruta_completa):
     nombre = os.path.basename(ruta_completa)
     try:
+        # Obtener ruta del Python del entorno virtual
+        venv_python = '/home/sacristobalspa/webfinal/venv/bin/python'
+        
         if BCI_KEYWORD in nombre:
             logging.info(f"Archivo identificado como BCI: {nombre}")
-            os.makedirs(BCI_INPUT_DIR, exist_ok=True)
-            destino = os.path.join(BCI_INPUT_DIR, BCI_EXPECTED_NAME)
-            shutil.copy2(ruta_completa, destino)
-            logging.info(f"Copiado a {destino}")
-            subprocess.run(['/home/sacristobalspa/webfinal/venv/bin/python', 'bci.py'], cwd=BASE_DIR, check=True)
+            # Ejecutar script BCI directamente (procesa desde uploads)
+            subprocess.run([venv_python, 'bci.py'], cwd=BASE_DIR, check=True, timeout=300)
             logging.info("Ejecución de bci.py completada.")
 
         elif SANTANDER_KEYWORD in nombre:
             logging.info(f"Archivo identificado como Santander: {nombre}")
-            os.makedirs(SANTANDER_INPUT_DIR, exist_ok=True)
-            destino = os.path.join(SANTANDER_INPUT_DIR, nombre)
-            shutil.copy2(ruta_completa, destino)
-            logging.info(f"Copiado a {destino}")
-            subprocess.run(['/home/sacristobalspa/webfinal/venv/bin/python', 'Santander.py'], cwd=BASE_DIR, check=True)
+            # Ejecutar script Santander directamente (procesa desde uploads)
+            subprocess.run([venv_python, 'Santander.py'], cwd=BASE_DIR, check=True, timeout=300)
             logging.info("Ejecución de Santander.py completada.")
 
         else:
             logging.warning(f"Archivo no reconocido, se omite: {nombre}")
 
-    except Exception as e:
+    except subprocess.TimeoutExpired:
+        logging.error(f"Script para {nombre} excedió el tiempo límite")
+    except subprocess.CalledProcessError as e:
         logging.error(f"Error al procesar {nombre}: {e}")
+    except Exception as e:
+        logging.error(f"Error inesperado al procesar {nombre}: {e}")
 
     procesados.add(ruta_completa)
 
@@ -72,13 +65,10 @@ def procesar_archivo(ruta_completa):
 def main():
     logging.info("Iniciando monitor de archivos bancarios...")
     logging.info(f"Directorio de uploads: {UPLOAD_DIR}")
-    logging.info(f"Directorio BCI: {BCI_INPUT_DIR}")
-    logging.info(f"Directorio Santander: {SANTANDER_INPUT_DIR}")
+    logging.info("Los scripts procesarán archivos directamente desde uploads")
     
-    # Crear carpetas si no existen
+    # Crear carpeta de uploads si no existe
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    os.makedirs(BCI_INPUT_DIR, exist_ok=True)
-    os.makedirs(SANTANDER_INPUT_DIR, exist_ok=True)
 
     while True:
         try:
