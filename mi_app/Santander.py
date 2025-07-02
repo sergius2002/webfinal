@@ -38,23 +38,14 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
 # --------------------------------------------------------------------------------
-# Cargar variables de entorno desde .env
+# Cargar variables de entorno directamente en el código
 # --------------------------------------------------------------------------------
-load_dotenv()
-
-logger.info("Inicio del script.")
-
-# --------------------------------------------------------------------------------
-# Cargar variables de entorno
-# --------------------------------------------------------------------------------
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-CARPETA_ARCHIVOS = os.getenv("CARPETA_ARCHIVOS")
+SUPABASE_URL = "https://tmimwpzxmtezopieqzcl.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtaW13cHp4bXRlem9waWVxemNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY4NTI5NzQsImV4cCI6MjA1MjQyODk3NH0.tTrdPaiPAkQbF_JlfOOWTQwSs3C_zBbFDZECYzPP-Ho"
+CARPETA_ARCHIVOS = "Santander_archivos"
 # En este caso, no se procesan montos negativos, por lo que no se permite su procesamiento.
 
-if not all([SUPABASE_URL, SUPABASE_KEY, CARPETA_ARCHIVOS]):
-    # logger.error(f"Error: Faltan variables de entorno en el archivo .env.")
-    sys.exit(0)
+logger.info("Inicio del script.")
 
 # Obtener el directorio del script actual
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
