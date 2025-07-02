@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}Historial de Archivos - Transferencias{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Historial de Archivos Subidos</h1>
+    <div>
+      <a href="{{ url_for('transferencias.index') }}" class="btn btn-secondary me-2">
+        <i class="fas fa-arrow-left me-2"></i>Volver a Transferencias
+      </a>
+      <a href="{{ url_for('transferencias.nuevo') }}" class="btn btn-success">
+        <i class="fas fa-plus me-2"></i>Nueva Transferencia
+      </a>
+    </div>
+  </div>
+
+  {% if archivos %}
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-history me-2"></i>Archivos Procesados</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Archivo Original</th>
+                <th>Usuario</th>
+                <th>Fecha Subida</th>
+                <th>Estado</th>
+                <th>Resultados</th>
+                <th>Tamaño</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for archivo in archivos %}
+              <tr>
+                <td>
+                  <strong>{{ archivo.nombre_original }}</strong>
+                  <br>
+                  <small class="text-muted">{{ archivo.nombre_archivo }}</small>
+                </td>
+                <td>{{ archivo.usuario }}</td>
+                <td>{{ archivo.fecha_subida | format_datetime }}</td>
+                <td>
+                  {% if archivo.estado == 'procesado' %}
+                    <span class="badge bg-success">Procesado</span>
+                  {% elif archivo.estado == 'error' %}
+                    <span class="badge bg-danger">Error</span>
+                  {% elif archivo.estado == 'en_proceso' %}
+                    <span class="badge bg-warning">En Proceso</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ archivo.estado }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if archivo.estado == 'procesado' %}
+                    <div class="small">
+                      <span class="text-success">{{ archivo.filas_exitosas }} exitosas</span>
+                      {% if archivo.filas_con_errores > 0 %}
+                        <br><span class="text-danger">{{ archivo.filas_con_errores }} errores</span>
+                      {% endif %}
+                      <br><span class="text-muted">Total: {{ archivo.filas_procesadas }}</span>
+                    </div>
+                  {% elif archivo.estado == 'error' %}
+                    <div class="small text-danger">
+                      {{ archivo.mensaje_error[:50] }}{% if archivo.mensaje_error|length > 50 %}...{% endif %}
+                    </div>
+                  {% else %}
+                    <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if archivo.tamano_archivo %}
+                    {{ (archivo.tamano_archivo / 1024) | round(1) }} KB
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="btn-group" role="group">
+                    <a href="{{ url_for('transferencias.descargar_archivo', archivo_id=archivo.id) }}" 
+                       class="btn btn-sm btn-outline-primary" 
+                       title="Descargar archivo original">
+                      <i class="fas fa-download"></i>
+                    </a>
+                                         {% if archivo.estado == 'error' %}
+                       <button type="button" 
+                               class="btn btn-sm btn-outline-danger btn-mostrar-error" 
+                               title="Ver error completo"
+                               data-error="{{ archivo.mensaje_error|replace('"', '&quot;')|replace('\n', '\\n') }}">
+                         <i class="fas fa-exclamation-triangle"></i>
+                       </button>
+                     {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Información de paginación -->
+    <div class="row mt-3">
+      <div class="col-md-6">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Página {{ pagination.page }} de {{ pagination.total_pages }}</strong>
+          <br>
+          <small class="text-muted">
+            {{ pagination.total_records }} archivos totales, {{ pagination.per_page }} por página
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controles de paginación -->
+    {% if pagination.total_pages > 1 %}
+    <nav aria-label="Navegación de páginas" class="mt-3">
+      <ul class="pagination justify-content-center">
+        <!-- Botón Anterior -->
+        {% if pagination.has_prev %}
+          <li class="page-item">
+            <a class="page-link" href="{{ url_for('transferencias.historial_archivos', page=pagination.prev_page) }}" aria-label="Anterior">
+              <span aria-hidden="true">&laquo;</span>
+            </a>
+          </li>
+        {% else %}
+          <li class="page-item disabled">
+            <span class="page-link" aria-hidden="true">&laquo;</span>
+          </li>
+        {% endif %}
+        
+        <!-- Números de página -->
+        {% set start_page = [1, pagination.page - 2] | max %}
+        {% set end_page = [pagination.total_pages, pagination.page + 2] | min %}
+        
+        {% if start_page > 1 %}
+          <li class="page-item">
+            <a class="page-link" href="{{ url_for('transferencias.historial_archivos', page=1) }}">1</a>
+          </li>
+          {% if start_page > 2 %}
+            <li class="page-item disabled">
+              <span class="page-link">...</span>
+            </li>
+          {% endif %}
+        {% endif %}
+        
+        {% for page_num in range(start_page, end_page + 1) %}
+          {% if page_num == pagination.page %}
+            <li class="page-item active">
+              <span class="page-link">{{ page_num }}</span>
+            </li>
+          {% else %}
+            <li class="page-item">
+              <a class="page-link" href="{{ url_for('transferencias.historial_archivos', page=page_num) }}">{{ page_num }}</a>
+            </li>
+          {% endif %}
+        {% endfor %}
+        
+        {% if end_page < pagination.total_pages %}
+          {% if end_page < pagination.total_pages - 1 %}
+            <li class="page-item disabled">
+              <span class="page-link">...</span>
+            </li>
+          {% endif %}
+          <li class="page-item">
+            <a class="page-link" href="{{ url_for('transferencias.historial_archivos', page=pagination.total_pages) }}">{{ pagination.total_pages }}</a>
+          </li>
+        {% endif %}
+        
+        <!-- Botón Siguiente -->
+        {% if pagination.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="{{ url_for('transferencias.historial_archivos', page=pagination.next_page) }}" aria-label="Siguiente">
+              <span aria-hidden="true">&raquo;</span>
+            </a>
+          </li>
+        {% else %}
+          <li class="page-item disabled">
+            <span class="page-link" aria-hidden="true">&raquo;</span>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+  {% else %}
+    <div class="alert alert-info text-center">
+      <i class="fas fa-info-circle me-2"></i>
+      <strong>No hay archivos subidos aún.</strong>
+      <br>
+      <small class="text-muted">Los archivos que subas aparecerán aquí.</small>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Modal para mostrar errores -->
+<div class="modal fade" id="modalError" tabindex="-1" aria-labelledby="modalErrorLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="modalErrorLabel">
+          <i class="fas fa-exclamation-triangle me-2"></i>Error del Archivo
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <pre id="errorContent" class="bg-light p-3 rounded"></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(document).ready(function() {
+  $('.btn-mostrar-error').on('click', function() {
+    var mensaje = $(this).data('error');
+    document.getElementById('errorContent').textContent = mensaje;
+    var modal = new bootstrap.Modal(document.getElementById('modalError'));
+    modal.show();
+  });
+});
+</script>
+{% endblock %} 

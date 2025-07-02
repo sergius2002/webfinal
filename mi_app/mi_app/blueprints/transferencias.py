@@ -5,7 +5,7 @@ import hashlib
 from datetime import datetime, timedelta
 from functools import wraps
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 from supabase import create_client, Client
 import pytz
 from mi_app.mi_app.extensions import chile_tz
@@ -416,4 +416,255 @@ def asignar_pago():
 
         return jsonify({'success': True, 'message': 'Pago asignado correctamente.'})
     except Exception as e:
-        return jsonify({'success': False, 'message': f'Error inesperado: {str(e)}'}), 500 
+        return jsonify({'success': False, 'message': f'Error inesperado: {str(e)}'}), 500
+
+def procesar_archivo_inmediato(ruta_archivo, nombre_original):
+    """
+    Procesa un archivo inmediatamente después de subirlo
+    """
+    try:
+        import shutil
+        import subprocess
+        import os
+        
+        # Directorio base del proyecto
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        
+        # Carpetas de destino
+        bci_input_dir = os.path.join(base_dir, 'Bancos')
+        santander_input_dir = os.path.join(base_dir, 'Santander_archivos')
+        
+        # Obtener ruta del Python del entorno virtual
+        venv_python = os.path.join(base_dir, 'venv', 'bin', 'python3')
+        if not os.path.exists(venv_python):
+            # Fallback para Windows o si no está en bin
+            venv_python = os.path.join(base_dir, 'venv', 'Scripts', 'python.exe')
+        if not os.path.exists(venv_python):
+            # Fallback al Python del sistema
+            venv_python = 'python3'
+            
+        logging.info(f"Usando Python: {venv_python}")
+        
+        # Palabras clave
+        bci_keyword = 'Movimientos_Detallado_Cuenta'
+        santander_keyword = 'CartolaMovimiento-'
+        
+        if bci_keyword in nombre_original:
+            logging.info(f"Procesando archivo BCI: {nombre_original}")
+            os.makedirs(bci_input_dir, exist_ok=True)
+            destino = os.path.join(bci_input_dir, 'excel_detallado.xlsx')
+            shutil.copy2(ruta_archivo, destino)
+            logging.info(f"Archivo copiado a {destino}")
+            
+            # Ejecutar script BCI con Python del entorno virtual
+            try:
+                subprocess.run([venv_python, 'bci.py'], cwd=base_dir, check=True, timeout=300)
+                logging.info("Script bci.py ejecutado exitosamente")
+                return True, "Archivo BCI procesado exitosamente"
+            except subprocess.TimeoutExpired:
+                logging.error("Script bci.py excedió el tiempo límite")
+                return False, "Script BCI excedió el tiempo límite"
+            except subprocess.CalledProcessError as e:
+                logging.error(f"Error ejecutando bci.py: {e}")
+                return False, f"Error ejecutando script BCI: {e}"
+                
+        elif santander_keyword in nombre_original:
+            logging.info(f"Procesando archivo Santander: {nombre_original}")
+            os.makedirs(santander_input_dir, exist_ok=True)
+            destino = os.path.join(santander_input_dir, nombre_original)
+            shutil.copy2(ruta_archivo, destino)
+            logging.info(f"Archivo copiado a {destino}")
+            
+            # Ejecutar script Santander con Python del entorno virtual
+            try:
+                subprocess.run([venv_python, 'Santander.py'], cwd=base_dir, check=True, timeout=300)
+                logging.info("Script Santander.py ejecutado exitosamente")
+                return True, "Archivo Santander procesado exitosamente"
+            except subprocess.TimeoutExpired:
+                logging.error("Script Santander.py excedió el tiempo límite")
+                return False, "Script Santander excedió el tiempo límite"
+            except subprocess.CalledProcessError as e:
+                logging.error(f"Error ejecutando Santander.py: {e}")
+                return False, f"Error ejecutando script Santander: {e}"
+        else:
+            logging.warning(f"Archivo no reconocido: {nombre_original}")
+            return False, "Archivo no reconocido (no es BCI ni Santander)"
+            
+    except Exception as e:
+        logging.error(f"Error procesando archivo {nombre_original}: {e}")
+        return False, f"Error procesando archivo: {str(e)}"
+
+@transferencias_bp.route('/subir_archivo', methods=['POST'])
+@login_required
+def subir_archivo():
+    try:
+        # Verificar si se envió un archivo
+        if 'archivo' not in request.files:
+            return jsonify({'success': False, 'message': 'No se seleccionó ningún archivo.'}), 400
+        
+        file = request.files['archivo']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'No se seleccionó ningún archivo.'}), 400
+        
+        # Verificar extensión del archivo
+        if not file.filename.lower().endswith('.xlsx'):
+            return jsonify({'success': False, 'message': 'El archivo debe ser un Excel (.xlsx).'}), 400
+        
+        # Obtener parámetros (ya no necesarios para XLSX)
+        # verificar_duplicados = request.form.get('verificar_duplicados', 'false').lower() == 'true'
+        # marcar_verificada = request.form.get('marcar_verificada', 'false').lower() == 'true'
+        
+        # Crear nombre único para el archivo
+        import os
+        from datetime import datetime
+        
+        # Obtener información del usuario
+        usuario = session.get('email', 'desconocido')
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Crear nombre de archivo único
+        nombre_original = file.filename
+        nombre_base = os.path.splitext(nombre_original)[0]
+        extension = os.path.splitext(nombre_original)[1]
+        nombre_archivo = f"{nombre_base}_{usuario}_{timestamp}{extension}"
+        
+        # Ruta donde guardar el archivo
+        upload_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'uploads', 'transferencias', 'uploads')
+        
+        # Crear la carpeta si no existe
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # Ruta completa del archivo
+        file_path = os.path.join(upload_folder, nombre_archivo)
+        
+        # Guardar el archivo físicamente
+        file.save(file_path)
+        
+        # Obtener tamaño del archivo
+        tamano_archivo = os.path.getsize(file_path)
+        
+        # Registrar el archivo en la base de datos
+        registro_archivo = supabase.table('archivos_subidos').insert({
+            'nombre_archivo': nombre_archivo,
+            'nombre_original': nombre_original,
+            'ruta_archivo': file_path,
+            'usuario': usuario,
+            'estado': 'en_proceso',
+            'verificar_duplicados': False,  # No aplica para XLSX
+            'marcar_verificada': False,     # No aplica para XLSX
+            'tamano_archivo': tamano_archivo
+        }).execute()
+        
+        archivo_id = registro_archivo.data[0]['id'] if registro_archivo.data else None
+        
+        # Procesar el archivo inmediatamente
+        exito, mensaje = procesar_archivo_inmediato(file_path, nombre_original)
+        
+        # Detectar tipo de banco basado en el nombre del archivo
+        tipo_banco = "No reconocido"
+        if "Movimientos_Detallado_Cuenta" in nombre_original:
+            tipo_banco = "BCI"
+        elif "CartolaMovimiento-" in nombre_original:
+            tipo_banco = "Santander"
+        
+        # Actualizar registro con el resultado del procesamiento
+        if archivo_id:
+            estado = 'procesado' if exito else 'error'
+            supabase.table('archivos_subidos').update({
+                'estado': estado,
+                'mensaje_error': mensaje
+            }).eq('id', archivo_id).execute()
+        
+        if exito:
+            return jsonify({
+                'success': True,
+                'message': f'Archivo {tipo_banco} subido y procesado exitosamente.',
+                'archivo_guardado': nombre_archivo,
+                'tipo_banco': tipo_banco
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Archivo subido pero error en procesamiento: {mensaje}',
+                'archivo_guardado': nombre_archivo,
+                'tipo_banco': tipo_banco
+            }), 400
+            
+    except Exception as e:
+        import traceback
+        logging.error(f"Error al procesar archivo: {e}\n{traceback.format_exc()}")
+        return jsonify({'success': False, 'message': f'Error inesperado: {str(e)}', 'traceback': traceback.format_exc()}), 500
+
+@transferencias_bp.route('/historial_archivos')
+@login_required
+def historial_archivos():
+    try:
+        # Obtener parámetros de paginación
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        offset = (page - 1) * per_page
+        
+        # Obtener archivos subidos ordenados por fecha descendente
+        response = supabase.table('archivos_subidos').select('*').order('fecha_subida', desc=True).range(offset, offset + per_page - 1).execute()
+        
+        # Obtener total de registros para paginación
+        count_response = supabase.table('archivos_subidos').select('id', count='exact').execute()
+        total_records = count_response.count if hasattr(count_response, 'count') else 0
+        total_pages = (total_records + per_page - 1) // per_page
+        
+        archivos = response.data if response.data else []
+        
+        # Calcular información de paginación
+        pagination = {
+            'page': page,
+            'per_page': per_page,
+            'total_pages': total_pages,
+            'total_records': total_records,
+            'has_prev': page > 1,
+            'has_next': page < total_pages,
+            'prev_page': page - 1 if page > 1 else None,
+            'next_page': page + 1 if page < total_pages else None
+        }
+        
+        return render_template(
+            'transferencias/historial_archivos.html',
+            archivos=archivos,
+            pagination=pagination,
+            active_page="transferencias"
+        )
+        
+    except Exception as e:
+        logging.error(f"Error al obtener historial de archivos: {e}")
+        flash("Error al cargar el historial de archivos", "error")
+        return redirect(url_for("transferencias.index"))
+
+@transferencias_bp.route('/descargar_archivo/<int:archivo_id>')
+@login_required
+def descargar_archivo(archivo_id):
+    try:
+        # Obtener información del archivo
+        response = supabase.table('archivos_subidos').select('*').eq('id', archivo_id).execute()
+        
+        if not response.data:
+            flash("Archivo no encontrado", "error")
+            return redirect(url_for("transferencias.historial_archivos"))
+        
+        archivo = response.data[0]
+        ruta_archivo = archivo['ruta_archivo']
+        
+        # Verificar que el archivo existe
+        if not os.path.exists(ruta_archivo):
+            flash("El archivo físico no existe", "error")
+            return redirect(url_for("transferencias.historial_archivos"))
+        
+        # Enviar archivo como descarga
+        return send_file(
+            ruta_archivo,
+            as_attachment=True,
+            download_name=archivo['nombre_original']
+        )
+        
+    except Exception as e:
+        logging.error(f"Error al descargar archivo {archivo_id}: {e}")
+        flash("Error al descargar el archivo", "error")
+        return redirect(url_for("transferencias.historial_archivos")) 
