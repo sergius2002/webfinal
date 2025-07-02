@@ -433,9 +433,13 @@ def procesar_archivo_inmediato(ruta_archivo, nombre_original):
         # Ya no necesitamos carpetas de destino, procesamos directamente desde uploads
         
         # Obtener ruta del Python del entorno virtual
-        venv_python = os.path.join(base_dir, 'venv', 'bin', 'python3')
+        # Usar la misma ruta que el monitor para consistencia
+        venv_python = '/home/sacristobalspa/webfinal/venv/bin/python'
         if not os.path.exists(venv_python):
-            # Fallback para Windows o si no está en bin
+            # Fallback para desarrollo local
+            venv_python = os.path.join(base_dir, 'venv', 'bin', 'python3')
+        if not os.path.exists(venv_python):
+            # Fallback para Windows
             venv_python = os.path.join(base_dir, 'venv', 'Scripts', 'python.exe')
         if not os.path.exists(venv_python):
             # Fallback al Python del sistema
