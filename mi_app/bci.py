@@ -7,14 +7,12 @@ import pandas as pd
 import time
 from datetime import datetime
 from supabase import create_client, Client
-from dotenv import load_dotenv
+
 import sys
 
-load_dotenv()
-
-# Cargar las variables de entorno (Supabase, si las tienes en .env)
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# Cargar variables de entorno directamente en el código
+SUPABASE_URL = "https://tmimwpzxmtezopieqzcl.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtaW13cHp4bXRlem9waWVxemNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY4NTI5NzQsImV4cCI6MjA1MjQyODk3NH0.tTrdPaiPAkQbF_JlfOOWTQwSs3C_zBbFDZECYzPP-Ho"
 
 # Instanciar cliente de Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -249,6 +247,13 @@ def process_and_store_excel(file_path):
             print(f"[{datetime.now()}] Error al procesar fila con hash={row['hash']}: {e}")
 
     print(f"[{datetime.now()}] Archivo '{file_path}' procesado e insertado en 'transferencias'.")
+    
+    # Borrar el archivo después de procesarlo exitosamente
+    try:
+        os.remove(file_path)
+        print(f"[{datetime.now()}] Archivo borrado exitosamente: {file_path}")
+    except Exception as e:
+        print(f"[{datetime.now()}] Error al borrar el archivo {file_path}: {e}")
 
 if __name__ == "__main__":
     try:

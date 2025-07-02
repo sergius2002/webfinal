@@ -338,6 +338,13 @@ def SANTANDER():
                 dataframes.append(columnas_relevantes)
                 archivos_procesados.add(archivo)
                 logger.info(f"Archivo procesado exitosamente: {archivo}")
+                
+                # Borrar el archivo después de procesarlo exitosamente
+                try:
+                    os.remove(ruta_archivo)
+                    logger.info(f"Archivo borrado exitosamente: {archivo}")
+                except Exception as e:
+                    logger.error(f"Error al borrar el archivo {archivo}: {e}")
 
             except Exception as e:
                 logger.error(f"Error al procesar el archivo {archivo} en SANTANDER: {e}")
@@ -486,9 +493,9 @@ def BASE_DE_DATOS(df_resultado, supabase_client):
     else:
         logger.info("No se agregaron registros nuevos a la base de datos.")
 
-    # Al omitir duplicados:
-    duplicados = df_resultado[df_resultado.duplicated(subset=['hash'], keep=False)]
-    for _, row in duplicados.iterrows():
+    # Mostrar hashes duplicados (omitidos)
+    df_duplicados = df_resultado[df_resultado['hash'].isin(hashes_existentes)]
+    for _, row in df_duplicados.iterrows():
         print(f"Hash duplicado (omitido): {row['hash']} (monto={row['monto']}, fecha={row['fecha']}, rut={row['rut']})")
 
 # --------------------------------------------------------------------------------
