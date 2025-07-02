@@ -379,6 +379,23 @@
             <small class="d-block text-white-50 mt-2" style="font-size: 0.92rem;">
               Fecha actual: <span style="font-weight: 600;">{{ fecha_mostrar }}</span>
             </small>
+            
+            <!-- Indicador de configuración inicial -->
+            {% if config_info %}
+              {% if config_info.configurado %}
+                <div class="mt-2">
+                  <small class="badge bg-success" style="font-size: 0.8rem;">
+                    ⚙️ Sistema configurado - Inicio: {{ config_info.fecha_inicio }}
+                  </small>
+                </div>
+              {% else %}
+                <div class="mt-2">
+                  <small class="badge bg-warning text-dark" style="font-size: 0.8rem;">
+                    ⚠️ Sistema sin configurar - <a href="{{ url_for('admin.configuracion_inicial') }}" class="text-dark"><u>Configurar ahora</u></a>
+                  </small>
+                </div>
+              {% endif %}
+            {% endif %}
           </div>
           <div class="table-responsive">
             <table class="table cierre-table">
@@ -662,18 +679,18 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // Obtener valores
-  const saldoInicial = {{ saldo_inicial|replace(".", "") }};
-  const ingresosBinance = {{ ingresos|replace(".", "") }};
+  const saldoInicial = parseInt("{{ saldo_inicial }}".replace(/[^\d]/g, '')) || 0;
+  const ingresosBinance = parseInt("{{ ingresos }}".replace(/[^\d]/g, '')) || 0;
   let ingresosExtra = 0;
   let totalIngresos = saldoInicial + ingresosBinance + ingresosExtra;
-  const egresos = {{ egresos|replace(".", "") }};
+  const egresos = parseInt("{{ egresos }}".replace(/[^\d]/g, '')) || 0;
   
   // Al inicio del script principal, inyectar los datos guardados desde Jinja:
   const ingresosExtraDetalle = {{ ingresos_extra_detalle|tojson|safe }};
   const gastosDetalle = {{ gastos_detalle|tojson|safe }};
-  const pagoMovilGuardado = {{ pago_movil|default(0) }};
-  const cierreDetalGuardado = {{ cierre_detal|default(0) }};
-  const saldoBancosGuardado = {{ saldo_bancos|default(0) }};
+  const pagoMovilGuardado = {{ pago_movil|default(0)|int }};
+  const cierreDetalGuardado = {{ cierre_detal|default(0)|int }};
+  const saldoBancosGuardado = {{ saldo_bancos|default(0)|int }};
   const egresosDetalGuardado = "{{ egresos_detal }}";
   
   // Calcular total ingresos inicial

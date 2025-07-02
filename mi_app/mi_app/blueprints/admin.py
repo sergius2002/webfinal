@@ -4,8 +4,9 @@ import hashlib
 import asyncio
 from datetime import datetime, timedelta
 from functools import wraps
+import json
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from supabase import create_client, Client
 import pytz
 from mi_app.mi_app.usdt_ves import obtener_valor_usdt_por_banco
@@ -403,4 +404,95 @@ def eliminar_transaccion_usdt(transaccion_id):
     except Exception as e:
         logging.error(f"Error al eliminar transacción USDT: {e}")
         flash("Error al eliminar la transacción: " + str(e), "danger")
-    return redirect(url_for("admin.resumen_compras_usdt")) 
+    return redirect(url_for("admin.resumen_compras_usdt"))
+
+@admin_bp.route('/configuracion-inicial')
+@login_required
+def configuracion_inicial():
+    """Configuración del primer día y saldo inicial del sistema"""
+    try:
+        # Buscar configuración existente
+        config_response = supabase.table("configuracion_sistema").select("*").eq("clave", "inicio_operaciones").execute()
+        
+        config_data = {
+            'fecha_inicio': '',
+            'saldo_inicial': 0,
+            'configurado': False
+        }
+        
+        if config_response.data:
+            config = config_response.data[0]
+            try:
+                valores = json.loads(config.get('valor', '{}'))
+                config_data.update(valores)
+                config_data['configurado'] = True
+            except:
+                pass
+        
+        return render_template('admin/configuracion_inicial.html', 
+                             active_page='admin',
+                             config=config_data)
+    except Exception as e:
+        logging.error(f"Error al cargar configuración inicial: {e}")
+        flash("Error al cargar la configuración")
+        return redirect(url_for('admin.index'))
+
+@admin_bp.route('/guardar-configuracion-inicial', methods=['POST'])
+@login_required
+def guardar_configuracion_inicial():
+    """Guarda la configuración inicial del sistema"""
+    try:
+        data = request.get_json()
+        fecha_inicio = data.get('fecha_inicio')
+        saldo_inicial = float(data.get('saldo_inicial', 0))
+        
+        # Validar fecha
+        try:
+            datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Formato de fecha inválido'}), 400
+        
+        # Validar saldo
+        if saldo_inicial < 0:
+            return jsonify({'success': False, 'message': 'El saldo inicial no puede ser negativo'}), 400
+        
+        # Preparar datos de configuración
+        configuracion = {
+            'fecha_inicio': fecha_inicio,
+            'saldo_inicial': saldo_inicial,
+            'configurado': True,
+            'usuario_config': session.get('email', 'usuario_desconocido'),
+            'fecha_config': datetime.now().isoformat()
+        }
+        
+        config_data = {
+            'clave': 'inicio_operaciones',
+            'valor': json.dumps(configuracion),
+            'descripcion': 'Configuración del primer día de operaciones y saldo inicial',
+            'usuario_modificacion': session.get('email', 'usuario_desconocido')
+        }
+        
+        # Verificar si ya existe configuración
+        existing_response = supabase.table("configuracion_sistema").select("id").eq("clave", "inicio_operaciones").execute()
+        
+        if existing_response.data:
+            # Actualizar existente
+            config_id = existing_response.data[0]['id']
+            response = supabase.table("configuracion_sistema").update(config_data).eq("id", config_id).execute()
+            message = "Configuración actualizada exitosamente"
+        else:
+            # Crear nueva configuración
+            response = supabase.table("configuracion_sistema").insert(config_data).execute()
+            message = "Configuración guardada exitosamente"
+        
+        if response.data:
+            logging.info(f"Configuración inicial guardada: {fecha_inicio} con saldo {saldo_inicial}")
+            return jsonify({'success': True, 'message': message})
+        else:
+            return jsonify({'success': False, 'message': 'Error al guardar en la base de datos'}), 500
+            
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Saldo inicial debe ser un número válido'}), 400
+    except Exception as e:
+        logging.error(f"Error al guardar configuración inicial: {e}")
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500 

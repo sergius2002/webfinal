@@ -6,6 +6,92 @@ from mi_app.mi_app.extensions import supabase
 import json
 import logging
 
+def obtener_configuracion_inicial():
+    """Obtiene la configuración inicial del sistema"""
+    try:
+        config_response = supabase.table("configuracion_sistema").select("*").eq("clave", "inicio_operaciones").execute()
+        
+        if config_response.data:
+            config = config_response.data[0]
+            try:
+                valores = json.loads(config.get('valor', '{}'))
+                if valores.get('configurado', False):
+                    return {
+                        'fecha_inicio': valores.get('fecha_inicio'),
+                        'saldo_inicial': float(valores.get('saldo_inicial', 0)),
+                        'configurado': True
+                    }
+            except Exception as e:
+                logging.error(f"Error al parsear configuración inicial: {e}")
+        
+        # Si no hay configuración o hay error, devolver valores por defecto
+        return {
+            'fecha_inicio': None,
+            'saldo_inicial': 248957,  # Valor por defecto legacy
+            'configurado': False
+        }
+    except Exception as e:
+        logging.error(f"Error al obtener configuración inicial: {e}")
+        return {
+            'fecha_inicio': None,
+            'saldo_inicial': 248957,
+            'configurado': False
+        }
+
+def obtener_saldo_inicial_inteligente(fecha_consulta):
+    """
+    Obtiene el saldo inicial de manera inteligente:
+    1. Si es el primer día configurado, usa el saldo inicial configurado
+    2. Si hay cierre del día anterior, usa su cierre_final
+    3. Si no hay configuración, usa valor por defecto legacy
+    """
+    config = obtener_configuracion_inicial()
+    
+    # Convertir fecha_consulta a datetime para comparaciones
+    try:
+        fecha_consulta_dt = datetime.strptime(fecha_consulta, '%Y-%m-%d')
+    except ValueError:
+        logging.error(f"Formato de fecha inválido: {fecha_consulta}")
+        return config['saldo_inicial']
+    
+    # Si está configurado y es el primer día, usar saldo inicial configurado
+    if config['configurado'] and config['fecha_inicio']:
+        try:
+            fecha_inicio_dt = datetime.strptime(config['fecha_inicio'], '%Y-%m-%d')
+            if fecha_consulta_dt == fecha_inicio_dt:
+                logging.info(f"Usando saldo inicial configurado para el primer día: {config['saldo_inicial']}")
+                return config['saldo_inicial']
+        except ValueError:
+            logging.error(f"Formato de fecha de inicio inválido: {config['fecha_inicio']}")
+    
+    # Para cualquier otro día, buscar cierre del día anterior
+    fecha_ayer_dt = fecha_consulta_dt - timedelta(days=1)
+    fecha_ayer = fecha_ayer_dt.strftime('%Y-%m-%d')
+    
+    try:
+        response_ayer = supabase.table("cierre_caja").select("cierre_final").eq("fecha", fecha_ayer).execute()
+        if response_ayer.data:
+            saldo_del_ayer = float(response_ayer.data[0].get("cierre_final", 0))
+            logging.info(f"Usando cierre final del día anterior ({fecha_ayer}): {saldo_del_ayer}")
+            return saldo_del_ayer
+    except Exception as e:
+        logging.error(f"Error al obtener cierre del día anterior ({fecha_ayer}): {e}")
+    
+    # Si llegamos aquí, no hay cierre del día anterior
+    # Si está configurado el primer día y estamos después de esa fecha, algo está mal
+    if config['configurado'] and config['fecha_inicio']:
+        try:
+            fecha_inicio_dt = datetime.strptime(config['fecha_inicio'], '%Y-%m-%d')
+            if fecha_consulta_dt > fecha_inicio_dt:
+                logging.warning(f"Falta cierre del día anterior para fecha {fecha_consulta}, usando saldo configurado como fallback")
+                return config['saldo_inicial']
+        except ValueError:
+            pass
+    
+    # Usar valor por defecto (configurado o legacy)
+    logging.info(f"Usando saldo por defecto: {config['saldo_inicial']}")
+    return config['saldo_inicial']
+
 cierre_bp = Blueprint('cierre', __name__)
 
 @cierre_bp.route('/')
@@ -28,19 +114,8 @@ def index():
     # Formato para mostrar en el header (DD-MMM)
     fecha_mostrar = fecha_dt.strftime('%d-%b').lower()
     
-    # Obtener saldo inicial (cierre final del día anterior a la fecha seleccionada)
-    fecha_ayer_dt = fecha_dt - timedelta(days=1)
-    fecha_ayer = fecha_ayer_dt.strftime('%Y-%m-%d')
-    saldo_inicial = 0
-    try:
-        response_ayer = supabase.table("cierre_caja").select("cierre_final").eq("fecha", fecha_ayer).execute()
-        if response_ayer.data:
-            saldo_inicial = float(response_ayer.data[0].get("cierre_final", 0))
-        else:
-            saldo_inicial = 248957
-    except Exception as e:
-        logging.error("Error al obtener saldo inicial: %s", e)
-        saldo_inicial = 248957
+    # Obtener saldo inicial usando la lógica inteligente
+    saldo_inicial = obtener_saldo_inicial_inteligente(fecha)
     
     # Consulta ingresos (compras)
     try:
@@ -118,6 +193,9 @@ def index():
         except Exception:
             gastos_detalle = []
 
+    # Obtener información de configuración para mostrar en la interfaz
+    config_info = obtener_configuracion_inicial()
+    
     return render_template('cierre/index.html', active_page='cierre',
                            ingresos=formatted_ingresos, egresos=formatted_egresos,
                            egresos_detal=egresos_detal,
@@ -125,7 +203,7 @@ def index():
                            fecha_mostrar=fecha_mostrar,
                            gastos=gastos, pago_movil=pago_movil, cierre_detal=cierre_detal,
                            saldo_bancos=saldo_bancos, ingresos_extra_detalle=ingresos_extra_detalle,
-                           gastos_detalle=gastos_detalle)
+                           gastos_detalle=gastos_detalle, config_info=config_info)
 
 @cierre_bp.route('/guardar', methods=['POST'])
 @login_required
@@ -141,26 +219,8 @@ def guardar_cierre():
         if not data:
             return jsonify({'success': False, 'message': 'No se recibieron datos'}), 400
         
-        # Obtener saldo inicial (cierre final del día anterior)
-        fecha_ayer = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
-        saldo_inicial = 0
-        
-        try:
-            # Buscar el cierre del día anterior
-            response_ayer = supabase.table("cierre_caja") \
-                .select("cierre_final") \
-                .eq("fecha", fecha_ayer) \
-                .execute()
-            
-            if response_ayer.data:
-                saldo_inicial = float(response_ayer.data[0].get("cierre_final", 0))
-            else:
-                # Si no hay cierre del día anterior, usar valor por defecto
-                saldo_inicial = 248957
-                
-        except Exception as e:
-            logging.error(f"Error al obtener saldo inicial en guardar: {e}")
-            saldo_inicial = 248957
+        # Obtener saldo inicial usando la lógica inteligente
+        saldo_inicial = obtener_saldo_inicial_inteligente(fecha)
             
         # Extraer valores del frontend
         ingresos_binance = float(data.get('ingresos_binance', 0))

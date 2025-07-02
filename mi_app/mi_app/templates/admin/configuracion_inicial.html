@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración Inicial{% endblock %}
+
+{% block content %}
+<style>
+  .config-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: calc(100vh - 100px);
+    padding: 1rem 0;
+  }
+  
+  .config-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    overflow: hidden;
+    margin: 0 auto;
+  }
+  
+  .config-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    padding: 2rem;
+    text-align: center;
+  }
+  
+  .config-body {
+    padding: 2rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  
+  .form-control {
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+  }
+  
+  .form-control:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    outline: none;
+  }
+  
+  .btn-config {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    border: none;
+    color: white;
+    padding: 0.75rem 2rem;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    width: 100%;
+  }
+  
+  .btn-config:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(39, 174, 96, 0.3);
+  }
+  
+  .btn-config:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  .alert-info {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border: none;
+    color: white;
+    border-radius: 10px;
+    padding: 1rem;
+  }
+  
+  .alert-success {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    border: none;
+    color: white;
+    border-radius: 10px;
+    padding: 1rem;
+  }
+  
+  .alert-warning {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    border: none;
+    color: white;
+    border-radius: 10px;
+    padding: 1rem;
+  }
+  
+  .config-status {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  .status-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  
+  .status-configured {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: white;
+  }
+  
+  .status-pending {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+  }
+  
+  .help-text {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+  }
+  
+  .icon-large {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+</style>
+
+<div class="config-container">
+  <div class="container mt-4">
+    <div class="row">
+      <!-- Menú lateral -->
+      <div class="col-md-3">
+        <div class="list-group admin-menu">
+          <a href="{{ url_for('admin.tasa_compras') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-shopping-cart"></i> Compras BRS
+          </a>
+          <a href="{{ url_for('admin.ingresar_usdt') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-dollar-sign"></i> Ingresar Transaccion
+          </a>
+          <a href="{{ url_for('admin.resumen_compras_usdt') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-list"></i> Transacciones USDT/CLP
+          </a>
+          <a href="{{ url_for('admin.tasa_actual') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-chart-line"></i> Tasa actual
+          </a>
+          <div class="dropdown-divider"></div>
+          <a href="{{ url_for('admin.configuracion_inicial') }}" class="list-group-item list-group-item-action active">
+            <i class="fas fa-cog"></i> Configuración Inicial
+          </a>
+        </div>
+      </div>
+      
+      <!-- Contenido principal -->
+      <div class="col-md-9">
+        <div class="content-header text-center mb-4">
+          <h1 class="text-azul-oscuro">Configuración Inicial del Sistema</h1>
+        </div>
+        <div class="content-body">
+        <div class="config-card">
+          <div class="config-header">
+            <div class="icon-large">⚙️</div>
+            <h3 class="mb-0">Configuración Inicial del Sistema</h3>
+            <p class="mb-0 mt-2">Configura el primer día de operaciones y el saldo inicial</p>
+          </div>
+          
+          <div class="config-body">
+            <!-- Estado actual -->
+            <div class="config-status">
+              {% if config.configurado %}
+                <span class="status-badge status-configured">
+                  ✅ Sistema Configurado
+                </span>
+              {% else %}
+                <span class="status-badge status-pending">
+                  ⚠️ Configuración Pendiente
+                </span>
+              {% endif %}
+            </div>
+            
+            <!-- Alertas informativas -->
+            {% if not config.configurado %}
+            <div class="alert alert-info">
+              <strong>📋 Información Importante:</strong><br>
+              Esta configuración define cuándo comenzará el sistema de cierres y con qué saldo inicial. 
+              Una vez configurado, el sistema calculará automáticamente los saldos de días posteriores.
+            </div>
+            {% endif %}
+            
+            {% if config.configurado %}
+            <div class="alert alert-success">
+              <strong>✅ Configuración Actual:</strong><br>
+              <strong>Fecha de inicio:</strong> {{ config.fecha_inicio }}<br>
+              <strong>Saldo inicial:</strong> {{ "{:,}".format(config.saldo_inicial).replace(",", ".") }}
+            </div>
+            {% endif %}
+            
+            <!-- Formulario -->
+            <form id="form-configuracion">
+              <div class="form-group">
+                <label for="fecha-inicio" class="form-label">
+                  📅 Fecha de Inicio de Operaciones
+                </label>
+                <input type="date" 
+                       id="fecha-inicio" 
+                       class="form-control" 
+                       value="{{ config.fecha_inicio }}"
+                       required>
+                <div class="help-text">
+                  Selecciona el primer día en que comenzarás a usar el sistema de cierres
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="saldo-inicial" class="form-label">
+                  💰 Saldo Inicial (Bolívares)
+                </label>
+                <input type="number" 
+                       id="saldo-inicial" 
+                       class="form-control" 
+                       value="{{ config.saldo_inicial }}"
+                       step="0.01"
+                       min="0"
+                       placeholder="Ejemplo: 500000"
+                       required>
+                <div class="help-text">
+                  Ingresa el saldo en bolívares con el que comenzarás el primer día
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <button type="submit" class="btn btn-config" id="btn-guardar">
+                  <span id="btn-text">
+                    {% if config.configurado %}
+                      🔄 Actualizar Configuración
+                    {% else %}
+                      💾 Guardar Configuración
+                    {% endif %}
+                  </span>
+                </button>
+              </div>
+            </form>
+            
+            <!-- Mensaje de estado -->
+            <div id="mensaje-estado" style="display: none;"></div>
+            
+            <!-- Información adicional -->
+            <div class="alert alert-warning mt-4">
+              <strong>⚠️ Advertencia:</strong><br>
+              • Esta configuración afecta todos los cierres futuros<br>
+              • Asegúrate de que la fecha y saldo sean correctos<br>
+              • Puedes modificar estos valores antes de empezar a usar el sistema
+            </div>
+          </div>
+                 </div>
+       </div>
+     </div>
+   </div>
+ </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('form-configuracion');
+  const btnGuardar = document.getElementById('btn-guardar');
+  const btnText = document.getElementById('btn-text');
+  const mensajeEstado = document.getElementById('mensaje-estado');
+  
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // Deshabilitar botón
+    btnGuardar.disabled = true;
+    btnText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    
+    // Recopilar datos
+    const fechaInicio = document.getElementById('fecha-inicio').value;
+    const saldoInicial = document.getElementById('saldo-inicial').value;
+    
+    // Validaciones básicas
+    if (!fechaInicio) {
+      mostrarMensaje('Por favor selecciona una fecha de inicio', 'error');
+      restaurarBoton();
+      return;
+    }
+    
+    if (!saldoInicial || parseFloat(saldoInicial) < 0) {
+      mostrarMensaje('Por favor ingresa un saldo inicial válido', 'error');
+      restaurarBoton();
+      return;
+    }
+    
+    try {
+      // Enviar datos
+      const response = await fetch('/admin/guardar-configuracion-inicial', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fecha_inicio: fechaInicio,
+          saldo_inicial: parseFloat(saldoInicial)
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        mostrarMensaje(result.message, 'success');
+        btnText.innerHTML = '✅ Configuración Guardada';
+        
+        // Recargar página después de 2 segundos
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        mostrarMensaje(result.message, 'error');
+        restaurarBoton();
+      }
+      
+    } catch (error) {
+      mostrarMensaje('Error de conexión. Intenta nuevamente.', 'error');
+      restaurarBoton();
+    }
+  });
+  
+  function mostrarMensaje(mensaje, tipo) {
+    mensajeEstado.style.display = 'block';
+    mensajeEstado.className = `alert alert-${tipo === 'success' ? 'success' : 'danger'} mt-3`;
+    mensajeEstado.innerHTML = `
+      <strong>${tipo === 'success' ? '✅' : '❌'}</strong> ${mensaje}
+    `;
+    
+    // Ocultar después de 5 segundos si es error
+    if (tipo === 'error') {
+      setTimeout(() => {
+        mensajeEstado.style.display = 'none';
+      }, 5000);
+    }
+  }
+  
+  function restaurarBoton() {
+    btnGuardar.disabled = false;
+    btnText.innerHTML = '{{ "🔄 Actualizar Configuración" if config.configurado else "💾 Guardar Configuración" }}';
+  }
+  
+  // Formatear input de saldo
+  const saldoInput = document.getElementById('saldo-inicial');
+  saldoInput.addEventListener('input', function() {
+    // Permitir solo números y punto decimal
+    this.value = this.value.replace(/[^0-9.]/g, '');
+  });
+});
+</script>
+{% endblock %} 
