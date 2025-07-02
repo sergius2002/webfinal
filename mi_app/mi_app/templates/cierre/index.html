@@ -7,15 +7,21 @@
      .cierre-container {
      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
      min-height: 100vh;
-     padding: 1rem 0;
+     padding: 20px 0;
+     display: flex;
+     align-items: center;
+     justify-content: center;
    }
   
   .cierre-card {
     background: white;
-    border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    border-radius: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.10);
     overflow: hidden;
     transition: transform 0.3s ease;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 18px 24px 18px 24px;
   }
   
   .cierre-card:hover {
@@ -25,9 +31,11 @@
      .cierre-header {
      background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
      color: white;
-     padding: 1rem;
+     padding: 1.2rem 1rem 1.1rem 1rem;
      text-align: center;
-     position: relative;
+     font-size: 1.5rem;
+     border-radius: 12px 12px 0 0;
+     margin-bottom: 14px;
    }
   
   
@@ -35,22 +43,24 @@
      .cierre-date {
      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
      color: white;
-     padding: 0.5rem;
+     padding: 0.5rem 0.3rem;
      text-align: center;
      font-weight: bold;
      font-size: 1rem;
+     border-radius: 8px;
+     margin-bottom: 14px;
    }
   
   .cierre-table {
     margin: 0;
+    font-size: 1rem;
   }
   
      .cierre-table td, .cierre-table th {
-     padding: 0.5rem 1rem;
+     padding: 0.5rem 0.7rem;
      vertical-align: middle;
      border-bottom: 1px solid #e9ecef;
-     transition: all 0.3s ease;
-     font-size: 0.9rem;
+     font-size: 1rem;
    }
   
   .field-icon {
@@ -62,14 +72,15 @@
   }
   
   .field-label {
-    font-weight: 500;
+    font-weight: 600;
     color: #2c3e50;
+    font-size: 1rem;
   }
   
   .field-value {
     font-weight: bold;
     font-size: 1.1rem;
-    text-align: center;
+    text-align: right;
   }
   
   /* Colores semánticos */
@@ -119,6 +130,7 @@
      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
      color: white;
      font-weight: bold;
+     font-size: 1.08rem;
    }
    
    .total-row td {
@@ -130,11 +142,13 @@
   .mayor-row {
     background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
     color: white;
+    font-size: 1.05rem;
   }
   
   .final-row {
     background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
     color: white;
+    font-size: 1.13rem;
   }
   
   .final-row td {
@@ -159,32 +173,13 @@
   }
   
   /* Responsive */
-  @media (max-width: 768px) {
-    .cierre-container {
-      padding: 1rem;
-    }
-    
-    .cierre-card {
-      border-radius: 15px;
-    }
-    
-    .cierre-header {
-      padding: 1.5rem;
-    }
-    
-    .cierre-table td, .cierre-table th {
-      padding: 0.8rem 1rem;
-      font-size: 0.9rem;
-    }
-    
-    .field-value {
-      font-size: 1rem;
-    }
-    
-    .editable-field {
-      min-height: 35px;
-      font-size: 1rem;
-    }
+  @media (max-width: 1800px) {
+    .cierre-card { padding: 24px 16px; }
+  }
+  
+  @media (max-width: 1200px) {
+    .cierre-card { padding: 8px 2px; }
+    .cierre-header { font-size: 1.1rem; }
   }
   
   /* Indicadores de carga */
@@ -290,9 +285,9 @@
    }
    
    .clickable-ingresos:hover {
-     background: rgba(52, 152, 219, 0.1);
-     transform: scale(1.02);
-     box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+     background: none;
+     transform: none;
+     box-shadow: none;
    }
    
    .clickable-ingresos::after {
@@ -353,13 +348,179 @@
   border: none;
   padding: 0.4rem 0.7rem;
 }
+
+/* BLOQUES SECUNDARIOS */
+.card.border-info, #cuadre-card {
+  border-radius: 12px;
+  margin-top: 18px;
+  box-shadow: 0 2px 10px rgba(44,62,80,0.06);
+}
+.card-header {
+  font-size: 1.05rem;
+  border-radius: 12px 12px 0 0;
+}
+.card-body {
+  font-size: 1rem;
+  padding: 1rem 0.7rem;
+}
+/* CUADRE TARJETAS */
+#cuadre-card .card {
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(52, 152, 219, 0.06);
+}
+#cuadre-card .h6 {
+  font-size: 1.08rem;
+  font-weight: bold;
+}
+/* BOTONES */
+.btn-lg {
+  font-size: 1.05rem !important;
+  padding: 0.7rem 0 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.10);
+}
+.btn-success {
+  background: linear-gradient(90deg, #27ae60 0%, #2ecc71 100%);
+  border: none;
+}
+.btn-info {
+  background: linear-gradient(90deg, #3498db 0%, #2980b9 100%);
+  border: none;
+}
+/* ESPACIADO GENERAL */
+.container, .row, .col-md-11, .col-lg-10 {
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+}
+.cierre-container .row > .col-md-7, .cierre-container .row > .col-md-5 {
+  padding-left: 0;
+  padding-right: 0;
+}
+@media (max-width: 991px) {
+  .cierre-container .row > .col-md-7, .cierre-container .row > .col-md-5 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
+.cierre-main-row {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+.cierre-col-izq, .cierre-col-der {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(44,62,80,0.10);
+  padding: 18px 18px 24px 18px;
+}
+.cierre-col-izq {
+  flex: 1.2;
+  min-width: 350px;
+  margin-bottom: 0;
+}
+.cierre-col-der {
+  flex: 1;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 0;
+}
+.cierre-col-der .card {
+  box-shadow: none;
+  border: none;
+  margin-bottom: 0;
+}
+.cierre-col-der .card-grouped {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(44,62,80,0.10);
+  padding: 18px 12px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.cierre-col-der .cuadre-grafico {
+  min-height: 60px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b2bec3;
+  font-size: 1.1rem;
+}
+.cierre-table {
+  margin-bottom: 32px;
+}
+.cierre-table .total-row, .cierre-table .final-row {
+  background: #f8f9fa;
+  color: #222;
+  font-weight: bold;
+}
+.cierre-table .final-row {
+  background: #e3fcec;
+  color: #1a7f37;
+  font-size: 1.18rem;
+}
+.cierre-table .field-value {
+  font-size: 1.13rem;
+}
+.cierre-table .field-label {
+  font-size: 1.08rem;
+}
+.cierre-table tr td {
+  border-bottom: 1px solid #e9ecef;
+}
+.cierre-table tr:last-child td {
+  border-bottom: none;
+}
+.input-group-text, .form-control {
+  border-radius: 8px !important;
+  box-shadow: 0 1px 4px rgba(44,62,80,0.06);
+  border: 1px solid #b2bec3;
+}
+.btn-lg {
+  font-size: 1.15rem !important;
+  padding: 1.1rem 0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 18px rgba(40, 167, 69, 0.13);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+}
+.btn-lg i {
+  font-size: 1.5rem;
+}
+.cierre-botones-row {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(44,62,80,0.10);
+  padding: 18px 12px 12px 12px;
+  margin-top: 32px;
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+}
+@media (max-width: 1200px) {
+  .cierre-main-row { flex-direction: column; gap: 18px; }
+  .cierre-col-izq, .cierre-col-der { min-width: 0; }
+  .cierre-botones-row { flex-direction: column; gap: 12px; }
+}
+@media (max-width: 768px) {
+  .cierre-main-row { flex-direction: column; gap: 8px; }
+  .cierre-col-izq, .cierre-col-der { padding: 8px 2px; }
+  .cierre-botones-row { flex-direction: column; gap: 8px; padding: 10px 2px; }
+}
 </style>
 
 <div class="cierre-container">
   <div class="container">
-    <div class="row justify-content-center">
-      <div class="col-md-11 col-lg-10">
-        <div class="cierre-card">
+    <div class="cierre-main-row">
+      <!-- Columna 1: Cierre de Caja -->
+      <div class="cierre-col-izq">
+        <div class="cierre-card" style="box-shadow:none; padding:0; background:none;">
           <div class="cierre-header">
             <h4 class="mb-0">Cierre de Caja</h4>
           </div>
@@ -374,7 +535,7 @@
               <input type="date" id="fecha-cierre"
                 class="form-control form-control-sm text-center"
                 style="width: 160px; font-weight: bold; border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(44,62,80,0.08); border: 1px solid #b2bec3; text-align: center; padding-left: 0.5rem;"
-                value="{{ fecha_iso }}" max="{{ fecha_iso }}">
+                value="{{ fecha_iso }}">
             </div>
             <small class="d-block text-white-50 mt-2" style="font-size: 0.92rem;">
               Fecha actual: <span style="font-weight: 600;">{{ fecha_mostrar }}</span>
@@ -393,49 +554,59 @@
                    <td class="field-label">
                      Ingresos
                    </td>
-                   <td class="field-value positive-value clickable-ingresos" id="ingresos-total">{{ ingresos }}</td>
+                   <td class="field-value positive-value" id="ingresos-total">{{ ingresos }}</td>
+                 </tr>
+                 <tr>
+                   <td class="field-label">
+                     Ingresos Extra
+                     <button type="button" class="btn btn-outline-primary btn-sm ms-2" id="btn-ingresos-modal" data-bs-toggle="modal" data-bs-target="#ingresosModal">
+                       <i class="fas fa-plus"></i>
+                     </button>
+                   </td>
+                   <td class="field-value positive-value" id="ingresos-extra-total">0</td>
                  </tr>
                  <tr class="total-row">
                    <td class="field-label">
                      Total ingresos
                    </td>
-                   <td class="field-value animated-value calculated-field" id="total-ingresos" title="Saldo inicial + Ingresos">0</td>
+                   <td class="field-value animated-value calculated-field" id="total-ingresos" title="Saldo inicial + Ingresos + Ingresos Extra">0</td>
                  </tr>
                  <tr>
                    <td class="field-label">
                      Egresos
                    </td>
-                   <td class="field-value negative-value">{{ egresos }}</td>
+                   <td class="field-value negative-value" id="egresos">{{ egresos }}</td>
                  </tr>
                  <tr>
-                   <td class="field-label info-field" title="Pedir cierre Detal">
-                     Egresos detal
+                   <td class="field-label">
+                     Ingresos hacia detal
                    </td>
                    <td>
-                     <input type="text" id="egresos-detal" class="editable-field" inputmode="numeric" placeholder="Ingresa monto...">
+                     <input type="text" id="egresos-detal" class="editable-field" inputmode="numeric" pattern="[0-9]*" placeholder="0" value="{{ egresos_detal }}">
                    </td>
                  </tr>
                  <tr>
-                   <td class="field-label info-field" title="Revisar grupo de gastos">
+                   <td class="field-label">
                      Gastos
+                     <button type="button" class="btn btn-outline-secondary btn-sm ms-2" id="btn-gastos-modal" data-bs-toggle="modal" data-bs-target="#gastosModal">
+                       <i class="fas fa-plus"></i>
+                     </button>
                    </td>
-                   <td>
-                     <input type="text" id="gastos" class="editable-field" inputmode="numeric" placeholder="Ingresa monto...">
-                   </td>
+                   <td class="field-value negative-value" id="gastos-total">0</td>
                  </tr>
                  <tr>
-                   <td class="field-label info-field" title="Consultar a Gilmar">
+                   <td class="field-label">
                      Pago móvil
                    </td>
                    <td>
-                     <input type="text" id="pago-movil" class="editable-field" inputmode="numeric" placeholder="Ingresa monto...">
+                     <input type="text" id="pago-movil" class="editable-field" inputmode="numeric" placeholder="Ingresa monto..." value="0">
                    </td>
                  </tr>
                  <tr class="total-row">
                    <td class="field-label">
                      Total egresos
                    </td>
-                   <td class="field-value animated-value calculated-field" id="total-egresos" title="Egresos + Egresos detal + Gastos + Pago móvil">0</td>
+                   <td class="field-value animated-value calculated-field" id="total-egresos" title="Egresos + Ingresos hacia detal + Gastos + Pago móvil">0</td>
                  </tr>
                  <tr class="mayor-row">
                    <td class="field-label">
@@ -444,7 +615,7 @@
                    <td class="field-value animated-value calculated-field" id="cierre-mayor" title="Total ingresos - Total egresos">0</td>
                  </tr>
                  <tr>
-                   <td class="field-label info-field" title="Pedir cierre Detal">
+                   <td class="field-label">
                      Cierre Detal
                    </td>
                    <td>
@@ -461,99 +632,138 @@
             </table>
                      </div>
          </div>
-         
-         <!-- Saldo en Bancos - Campo separado -->
-         <div class="mt-2">
-           <div class="card border-info">
-             <div class="card-header bg-info text-white text-center py-2">
-               <h6 class="mb-0">💳 Saldo en Bancos</h6>
-             </div>
-             <div class="card-body py-2 text-center">
-               <div class="row align-items-center">
-                 <div class="col-md-4">
-                   <span class="field-label info-field" title="Preguntar a Gilmar">
-                     <strong>Saldo Actual:</strong>
-                   </span>
-                 </div>
-                 <div class="col-md-8">
-                   <input type="text" id="saldo-bancos" class="form-control text-center" inputmode="numeric" placeholder="Ingresa monto..." style="font-size: 1rem; font-weight: bold;">
-                 </div>
-               </div>
-               <small class="text-muted mt-1 d-block">Independiente del cierre de caja</small>
-             </div>
-           </div>
-         </div>
-         
-         <!-- Cuadre - Tarjeta independiente -->
-         <div class="mt-2">
-           <div class="card" id="cuadre-card">
-             <div class="card-header text-white text-center py-2" id="cuadre-header">
-               <h6 class="mb-0">⚖️ Cuadre</h6>
-             </div>
-             <div class="card-body py-2 text-center">
-               <div class="row mb-2">
-                 <div class="col-md-4">
-                   <div class="card bg-light">
-                     <div class="card-body py-2">
-                       <small class="card-title">Cierre Final</small>
-                       <div class="h6 text-primary mb-0" id="cuadre-cierre-final">0</div>
-                     </div>
-                   </div>
-                 </div>
-                 <div class="col-md-4">
-                   <div class="card bg-light">
-                     <div class="card-body py-2">
-                       <small class="card-title">Saldo Bancos</small>
-                       <div class="h6 text-info mb-0" id="cuadre-saldo-bancos">0</div>
-                     </div>
-                   </div>
-                 </div>
-                 <div class="col-md-4">
-                   <div class="card" id="diferencia-card">
-                     <div class="card-body py-2">
-                       <small class="card-title">Diferencia</small>
-                       <div class="h6 mb-0" id="cuadre-diferencia">0</div>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-               
-               <div class="alert py-2 mb-1" role="alert" id="cuadre-status">
-                 <small class="mb-0" id="cuadre-mensaje">Ingresa el saldo en bancos para calcular el cuadre</small>
-               </div>
-               
-               <small class="text-muted">Diferencia = Cierre Final - Saldo en Bancos</small>
-             </div>
-           </div>
-         </div>
+      </div>
+      <!-- Columna 2: Saldo en Bancos y Cuadre agrupados -->
+      <div class="cierre-col-der">
+        <div class="card-grouped">
+          <!-- Saldo en Bancos -->
+          <div class="card border-info mb-2">
+            <div class="card-header bg-info text-white text-center py-2">
+              <h6 class="mb-0">💳 Saldo en Bancos</h6>
+            </div>
+            <div class="card-body py-2 text-center">
+              <div class="row align-items-center">
+                <div class="col-5">
+                  <span class="field-label info-field" title="Preguntar a Gilmar">
+                    <strong>Saldo Actual:</strong>
+                  </span>
+                </div>
+                <div class="col-7">
+                  <input type="text" id="saldo-bancos" class="form-control text-center" inputmode="numeric" placeholder="Ingresa monto..." style="font-size: 1rem; font-weight: bold;">
+                </div>
+              </div>
+              <small class="text-muted mt-1 d-block">Independiente del cierre de caja</small>
+            </div>
+          </div>
+          <!-- Cuadre -->
+          <div class="card" id="cuadre-card">
+            <div class="card-header text-white text-center py-2" id="cuadre-header">
+              <h6 class="mb-0">⚖️ Cuadre</h6>
+            </div>
+            <div class="card-body py-2 text-center">
+              <div class="cuadre-grafico">[Gráfico aquí próximamente]</div>
+              <div class="row mb-2">
+                <div class="col-4">
+                  <div class="card bg-light">
+                    <div class="card-body py-2">
+                      <small class="card-title">Cierre Final</small>
+                      <div class="h6 text-primary mb-0" id="cuadre-cierre-final">0</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="card bg-light">
+                    <div class="card-body py-2">
+                      <small class="card-title">Saldo Bancos</small>
+                      <div class="h6 text-info mb-0" id="cuadre-saldo-bancos">0</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="card" id="diferencia-card">
+                    <div class="card-body py-2">
+                      <small class="card-title">Diferencia</small>
+                      <div class="h6 mb-0" id="cuadre-diferencia">0</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="alert py-2 mb-1" role="alert" id="cuadre-status">
+                <small class="mb-0" id="cuadre-mensaje">Ingresa el saldo en bancos para calcular el cuadre</small>
+              </div>
+              <small class="text-muted">Diferencia = Cierre Final - Saldo en Bancos</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Botones de acción al final -->
+    <div class="cierre-botones-row">
+      <button type="button" class="btn btn-success btn-lg w-100" id="btn-realizar-cierre">
+        <i class="fas fa-save me-2"></i>💾 Realizar Cierre
+      </button>
+      <a href="{{ url_for('cierre.historial') }}" class="btn btn-info btn-lg w-100" style="text-decoration: none;">
+        <i class="fas fa-history me-2"></i>📋 Ver Historial
+      </a>
+    </div>
+    <div class="mt-2 text-center" id="estado-guardado" style="display: none;">
+      <small class="text-success">
+        <i class="fas fa-check-circle me-1"></i>
+        <span id="mensaje-guardado">Cierre guardado exitosamente</span>
+      </small>
+    </div>
+  </div>
+</div>
 
-         <!-- Botones de acción -->
-         <div class="mt-3 text-center">
-           <div class="row justify-content-center">
-             <div class="col-md-6 mb-2">
-               <button type="button" class="btn btn-success btn-lg w-100 py-3" id="btn-realizar-cierre" style="font-size: 1.1rem; font-weight: bold; border-radius: 15px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
-                 <i class="fas fa-save me-2"></i>💾 Realizar Cierre
-               </button>
-             </div>
-             <div class="col-md-6 mb-2">
-               <a href="{{ url_for('cierre.historial') }}" class="btn btn-info btn-lg w-100 py-3" style="font-size: 1.1rem; font-weight: bold; border-radius: 15px; box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3); text-decoration: none;">
-                 <i class="fas fa-history me-2"></i>📋 Ver Historial
-               </a>
-             </div>
-           </div>
-           <div class="mt-2" id="estado-guardado" style="display: none;">
-             <small class="text-success">
-               <i class="fas fa-check-circle me-1"></i>
-               <span id="mensaje-guardado">Cierre guardado exitosamente</span>
-             </small>
-           </div>
-         </div>
-       </div>
-     </div>
-   </div>
- </div>
+<!-- Modal para Gastos -->
+<div class="modal fade" id="gastosModal" tabindex="-1" aria-labelledby="gastosModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="gastosModalLabel">🧾 Detalle de Gastos</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6>Agregar Gasto:</h6>
+          <button type="button" class="btn btn-warning btn-sm" id="agregar-gasto-modal">
+            ➕ Agregar
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-striped" id="tabla-gastos">
+            <thead class="table-dark">
+              <tr>
+                <th>Concepto</th>
+                <th>Monto</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-gastos">
+              <!-- Los gastos se agregarán aquí dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="card bg-warning text-dark">
+              <div class="card-body text-center">
+                <h6 class="card-title">Total Gastos</h6>
+                <h3 id="total-gastos-modal">0</h3>
+                <small>Suma de todos los conceptos</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-<!-- Modal para Ingresos Extra -->
+<!-- Botón y campo Ingresos Extra -->
 <div class="modal fade" id="ingresosModal" tabindex="-1" aria-labelledby="ingresosModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -562,32 +772,12 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <div class="card bg-light">
-              <div class="card-body text-center">
-                <h6 class="card-title">Ingresos Binance</h6>
-                <h4 class="text-success" id="ingresos-binance">{{ ingresos }}</h4>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="card bg-light">
-              <div class="card-body text-center">
-                <h6 class="card-title">Ingresos Extra</h6>
-                <h4 class="text-info" id="total-extra">0</h4>
-              </div>
-            </div>
-          </div>
-        </div>
-        
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h6>Agregar Ingresos Extra:</h6>
-          <button type="button" class="btn btn-success btn-sm" id="agregar-ingreso">
+          <h6>Agregar Ingreso Extra:</h6>
+          <button type="button" class="btn btn-primary btn-sm" id="agregar-ingreso">
             ➕ Agregar
           </button>
         </div>
-        
         <div class="table-responsive">
           <table class="table table-striped" id="tabla-ingresos-extra">
             <thead class="table-dark">
@@ -602,22 +792,20 @@
             </tbody>
           </table>
         </div>
-        
         <div class="row mt-3">
           <div class="col-12">
-            <div class="card bg-success text-white">
+            <div class="card bg-primary text-white">
               <div class="card-body text-center">
-                <h6 class="card-title">Total Ingresos</h6>
-                <h3 id="total-ingresos-modal">{{ ingresos }}</h3>
-                <small>Binance + Extra</small>
+                <h6 class="card-title">Total Ingresos Extra</h6>
+                <h3 id="total-ingresos-modal">0</h3>
+                <small>Suma de todos los conceptos</small>
               </div>
             </div>
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="guardar-ingresos">Guardar y Cerrar</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
       </div>
     </div>
   </div>
@@ -629,11 +817,19 @@ document.addEventListener('DOMContentLoaded', function() {
   const saldoInicial = {{ saldo_inicial|replace(".", "") }};
   const ingresosBinance = {{ ingresos|replace(".", "") }};
   let ingresosExtra = 0;
-  let totalIngresos = ingresosBinance;
+  let totalIngresos = saldoInicial + ingresosBinance + ingresosExtra;
   const egresos = {{ egresos|replace(".", "") }};
   
+  // Al inicio del script principal, inyectar los datos guardados desde Jinja:
+  const ingresosExtraDetalle = {{ ingresos_extra_detalle|tojson|safe }};
+  const gastosDetalle = {{ gastos_detalle|tojson|safe }};
+  const pagoMovilGuardado = {{ pago_movil|default(0) }};
+  const cierreDetalGuardado = {{ cierre_detal|default(0) }};
+  const saldoBancosGuardado = {{ saldo_bancos|default(0) }};
+  const egresosDetalGuardado = "{{ egresos_detal }}";
+  
   // Calcular total ingresos inicial
-  const calcularTotalIngresos = () => saldoInicial + totalIngresos;
+  const calcularTotalIngresos = () => totalIngresos;
   
   // Formatear y mostrar con animación
   function updateValueWithAnimation(elementId, value, isPositive = null) {
@@ -693,13 +889,13 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Función para calcular total egresos
   function calcularTotalEgresos() {
-    const egresosDetal = parseInt(document.getElementById('egresos-detal').value.replace(/[^\d]/g, '')) || 0;
-    const gastos = parseInt(document.getElementById('gastos').value.replace(/[^\d]/g, '')) || 0;
+    const egresos = parseInt(document.getElementById('egresos').textContent.replace(/[^\d]/g, '')) || 0;
+    const ingresosHaciaDetal = parseInt(document.getElementById('egresos-detal').value.replace(/[^\d]/g, '')) || 0;
+    const gastos = parseInt(document.getElementById('gastos-total').textContent.replace(/[^\d]/g, '')) || 0;
     const pagoMovil = parseInt(document.getElementById('pago-movil').value.replace(/[^\d]/g, '')) || 0;
-    
-    const totalEgresos = egresos + egresosDetal + gastos + pagoMovil;
+    console.log('egresos:', egresos, 'ingresosHaciaDetal:', ingresosHaciaDetal, 'gastos:', gastos, 'pagoMovil:', pagoMovil);
+    const totalEgresos = egresos + ingresosHaciaDetal + gastos + pagoMovil;
     updateValueWithAnimation('total-egresos', totalEgresos, false);
-    
     return totalEgresos;
   }
   
@@ -716,9 +912,12 @@ document.addEventListener('DOMContentLoaded', function() {
   function calcularCierreFinal() {
     const cierreMayor = parseInt(document.getElementById('cierre-mayor').textContent.replace(/[^\d]/g, '')) || 0;
     const cierreDetal = parseInt(document.getElementById('cierre-detal').value.replace(/[^\d]/g, '')) || 0;
-    
     const cierreFinal = cierreMayor + cierreDetal;
     updateValueWithAnimation('cierre-final', cierreFinal, cierreFinal >= 0);
+    setTimeout(() => {
+      document.getElementById('cuadre-cierre-final').textContent = document.getElementById('cierre-final').textContent;
+      calcularCuadre();
+    }, 350);
   }
   
   // Función combinada para recalcular todo
@@ -732,15 +931,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 300);
   }
   
-  // Inicializar valores
+  // Inicializar valores y recalcular todo al cargar
   updateValueWithAnimation('total-ingresos', calcularTotalIngresos(), true);
   setTimeout(() => {
     recalcularTodo();
   }, 500);
   
   // Event listeners
-  document.getElementById('egresos-detal').addEventListener('input', recalcularTodo);
-  document.getElementById('gastos').addEventListener('input', recalcularTodo);
+  const gastosInput = document.getElementById('gastos');
+  if (gastosInput) {
+    gastosInput.addEventListener('input', recalcularTodo);
+  }
   document.getElementById('pago-movil').addEventListener('input', recalcularTodo);
   document.getElementById('cierre-detal').addEventListener('input', calcularCierreFinal);
   
@@ -756,90 +957,91 @@ document.addEventListener('DOMContentLoaded', function() {
      });
    });
    
-   // Funcionalidad del modal de ingresos extra
-   let ingresosExtraList = [];
-   
-   // Abrir modal al hacer clic en ingresos
-   document.getElementById('ingresos-total').addEventListener('click', function() {
-     const modal = new bootstrap.Modal(document.getElementById('ingresosModal'));
-     modal.show();
-     actualizarModalIngresos();
-   });
-   
-   // Agregar nuevo ingreso extra
-   document.getElementById('agregar-ingreso').addEventListener('click', function() {
-     const tbody = document.getElementById('tbody-ingresos');
-     const row = document.createElement('tr');
-     const index = ingresosExtraList.length;
-     
-     row.innerHTML = `
-       <td><input type="text" class="form-control" placeholder="Concepto..." id="concepto-${index}"></td>
-       <td><input type="number" class="form-control" placeholder="0" id="monto-${index}" step="0.01"></td>
-       <td><button type="button" class="btn btn-danger btn-sm" onclick="eliminarIngreso(${index})">🗑️</button></td>
-     `;
-     
-     tbody.appendChild(row);
-     ingresosExtraList.push({ concepto: '', monto: 0 });
-     
-     // Event listeners para actualizar en tiempo real
-     document.getElementById(`monto-${index}`).addEventListener('input', calcularTotalExtra);
-   });
-   
-   // Eliminar ingreso extra
-   window.eliminarIngreso = function(index) {
-     const row = document.querySelector(`#concepto-${index}`).closest('tr');
-     row.remove();
-     ingresosExtraList.splice(index, 1);
-     calcularTotalExtra();
-   };
-   
-   // Calcular total de ingresos extra
-   function calcularTotalExtra() {
+   // Funcionalidad del modal de gastos
+   let gastosList = [];
+   function actualizarGastos() {
      let total = 0;
-     ingresosExtraList.forEach((item, index) => {
-       const montoInput = document.getElementById(`monto-${index}`);
+     gastosList.forEach((item, idx) => {
+       const montoInput = document.getElementById(`gasto-monto-${idx}`);
        if (montoInput) {
          const monto = parseFloat(montoInput.value) || 0;
          total += monto;
+         gastosList[idx].monto = monto;
        }
      });
-     
-     ingresosExtra = total;
-     document.getElementById('total-extra').textContent = total.toLocaleString('de-DE');
-     
-     const totalConBinance = ingresosBinance + total;
-     document.getElementById('total-ingresos-modal').textContent = totalConBinance.toLocaleString('de-DE');
+     document.getElementById('total-gastos-modal').textContent = total.toLocaleString('de-DE');
+     document.getElementById('gastos-total').textContent = total.toLocaleString('de-DE');
+     recalcularTodo();
    }
-   
-   // Actualizar datos del modal
-   function actualizarModalIngresos() {
-     document.getElementById('ingresos-binance').textContent = ingresosBinance.toLocaleString('de-DE');
-     calcularTotalExtra();
-   }
-   
-   // Guardar y cerrar modal
-   document.getElementById('guardar-ingresos').addEventListener('click', function() {
-     // Actualizar el total de ingresos en la tabla principal
-     totalIngresos = ingresosBinance + ingresosExtra;
-     
-     // Actualizar el display
-     document.getElementById('ingresos-total').textContent = totalIngresos.toLocaleString('de-DE');
-     
-     // Recalcular totales
-     updateValueWithAnimation('total-ingresos', calcularTotalIngresos(), true);
-     setTimeout(() => {
-       recalcularTodo();
-     }, 300);
-     
-     // Cerrar modal
-     const modal = bootstrap.Modal.getInstance(document.getElementById('ingresosModal'));
-     modal.hide();
+   document.addEventListener('click', function(e) {
+     if (e.target && e.target.id === 'agregar-gasto-modal') {
+       const tbody = document.getElementById('tbody-gastos');
+       const idx = gastosList.length;
+       const row = document.createElement('tr');
+       row.innerHTML = `
+         <td><input type="text" class="form-control" placeholder="Concepto..." id="gasto-concepto-${idx}"></td>
+         <td><input type="number" class="form-control" placeholder="0" id="gasto-monto-${idx}" step="0.01"></td>
+         <td><button type="button" class="btn btn-danger btn-sm" onclick="eliminarGasto(${idx})">🗑️</button></td>
+       `;
+       tbody.appendChild(row);
+       gastosList.push({ concepto: '', monto: 0 });
+       document.getElementById(`gasto-monto-${idx}`).addEventListener('input', actualizarGastos);
+     }
    });
+   window.eliminarGasto = function(idx) {
+     const row = document.getElementById(`gasto-concepto-${idx}`).closest('tr');
+     row.remove();
+     gastosList[idx] = null;
+     gastosList = gastosList.filter(x => x !== null);
+     actualizarGastos();
+   };
+   
+   // Funcionalidad del modal de ingresos extra
+   let ingresosExtraList = [];
+   function actualizarIngresosExtra() {
+     let total = 0;
+     ingresosExtraList.forEach((item, idx) => {
+       const montoInput = document.getElementById(`ingreso-monto-${idx}`);
+       if (montoInput) {
+         const monto = parseFloat(montoInput.value) || 0;
+         total += monto;
+         ingresosExtraList[idx].monto = monto;
+       }
+     });
+     document.getElementById('total-ingresos-modal').textContent = total.toLocaleString('de-DE');
+     document.getElementById('ingresos-extra-total').textContent = total.toLocaleString('de-DE');
+     ingresosExtra = total;
+     totalIngresos = saldoInicial + ingresosBinance + ingresosExtra;
+     updateValueWithAnimation('total-ingresos', calcularTotalIngresos(), true);
+     recalcularTodo();
+   }
+   document.getElementById('agregar-ingreso').addEventListener('click', function() {
+     const tbody = document.getElementById('tbody-ingresos');
+     const idx = ingresosExtraList.length;
+     const row = document.createElement('tr');
+     row.innerHTML = `
+       <td><input type="text" class="form-control" placeholder="Concepto..." id="ingreso-concepto-${idx}"></td>
+       <td><input type="number" class="form-control" placeholder="0" id="ingreso-monto-${idx}" step="0.01"></td>
+       <td><button type="button" class="btn btn-danger btn-sm" onclick="eliminarIngreso(${idx})">🗑️</button></td>
+     `;
+     tbody.appendChild(row);
+     ingresosExtraList.push({ concepto: '', monto: 0 });
+     document.getElementById(`ingreso-monto-${idx}`).addEventListener('input', actualizarIngresosExtra);
+   });
+   window.eliminarIngreso = function(idx) {
+     const row = document.getElementById(`ingreso-concepto-${idx}`).closest('tr');
+     row.remove();
+     ingresosExtraList[idx] = null;
+     ingresosExtraList = ingresosExtraList.filter(x => x !== null);
+     actualizarIngresosExtra();
+   };
    
    // Funcionalidad del cuadre
    function calcularCuadre() {
-     const cierreFinal = parseInt(document.getElementById('cierre-final').textContent.replace(/[^\d-]/g, '')) || 0;
-     const saldoBancos = parseInt(document.getElementById('saldo-bancos').value.replace(/[^\d]/g, '')) || 0;
+     const cierreFinal = parseInt(document.getElementById('cuadre-cierre-final').textContent.replace(/[^\d-]/g, '')) || 0;
+     let saldoRaw = document.getElementById('saldo-bancos').value;
+     saldoRaw = saldoRaw.replace(/\./g, '').replace(',', '.');
+     const saldoBancos = Math.round(parseFloat(saldoRaw)) || 0;
      
      // Actualizar valores en la tarjeta de cuadre
      document.getElementById('cuadre-cierre-final').textContent = cierreFinal.toLocaleString('de-DE');
@@ -913,8 +1115,8 @@ document.addEventListener('DOMContentLoaded', function() {
      // Obtener ingresos extra del modal
      let ingresosExtraDetalle = [];
      ingresosExtraList.forEach((item, index) => {
-       const conceptoInput = document.getElementById(`concepto-${index}`);
-       const montoInput = document.getElementById(`monto-${index}`);
+       const conceptoInput = document.getElementById(`ingreso-concepto-${index}`);
+       const montoInput = document.getElementById(`ingreso-monto-${index}`);
        if (conceptoInput && montoInput && conceptoInput.value.trim() && montoInput.value) {
          ingresosExtraDetalle.push({
            concepto: conceptoInput.value.trim(),
@@ -923,14 +1125,17 @@ document.addEventListener('DOMContentLoaded', function() {
        }
      });
 
+     let egresosDetal = document.getElementById('egresos-detal').value;
+     egresosDetal = parseInt(egresosDetal.replace(/[^\d]/g, '')) || 0;
+
      return {
        saldo_inicial: saldoInicial,
        ingresos_binance: ingresosBinance,
        ingresos_extra: ingresosExtra,
        total_ingresos: parseInt(document.getElementById('total-ingresos').textContent.replace(/[^\d]/g, '')) || 0,
        egresos_pedidos: egresos,
-       egresos_detal: parseInt(document.getElementById('egresos-detal').value.replace(/[^\d]/g, '')) || 0,
-       gastos: parseInt(document.getElementById('gastos').value.replace(/[^\d]/g, '')) || 0,
+       egresos_detal: egresosDetal,
+       gastos: gastosList.reduce((acc, item) => acc + (item && item.monto ? parseFloat(item.monto) : 0), 0),
        pago_movil: parseInt(document.getElementById('pago-movil').value.replace(/[^\d]/g, '')) || 0,
        cierre_detal: parseInt(document.getElementById('cierre-detal').value.replace(/[^\d]/g, '')) || 0,
        saldo_bancos: parseInt(document.getElementById('saldo-bancos').value.replace(/[^\d]/g, '')) || 0,
@@ -938,7 +1143,9 @@ document.addEventListener('DOMContentLoaded', function() {
        cierre_mayor: parseInt(document.getElementById('cierre-mayor').textContent.replace(/[^\d]/g, '')) || 0,
        cierre_final: parseInt(document.getElementById('cierre-final').textContent.replace(/[^\d]/g, '')) || 0,
        diferencia: parseInt(document.getElementById('cuadre-diferencia').textContent.replace(/[^\d-]/g, '')) || 0,
-       ingresos_extra_detalle: ingresosExtraDetalle
+       ingresos_extra_detalle: ingresosExtraDetalle,
+       gastos_detalle: gastosList,
+       fecha: document.getElementById('fecha-cierre').value
      };
    }
 
@@ -953,6 +1160,7 @@ document.addEventListener('DOMContentLoaded', function() {
      
      try {
        const datosCierre = recopilarDatosCierre();
+       datosCierre.gastos_detalle = gastosList;
        
        const response = await fetch('/cierre/guardar', {
          method: 'POST',
@@ -1017,16 +1225,106 @@ document.addEventListener('DOMContentLoaded', function() {
    // Event listener para el botón de realizar cierre
    document.getElementById('btn-realizar-cierre').addEventListener('click', guardarCierre);
 
-   // Listener para cambio de fecha
-   const fechaInput = document.getElementById('fecha-cierre');
+   // Script para recargar al cambiar la fecha
+   var fechaInput = document.getElementById('fecha-cierre');
    if (fechaInput) {
      fechaInput.addEventListener('change', function() {
-       if (this.value) {
-         const baseUrl = '{{ url_for('cierre.index') }}';
-         window.location.href = baseUrl + '?fecha=' + this.value;
+       const fecha = this.value;
+       if (fecha) {
+         window.location.href = '?fecha=' + fecha;
        }
      });
    }
- });
+
+   // En el script, agrega el listener y el formateo:
+   document.getElementById('egresos-detal').addEventListener('input', function() {
+     let value = this.value.replace(/[^\d]/g, '');
+     if (value) {
+       this.value = parseInt(value).toLocaleString('de-DE');
+     }
+     recalcularTodo();
+   });
+
+   // Rellenar ingresos extra si hay datos guardados
+   (function() {
+     const tbody = document.getElementById('tbody-ingresos');
+     ingresosExtraList = [];
+     tbody.innerHTML = '';
+     let datos = Array.isArray(ingresosExtraDetalle) ? ingresosExtraDetalle : [];
+     if (datos.length === 0) {
+       datos = [{ concepto: '', monto: 0 }];
+     }
+     datos.forEach((item, idx) => {
+       const row = document.createElement('tr');
+       row.innerHTML = `
+         <td><input type="text" class="form-control" placeholder="Concepto..." id="ingreso-concepto-${idx}" value="${item.concepto ?? ''}"></td>
+         <td><input type="number" class="form-control" placeholder="0" id="ingreso-monto-${idx}" step="0.01" value="${item.monto ?? 0}"></td>
+         <td><button type="button" class="btn btn-danger btn-sm" onclick="eliminarIngreso(${idx})">🗑️</button></td>
+       `;
+       tbody.appendChild(row);
+       ingresosExtraList.push({ concepto: item.concepto ?? '', monto: item.monto ?? 0 });
+       document.getElementById(`ingreso-monto-${idx}`).addEventListener('input', actualizarIngresosExtra);
+     });
+     actualizarIngresosExtra();
+   })();
+   // Rellenar gastos si hay datos guardados
+   (function() {
+     const tbody = document.getElementById('tbody-gastos');
+     gastosList = [];
+     tbody.innerHTML = '';
+     let datos = Array.isArray(gastosDetalle) ? gastosDetalle : [];
+     if (datos.length === 0) {
+       datos = [{ concepto: '', monto: 0 }];
+     }
+     datos.forEach((item, idx) => {
+       const row = document.createElement('tr');
+       row.innerHTML = `
+         <td><input type="text" class="form-control" placeholder="Concepto..." id="gasto-concepto-${idx}" value="${item.concepto ?? ''}"></td>
+         <td><input type="number" class="form-control" placeholder="0" id="gasto-monto-${idx}" step="0.01" value="${item.monto ?? 0}"></td>
+         <td><button type="button" class="btn btn-danger btn-sm" onclick="eliminarGasto(${idx})">🗑️</button></td>
+       `;
+       tbody.appendChild(row);
+       gastosList.push({ concepto: item.concepto ?? '', monto: item.monto ?? 0 });
+       document.getElementById(`gasto-monto-${idx}`).addEventListener('input', actualizarGastos);
+     });
+     actualizarGastos();
+   })();
+   // Rellenar campos editables con valores guardados (forzar SIEMPRE el valor del backend, aunque sea 0 o vacío)
+   if (document.getElementById('egresos-detal')) {
+     let val = egresosDetalGuardado ?? '';
+     if (!isNaN(val)) {
+       val = parseInt(val, 10);
+     }
+     document.getElementById('egresos-detal').value = val || '';
+   }
+   if (document.getElementById('pago-movil')) {
+     document.getElementById('pago-movil').value = pagoMovilGuardado ?? '';
+   }
+   if (document.getElementById('cierre-detal')) {
+     document.getElementById('cierre-detal').value = cierreDetalGuardado ?? '';
+   }
+   if (document.getElementById('saldo-bancos')) {
+     document.getElementById('saldo-bancos').value = saldoBancosGuardado ?? '';
+   }
+   setTimeout(function() {
+     document.getElementById('cuadre-cierre-final').textContent = document.getElementById('cierre-final').textContent;
+     calcularCuadre();
+   }, 700);
+});
+</script>
+
+<!-- Script para recargar al cambiar la fecha de cierre -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var fechaInput = document.getElementById('fecha-cierre');
+  if (fechaInput) {
+    fechaInput.addEventListener('change', function() {
+      const fecha = this.value;
+      if (fecha) {
+        window.location.href = '?fecha=' + fecha;
+      }
+    });
+  }
+});
 </script>
 {% endblock %} 

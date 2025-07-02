@@ -37,10 +37,10 @@ def index():
         if response_ayer.data:
             saldo_inicial = float(response_ayer.data[0].get("cierre_final", 0))
         else:
-            saldo_inicial = 215027
+            saldo_inicial = 248957
     except Exception as e:
         logging.error("Error al obtener saldo inicial: %s", e)
-        saldo_inicial = 215027
+        saldo_inicial = 248957
     
     # Consulta ingresos (compras)
     try:
@@ -59,18 +59,73 @@ def index():
     
     # Consulta egresos (pedidos)
     try:
-        resp_ped = supabase.table("pedidos").select("brs").eq("fecha", fecha).eq("eliminado", False).execute()
-        total_egresos_brs = sum(item.get("brs", 0) for item in resp_ped.data) if resp_ped.data else 0
+        resp_ped = supabase.table("pedidos").select("brs,cliente").eq("fecha", fecha).eq("eliminado", False).execute()
+        egresos_no_detal = sum(item.get("brs", 0) for item in resp_ped.data if item.get("cliente") != "DETAL") if resp_ped.data else 0
+        egresos_detal = sum(item.get("brs", 0) for item in resp_ped.data if item.get("cliente") == "DETAL") if resp_ped.data else 0
     except Exception as e:
         logging.error("Error al obtener egresos: %s", e)
-        total_egresos_brs = 0
-    formatted_egresos = format(total_egresos_brs, ",.0f").replace(",", ".")
+        egresos_no_detal = 0
+        egresos_detal = 0
+    formatted_egresos = format(egresos_no_detal, ",.0f").replace(",", ".")
+    formatted_egresos_detal = format(egresos_detal, ",.0f").replace(",", ".")
     formatted_saldo_inicial = format(saldo_inicial, ",.0f").replace(",", ".")
+
+    # Buscar si ya existe un cierre guardado para la fecha seleccionada
+    cierre_guardado = None
+    try:
+        cierre_resp = supabase.table("cierre_caja").select("*").eq("fecha", fecha).execute()
+        if cierre_resp.data:
+            cierre_guardado = cierre_resp.data[0]
+    except Exception as e:
+        logging.error(f"Error al consultar cierre guardado: {e}")
+
+    # Valores por defecto
+    egresos_detal = ''
+    gastos = 0
+    pago_movil = 0
+    cierre_detal = 0
+    saldo_bancos = 0
+    ingresos_extra_detalle = []
+    gastos_detalle = []
+
+    # Si hay cierre guardado, sobreescribir valores SOLO de los campos manuales
+    if cierre_guardado:
+        egresos_detal = str(cierre_guardado.get("egresos_detal", ''))
+        gastos = cierre_guardado.get("gastos", 0)
+        pago_movil = cierre_guardado.get("pago_movil", 0)
+        cierre_detal = cierre_guardado.get("cierre_detal", 0)
+        saldo_bancos = cierre_guardado.get("saldo_bancos", 0)
+        # Refuerzo para ingresos_extra_detalle
+        try:
+            ingresos_extra_detalle = cierre_guardado.get("ingresos_extra_detalle", "[]")
+            if not ingresos_extra_detalle:
+                ingresos_extra_detalle = []
+            elif isinstance(ingresos_extra_detalle, str):
+                ingresos_extra_detalle = json.loads(ingresos_extra_detalle)
+            if not isinstance(ingresos_extra_detalle, list):
+                ingresos_extra_detalle = []
+        except Exception:
+            ingresos_extra_detalle = []
+        # Refuerzo para gastos_detalle
+        try:
+            gastos_detalle = cierre_guardado.get("gastos_detalle", "[]")
+            if not gastos_detalle:
+                gastos_detalle = []
+            elif isinstance(gastos_detalle, str):
+                gastos_detalle = json.loads(gastos_detalle)
+            if not isinstance(gastos_detalle, list):
+                gastos_detalle = []
+        except Exception:
+            gastos_detalle = []
 
     return render_template('cierre/index.html', active_page='cierre',
                            ingresos=formatted_ingresos, egresos=formatted_egresos,
+                           egresos_detal=egresos_detal,
                            saldo_inicial=formatted_saldo_inicial, fecha_iso=fecha,
-                           fecha_mostrar=fecha_mostrar)
+                           fecha_mostrar=fecha_mostrar,
+                           gastos=gastos, pago_movil=pago_movil, cierre_detal=cierre_detal,
+                           saldo_bancos=saldo_bancos, ingresos_extra_detalle=ingresos_extra_detalle,
+                           gastos_detalle=gastos_detalle)
 
 @cierre_bp.route('/guardar', methods=['POST'])
 @login_required
@@ -79,7 +134,7 @@ def guardar_cierre():
     try:
         # Obtener datos del formulario
         data = request.get_json()
-        fecha = datetime.now().strftime('%Y-%m-%d')
+        fecha = data.get('fecha') or datetime.now().strftime('%Y-%m-%d')
         usuario_email = session.get('email', 'usuario_desconocido')
         
         # Validar datos requeridos
@@ -101,11 +156,11 @@ def guardar_cierre():
                 saldo_inicial = float(response_ayer.data[0].get("cierre_final", 0))
             else:
                 # Si no hay cierre del día anterior, usar valor por defecto
-                saldo_inicial = 215027  # Valor inicial proporcionado
+                saldo_inicial = 248957
                 
         except Exception as e:
             logging.error(f"Error al obtener saldo inicial en guardar: {e}")
-            saldo_inicial = 215027  # Valor de respaldo
+            saldo_inicial = 248957
             
         # Extraer valores del frontend
         ingresos_binance = float(data.get('ingresos_binance', 0))
@@ -114,6 +169,7 @@ def guardar_cierre():
         egresos_pedidos = float(data.get('egresos_pedidos', 0))
         egresos_detal = float(data.get('egresos_detal', 0))
         gastos = float(data.get('gastos', 0))
+        gastos_detalle = data.get('gastos_detalle', [])
         pago_movil = float(data.get('pago_movil', 0))
         cierre_detal = float(data.get('cierre_detal', 0))
         saldo_bancos = float(data.get('saldo_bancos', 0))
@@ -133,6 +189,7 @@ def guardar_cierre():
             'egresos_pedidos': egresos_pedidos,
             'egresos_detal': egresos_detal,
             'gastos': gastos,
+            'gastos_detalle': json.dumps(gastos_detalle),
             'pago_movil': pago_movil,
             'cierre_detal': cierre_detal,
             'saldo_bancos': saldo_bancos,
