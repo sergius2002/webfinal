@@ -255,15 +255,39 @@ def process_and_store_excel(file_path):
     except Exception as e:
         print(f"[{datetime.now()}] Error al borrar el archivo {file_path}: {e}")
 
+def procesar_archivos_bci():
+    """
+    Procesa todos los archivos BCI encontrados en uploads/transferencias/uploads
+    """
+    # Obtener el directorio actual del script
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # Directorio donde están los archivos subidos
+    uploads_dir = os.path.join(current_dir, "uploads", "transferencias", "uploads")
+    
+    if not os.path.exists(uploads_dir):
+        print(f"[{datetime.now()}] Directorio de uploads no existe: {uploads_dir}")
+        return
+    
+    # Buscar archivos BCI
+    bci_keyword = 'Movimientos_Detallado_Cuenta'
+    archivos_procesados = 0
+    
+    for archivo in os.listdir(uploads_dir):
+        if bci_keyword in archivo and archivo.lower().endswith('.xlsx'):
+            archivo_path = os.path.join(uploads_dir, archivo)
+            print(f"[{datetime.now()}] Procesando archivo BCI: {archivo}")
+            process_and_store_excel(archivo_path)
+            archivos_procesados += 1
+    
+    if archivos_procesados == 0:
+        print(f"[{datetime.now()}] No se encontraron archivos BCI para procesar.")
+    else:
+        print(f"[{datetime.now()}] Se procesaron {archivos_procesados} archivos BCI.")
+
 if __name__ == "__main__":
     try:
-        # Obtener el directorio actual del script
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        # Ruta al archivo Excel usando ruta relativa
-        excel_file_path = os.path.join(current_dir, "Bancos", "excel_detallado.xlsx")
-        
         print(f"[{datetime.now()}] Iniciando procesamiento de datos de BCI...")
-        process_and_store_excel(excel_file_path)
+        procesar_archivos_bci()
         print(f"[{datetime.now()}] Procesamiento completado exitosamente.")
     except Exception as e:
         print(f"[{datetime.now()}] Error durante la ejecución: {e}")

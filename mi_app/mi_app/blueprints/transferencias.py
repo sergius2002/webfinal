@@ -430,9 +430,7 @@ def procesar_archivo_inmediato(ruta_archivo, nombre_original):
         # Directorio base del proyecto
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         
-        # Carpetas de destino
-        bci_input_dir = os.path.join(base_dir, 'Bancos')
-        santander_input_dir = os.path.join(base_dir, 'Santander_archivos')
+        # Ya no necesitamos carpetas de destino, procesamos directamente desde uploads
         
         # Obtener ruta del Python del entorno virtual
         venv_python = os.path.join(base_dir, 'venv', 'bin', 'python3')
@@ -451,12 +449,8 @@ def procesar_archivo_inmediato(ruta_archivo, nombre_original):
         
         if bci_keyword in nombre_original:
             logging.info(f"Procesando archivo BCI: {nombre_original}")
-            os.makedirs(bci_input_dir, exist_ok=True)
-            destino = os.path.join(bci_input_dir, 'excel_detallado.xlsx')
-            shutil.copy2(ruta_archivo, destino)
-            logging.info(f"Archivo copiado a {destino}")
             
-            # Ejecutar script BCI con Python del entorno virtual
+            # Ejecutar script BCI directamente (sin copiar archivo)
             try:
                 subprocess.run([venv_python, 'bci.py'], cwd=base_dir, check=True, timeout=300)
                 logging.info("Script bci.py ejecutado exitosamente")
@@ -470,12 +464,8 @@ def procesar_archivo_inmediato(ruta_archivo, nombre_original):
                 
         elif santander_keyword in nombre_original:
             logging.info(f"Procesando archivo Santander: {nombre_original}")
-            os.makedirs(santander_input_dir, exist_ok=True)
-            destino = os.path.join(santander_input_dir, nombre_original)
-            shutil.copy2(ruta_archivo, destino)
-            logging.info(f"Archivo copiado a {destino}")
             
-            # Ejecutar script Santander con Python del entorno virtual
+            # Ejecutar script Santander directamente (sin copiar archivo)
             try:
                 subprocess.run([venv_python, 'Santander.py'], cwd=base_dir, check=True, timeout=300)
                 logging.info("Script Santander.py ejecutado exitosamente")

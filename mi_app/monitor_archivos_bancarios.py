@@ -10,15 +10,12 @@ BASE_DIR = os.path.dirname(__file__)
 # Carpeta donde tu web deja los archivos subidos
 UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads', 'transferencias', 'uploads')
 
-# Carpeta esperada por bci.py
-BCI_INPUT_DIR = os.path.join(BASE_DIR, 'Bancos')
+# Carpeta esperada por ambos scripts (ahora usan la misma)
+BCI_INPUT_DIR = os.path.join(BASE_DIR, 'Santander_archivos')
 BCI_EXPECTED_NAME = 'excel_detallado.xlsx'
 
 # Carpeta esperada por Santander.py (definida en la variable de entorno CARPETA_ARCHIVOS o carpeta por defecto)
-SANTANDER_INPUT_DIR = os.getenv(
-    'CARPETA_ARCHIVOS',
-    os.path.join(BASE_DIR, 'Santander_archivos')
-)
+SANTANDER_INPUT_DIR = os.path.join(BASE_DIR, 'Santander_archivos')
 
 # Palabras clave en nombre de archivo
 BCI_KEYWORD = 'Movimientos_Detallado_Cuenta'

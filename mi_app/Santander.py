@@ -49,8 +49,8 @@ logger.info("Inicio del script.")
 
 # Obtener el directorio del script actual
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-# Construir la ruta completa a la carpeta de archivos
-CARPETA_ARCHIVOS = os.path.join(SCRIPT_DIR, CARPETA_ARCHIVOS)
+# Construir la ruta completa a la carpeta de archivos (ahora en uploads)
+CARPETA_ARCHIVOS = os.path.join(SCRIPT_DIR, "uploads", "transferencias", "uploads")
 
 # Después de cargar las variables de entorno
 # logger.info(f"Buscando archivos en la carpeta: {CARPETA_ARCHIVOS}")
