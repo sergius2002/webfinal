@@ -16,7 +16,7 @@ import logging
 # Configurar el logging para escribir en archivo y consola
 # --------------------------------------------------------------------------------
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)  # Cambiado a DEBUG para poder ver detalles
+logger.setLevel(logging.DEBUG)  # DEBUG para archivo, pero solo INFO en consola
 
 # Crear un formateador
 formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
@@ -28,10 +28,12 @@ file_handler.setFormatter(formatter)
 
 # Handler para la consola
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
+console_handler.setLevel(logging.INFO)  # Solo INFO o superior en consola
 console_handler.setFormatter(formatter)
 
-# Añadir ambos handlers al logger
+# Limpiar handlers previos y añadir los nuevos
+if logger.hasHandlers():
+    logger.handlers.clear()
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
@@ -51,7 +53,7 @@ CARPETA_ARCHIVOS = os.getenv("CARPETA_ARCHIVOS")
 # En este caso, no se procesan montos negativos, por lo que no se permite su procesamiento.
 
 if not all([SUPABASE_URL, SUPABASE_KEY, CARPETA_ARCHIVOS]):
-    logger.error("Error: Faltan variables de entorno en el archivo .env.")
+    # logger.error(f"Error: Faltan variables de entorno en el archivo .env.")
     sys.exit(0)
 
 # Obtener el directorio del script actual
@@ -60,26 +62,26 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CARPETA_ARCHIVOS = os.path.join(SCRIPT_DIR, CARPETA_ARCHIVOS)
 
 # Después de cargar las variables de entorno
-logger.info(f"Buscando archivos en la carpeta: {CARPETA_ARCHIVOS}")
+# logger.info(f"Buscando archivos en la carpeta: {CARPETA_ARCHIVOS}")
 
 # Verificar si la carpeta existe
 if not os.path.exists(CARPETA_ARCHIVOS):
-    logger.error(f"La carpeta {CARPETA_ARCHIVOS} no existe")
+    # logger.error(f"La carpeta {CARPETA_ARCHIVOS} no existe")
     sys.exit(0)
 
 # Listar archivos en la carpeta para debug
-logger.info("Archivos encontrados en la carpeta:")
-for archivo in os.listdir(CARPETA_ARCHIVOS):
-    logger.info(f"- {archivo}")
+# logger.info("Archivos encontrados en la carpeta:")
+# for archivo in os.listdir(CARPETA_ARCHIVOS):
+#     logger.info(f"- {archivo}")
 
 # --------------------------------------------------------------------------------
 # Inicializar el cliente de Supabase
 # --------------------------------------------------------------------------------
 try:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    logger.info("Cliente de Supabase inicializado correctamente.")
+    # logger.info("Cliente de Supabase inicializado correctamente.")
 except Exception as e:
-    logger.error(f"Error al inicializar el cliente de Supabase: {e}")
+    # logger.error(f"Error al inicializar el cliente de Supabase: {e}")
     sys.exit(0)
 
 # --------------------------------------------------------------------------------
@@ -139,7 +141,7 @@ def normalizar_monto(valor):
         else:
             raise ValueError(f"Valor de monto inválido: {valor}")
     except ValueError as e:
-        logger.error(f"Error al normalizar monto '{valor}': {e}")
+        # logger.error(f"Error al normalizar monto '{valor}': {e}")
         return None
 
 def normalizar_rut(rut_str):
@@ -171,7 +173,7 @@ def determinar_facturacion(rut_str):
         else:
             return "empresa"
     except Exception as e:
-        logger.warning(f"No se pudo determinar facturación para el RUT '{rut_str}'. Error: {e}")
+        # logger.warning(f"No se pudo determinar facturación para el RUT '{rut_str}'. Error: {e}")
         return "persona"
 
 # --------------------------------------------------------------------------------
@@ -183,7 +185,7 @@ def calcular_hash(row):
     Se registra en DEBUG la cadena base para confirmar que sea la esperada.
     """
     data = f"{row['monto']}_{row['fecha']}_{row['rut']}"
-    logger.debug(f"Calculando hash para: {data}")
+    # logger.debug(f"Calculando hash para: {data}")
     return hashlib.md5(data.encode('utf-8')).hexdigest()
 
 # --------------------------------------------------------------------------------
@@ -195,8 +197,8 @@ def manejar_respuesta(response, contexto):
     Si hay un error, lo registra y retorna None.
     Si todo está bien, retorna los datos.
     """
-    logger.debug(f"Respuesta de Supabase en {contexto}: {response}")
-    logger.debug(f"Atributos de la respuesta: {dir(response)}")
+    # logger.debug(f"Respuesta de Supabase en {contexto}: {response}")  # Comentado para evitar mostrar todos los hashes
+    # logger.debug(f"Atributos de la respuesta: {dir(response)}")
     if hasattr(response, 'error') and response.error:
         logger.error(f"Error en {contexto}: {response.error}")
         return None
@@ -223,14 +225,14 @@ def get_all_hashes(supabase_client, batch_size=1000):
         if len(batch) < batch_size:
             break
         offset += batch_size
-    logger.info(f"Se recuperaron {len(all_hashes)} hashes en total de la base de datos.")
+    # logger.info(f"Se recuperaron {len(all_hashes)} hashes en total de la base de datos.")
     return set(item['hash'] for item in all_hashes if item.get('hash') is not None)
 
 # --------------------------------------------------------------------------------
 # FUNCIÓN: SANTANDER
 # --------------------------------------------------------------------------------
 def SANTANDER():
-    logger.info("Entrando en la función SANTANDER().")
+    # logger.info("Entrando en la función SANTANDER().")
     dataframes = []
     archivos_encontrados = 0
 
@@ -255,19 +257,20 @@ def SANTANDER():
             try:
                 df = pd.read_excel(ruta_archivo, engine="openpyxl", skiprows=11)
                 
-                # Agregar logs para ver los datos
-                logger.info(f"\nContenido del archivo {archivo}:")
-                logger.info("\nPrimeras 5 filas del archivo original:")
-                logger.info(df.head().to_string())
+                # Eliminar o comentar logs de depuración masiva
+                # logger.info(f"\nContenido del archivo {archivo}:")
+                # logger.info("\nPrimeras 5 filas del archivo original:")
+                # logger.info(df.head().to_string())
                 
                 columnas_relevantes = df[["MONTO", "DESCRIPCIÓN MOVIMIENTO", "FECHA"]].copy()
                 
-                logger.info("\nColumnas relevantes seleccionadas:")
-                logger.info(columnas_relevantes.head().to_string())
+                # Eliminar o comentar logs de depuración masiva
+                # logger.info("\nColumnas relevantes seleccionadas:")
+                # logger.info(columnas_relevantes.head().to_string())
                 
-                # Después de procesar los datos
-                logger.info("\nDatos procesados (después de normalización):")
-                logger.info(columnas_relevantes.head().to_string())
+                # Eliminar o comentar logs de depuración masiva
+                # logger.info("\nDatos procesados (después de normalización):")
+                # logger.info(columnas_relevantes.head().to_string())
 
                 # Normalizar 'monto'
                 columnas_relevantes["MONTO"] = columnas_relevantes["MONTO"].apply(normalizar_monto)
@@ -281,15 +284,15 @@ def SANTANDER():
                 def extraer_rut(descripcion):
                     # Eliminar puntos para normalizar el formato del RUT
                     descripcion_limpia = descripcion.replace('.', '')
-                    logger.info(f"Buscando RUT en descripción: {descripcion_limpia}")
+                    # logger.info(f"Buscando RUT en descripción: {descripcion_limpia}")
                     matches = rut_regex.findall(descripcion_limpia)
                     if matches:
                         numero, verificador = matches[0]
                         rut_completo = f"{numero}-{verificador.upper()}"
-                        logger.info(f"RUT encontrado: {rut_completo}")
+                        # logger.info(f"RUT encontrado: {rut_completo}")
                         return rut_completo
                     else:
-                        logger.warning(f"RUT no encontrado en la descripción: {descripcion}")
+                        # logger.warning(f"RUT no encontrado en la descripción: {descripcion}")
                         return None
 
                 columnas_relevantes["rut"] = columnas_relevantes["DESCRIPCIÓN MOVIMIENTO"].apply(extraer_rut)
@@ -307,9 +310,9 @@ def SANTANDER():
                     archivos_procesados.add(archivo)
                     continue
 
-                # Depuración: fechas originales
-                logger.info(f"Primeras fechas originales en {archivo}:")
-                logger.info(columnas_relevantes["FECHA"].head().to_string())
+                # Eliminar o comentar logs de depuración masiva
+                # logger.info(f"Primeras fechas originales en {archivo}:")
+                # logger.info(columnas_relevantes["FECHA"].head().to_string())
 
                 # Normalizar fechas a 'YYYY-MM-DD'
                 columnas_relevantes["fecha"] = columnas_relevantes["FECHA"].apply(normalizar_fecha)
@@ -317,9 +320,9 @@ def SANTANDER():
                 # Eliminar registros con fecha inválida
                 columnas_relevantes = columnas_relevantes[columnas_relevantes["fecha"].notna()]
 
-                # Depuración: fechas procesadas
-                logger.info(f"Primeras fechas procesadas en {archivo}:")
-                logger.info(columnas_relevantes["fecha"].head().to_string())
+                # Eliminar o comentar logs de depuración masiva
+                # logger.info(f"Primeras fechas procesadas en {archivo}:")
+                # logger.info(columnas_relevantes["fecha"].head().to_string())
 
                 # Renombrar columnas para estandarizar
                 columnas_relevantes = columnas_relevantes.rename(columns={"MONTO": "monto"})
@@ -354,7 +357,7 @@ def SANTANDER():
         logger.info(f"Se encontraron y procesaron {archivos_encontrados} archivos en SANTANDER.")
 
     if dataframes:
-        logger.info("Procesamiento completo. Archivos procesados.")
+        # logger.info("Procesamiento completo. Archivos procesados.")
         return pd.concat(dataframes, ignore_index=True)
     else:
         logger.info("No se procesaron datos en SANTANDER.")
@@ -411,7 +414,7 @@ def BASE_DE_DATOS(df_resultado, supabase_client):
         logger.info(f"Se insertarán {df_nuevos.shape[0]} registros nuevos en la base de datos.")
 
     # Registro de la cadena base y hash para cada registro nuevo (para depuración)
-    for idx, row in df_nuevos.iterrows():
+    for _, row in df_nuevos.iterrows():
         data_str = f"{row['monto']}_{row['fecha']}_{row['rut']}"
         logger.debug(f"Registro a insertar: {data_str} -> Hash: {row['hash']}")
 
@@ -464,6 +467,7 @@ def BASE_DE_DATOS(df_resultado, supabase_client):
             "enviada": 0,
             "fecha_detec": fecha_detec.strftime("%Y-%m-%d %H:%M:%S")
         })
+        print(f"Nuevo hash insertado: {row['hash']} (monto={row['monto']}, fecha={row['fecha']}, rut={row['rut']})")
 
     if datos_insertar:
         logger.info("Primeras filas con 'rs' asignado a insertar:")
@@ -491,12 +495,21 @@ def BASE_DE_DATOS(df_resultado, supabase_client):
     else:
         logger.info("No se agregaron registros nuevos a la base de datos.")
 
+    # Al omitir duplicados:
+    duplicados = df_resultado[df_resultado.duplicated(subset=['hash'], keep=False)]
+    for _, row in duplicados.iterrows():
+        print(f"Hash duplicado (omitido): {row['hash']} (monto={row['monto']}, fecha={row['fecha']}, rut={row['rut']})")
+
 # --------------------------------------------------------------------------------
 # Bloque principal de ejecución
 # --------------------------------------------------------------------------------
 if __name__ == "__main__":
     try:
         logger.info("Iniciando procesamiento de datos de Santander...")
+        # Silenciar logs de httpx, httpcore y supabase a WARNING o superior
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("httpcore").setLevel(logging.WARNING)
+        logging.getLogger("supabase").setLevel(logging.WARNING)
         df_resultado = SANTANDER()
         if df_resultado is not None:
             BASE_DE_DATOS(df_resultado, supabase)
