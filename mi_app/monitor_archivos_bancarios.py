@@ -60,7 +60,7 @@ def procesar_archivo(ruta_completa):
             destino = os.path.join(SANTANDER_INPUT_DIR, nombre)
             shutil.copy2(ruta_completa, destino)
             logging.info(f"Copiado a {destino}")
-            subprocess.run(['python3', 'Santander.py'], cwd=BASE_DIR, check=True)
+            subprocess.run(['/home/sacristobalspa/webfinal/venv/bin/python', 'Santander.py'], cwd=BASE_DIR, check=True)
             logging.info("Ejecución de Santander.py completada.")
 
         else:
