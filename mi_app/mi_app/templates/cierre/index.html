@@ -7,21 +7,15 @@
      .cierre-container {
      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
      min-height: 100vh;
-     padding: 20px 0;
-     display: flex;
-     align-items: center;
-     justify-content: center;
+     padding: 1rem 0;
    }
   
   .cierre-card {
     background: white;
-    border-radius: 18px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.10);
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
     overflow: hidden;
     transition: transform 0.3s ease;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 18px 24px 18px 24px;
   }
   
   .cierre-card:hover {
@@ -31,11 +25,9 @@
      .cierre-header {
      background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
      color: white;
-     padding: 1.2rem 1rem 1.1rem 1rem;
+     padding: 1rem;
      text-align: center;
-     font-size: 1.5rem;
-     border-radius: 12px 12px 0 0;
-     margin-bottom: 14px;
+     position: relative;
    }
   
   
@@ -43,24 +35,22 @@
      .cierre-date {
      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
      color: white;
-     padding: 0.5rem 0.3rem;
+     padding: 0.5rem;
      text-align: center;
      font-weight: bold;
      font-size: 1rem;
-     border-radius: 8px;
-     margin-bottom: 14px;
    }
   
   .cierre-table {
     margin: 0;
-    font-size: 1rem;
   }
   
      .cierre-table td, .cierre-table th {
-     padding: 0.5rem 0.7rem;
+     padding: 0.5rem 1rem;
      vertical-align: middle;
      border-bottom: 1px solid #e9ecef;
-     font-size: 1rem;
+     transition: all 0.3s ease;
+     font-size: 0.9rem;
    }
   
   .field-icon {
@@ -72,15 +62,14 @@
   }
   
   .field-label {
-    font-weight: 600;
+    font-weight: 500;
     color: #2c3e50;
-    font-size: 1rem;
   }
   
   .field-value {
     font-weight: bold;
     font-size: 1.1rem;
-    text-align: right;
+    text-align: center;
   }
   
   /* Colores semánticos */
@@ -130,7 +119,6 @@
      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
      color: white;
      font-weight: bold;
-     font-size: 1.08rem;
    }
    
    .total-row td {
@@ -142,13 +130,11 @@
   .mayor-row {
     background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
     color: white;
-    font-size: 1.05rem;
   }
   
   .final-row {
     background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
     color: white;
-    font-size: 1.13rem;
   }
   
   .final-row td {
@@ -173,13 +159,32 @@
   }
   
   /* Responsive */
-  @media (max-width: 1800px) {
-    .cierre-card { padding: 24px 16px; }
-  }
-  
-  @media (max-width: 1200px) {
-    .cierre-card { padding: 8px 2px; }
-    .cierre-header { font-size: 1.1rem; }
+  @media (max-width: 768px) {
+    .cierre-container {
+      padding: 1rem;
+    }
+    
+    .cierre-card {
+      border-radius: 15px;
+    }
+    
+    .cierre-header {
+      padding: 1.5rem;
+    }
+    
+    .cierre-table td, .cierre-table th {
+      padding: 0.8rem 1rem;
+      font-size: 0.9rem;
+    }
+    
+    .field-value {
+      font-size: 1rem;
+    }
+    
+    .editable-field {
+      min-height: 35px;
+      font-size: 1rem;
+    }
   }
   
   /* Indicadores de carga */
@@ -285,9 +290,9 @@
    }
    
    .clickable-ingresos:hover {
-     background: none;
-     transform: none;
-     box-shadow: none;
+     background: rgba(52, 152, 219, 0.1);
+     transform: scale(1.02);
+     box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
    }
    
    .clickable-ingresos::after {
@@ -348,179 +353,13 @@
   border: none;
   padding: 0.4rem 0.7rem;
 }
-
-/* BLOQUES SECUNDARIOS */
-.card.border-info, #cuadre-card {
-  border-radius: 12px;
-  margin-top: 18px;
-  box-shadow: 0 2px 10px rgba(44,62,80,0.06);
-}
-.card-header {
-  font-size: 1.05rem;
-  border-radius: 12px 12px 0 0;
-}
-.card-body {
-  font-size: 1rem;
-  padding: 1rem 0.7rem;
-}
-/* CUADRE TARJETAS */
-#cuadre-card .card {
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(52, 152, 219, 0.06);
-}
-#cuadre-card .h6 {
-  font-size: 1.08rem;
-  font-weight: bold;
-}
-/* BOTONES */
-.btn-lg {
-  font-size: 1.05rem !important;
-  padding: 0.7rem 0 !important;
-  border-radius: 10px !important;
-  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.10);
-}
-.btn-success {
-  background: linear-gradient(90deg, #27ae60 0%, #2ecc71 100%);
-  border: none;
-}
-.btn-info {
-  background: linear-gradient(90deg, #3498db 0%, #2980b9 100%);
-  border: none;
-}
-/* ESPACIADO GENERAL */
-.container, .row, .col-md-11, .col-lg-10 {
-  margin: 0;
-  padding: 0;
-  max-width: 100%;
-}
-.cierre-container .row > .col-md-7, .cierre-container .row > .col-md-5 {
-  padding-left: 0;
-  padding-right: 0;
-}
-@media (max-width: 991px) {
-  .cierre-container .row > .col-md-7, .cierre-container .row > .col-md-5 {
-    flex: 0 0 100%;
-    max-width: 100%;
-  }
-}
-.cierre-main-row {
-  display: flex;
-  gap: 32px;
-  align-items: flex-start;
-}
-.cierre-col-izq, .cierre-col-der {
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 4px 24px rgba(44,62,80,0.10);
-  padding: 18px 18px 24px 18px;
-}
-.cierre-col-izq {
-  flex: 1.2;
-  min-width: 350px;
-  margin-bottom: 0;
-}
-.cierre-col-der {
-  flex: 1;
-  min-width: 320px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  margin-bottom: 0;
-}
-.cierre-col-der .card {
-  box-shadow: none;
-  border: none;
-  margin-bottom: 0;
-}
-.cierre-col-der .card-grouped {
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 2px 12px rgba(44,62,80,0.10);
-  padding: 18px 12px 12px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-.cierre-col-der .cuadre-grafico {
-  min-height: 60px;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #b2bec3;
-  font-size: 1.1rem;
-}
-.cierre-table {
-  margin-bottom: 32px;
-}
-.cierre-table .total-row, .cierre-table .final-row {
-  background: #f8f9fa;
-  color: #222;
-  font-weight: bold;
-}
-.cierre-table .final-row {
-  background: #e3fcec;
-  color: #1a7f37;
-  font-size: 1.18rem;
-}
-.cierre-table .field-value {
-  font-size: 1.13rem;
-}
-.cierre-table .field-label {
-  font-size: 1.08rem;
-}
-.cierre-table tr td {
-  border-bottom: 1px solid #e9ecef;
-}
-.cierre-table tr:last-child td {
-  border-bottom: none;
-}
-.input-group-text, .form-control {
-  border-radius: 8px !important;
-  box-shadow: 0 1px 4px rgba(44,62,80,0.06);
-  border: 1px solid #b2bec3;
-}
-.btn-lg {
-  font-size: 1.15rem !important;
-  padding: 1.1rem 0 !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 18px rgba(40, 167, 69, 0.13);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.7rem;
-}
-.btn-lg i {
-  font-size: 1.5rem;
-}
-.cierre-botones-row {
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 2px 12px rgba(44,62,80,0.10);
-  padding: 18px 12px 12px 12px;
-  margin-top: 32px;
-  display: flex;
-  gap: 18px;
-  justify-content: center;
-}
-@media (max-width: 1200px) {
-  .cierre-main-row { flex-direction: column; gap: 18px; }
-  .cierre-col-izq, .cierre-col-der { min-width: 0; }
-  .cierre-botones-row { flex-direction: column; gap: 12px; }
-}
-@media (max-width: 768px) {
-  .cierre-main-row { flex-direction: column; gap: 8px; }
-  .cierre-col-izq, .cierre-col-der { padding: 8px 2px; }
-  .cierre-botones-row { flex-direction: column; gap: 8px; padding: 10px 2px; }
-}
 </style>
 
 <div class="cierre-container">
   <div class="container">
-    <div class="cierre-main-row">
-      <!-- Columna 1: Cierre de Caja -->
-      <div class="cierre-col-izq">
-        <div class="cierre-card" style="box-shadow:none; padding:0; background:none;">
+    <div class="row justify-content-center">
+      <div class="col-md-11 col-lg-10">
+        <div class="cierre-card">
           <div class="cierre-header">
             <h4 class="mb-0">Cierre de Caja</h4>
           </div>
@@ -554,7 +393,7 @@
                    <td class="field-label">
                      Ingresos
                    </td>
-                   <td class="field-value positive-value" id="ingresos-total">{{ ingresos }}</td>
+                   <td class="field-value positive-value clickable-ingresos" id="ingresos-total">{{ ingresos }}</td>
                  </tr>
                  <tr>
                    <td class="field-label">
@@ -632,88 +471,97 @@
             </table>
                      </div>
          </div>
-      </div>
-      <!-- Columna 2: Saldo en Bancos y Cuadre agrupados -->
-      <div class="cierre-col-der">
-        <div class="card-grouped">
-          <!-- Saldo en Bancos -->
-          <div class="card border-info mb-2">
-            <div class="card-header bg-info text-white text-center py-2">
-              <h6 class="mb-0">💳 Saldo en Bancos</h6>
-            </div>
-            <div class="card-body py-2 text-center">
-              <div class="row align-items-center">
-                <div class="col-5">
-                  <span class="field-label info-field" title="Preguntar a Gilmar">
-                    <strong>Saldo Actual:</strong>
-                  </span>
-                </div>
-                <div class="col-7">
-                  <input type="text" id="saldo-bancos" class="form-control text-center" inputmode="numeric" placeholder="Ingresa monto..." style="font-size: 1rem; font-weight: bold;">
-                </div>
-              </div>
-              <small class="text-muted mt-1 d-block">Independiente del cierre de caja</small>
-            </div>
-          </div>
-          <!-- Cuadre -->
-          <div class="card" id="cuadre-card">
-            <div class="card-header text-white text-center py-2" id="cuadre-header">
-              <h6 class="mb-0">⚖️ Cuadre</h6>
-            </div>
-            <div class="card-body py-2 text-center">
-              <div class="cuadre-grafico">[Gráfico aquí próximamente]</div>
-              <div class="row mb-2">
-                <div class="col-4">
-                  <div class="card bg-light">
-                    <div class="card-body py-2">
-                      <small class="card-title">Cierre Final</small>
-                      <div class="h6 text-primary mb-0" id="cuadre-cierre-final">0</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-4">
-                  <div class="card bg-light">
-                    <div class="card-body py-2">
-                      <small class="card-title">Saldo Bancos</small>
-                      <div class="h6 text-info mb-0" id="cuadre-saldo-bancos">0</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-4">
-                  <div class="card" id="diferencia-card">
-                    <div class="card-body py-2">
-                      <small class="card-title">Diferencia</small>
-                      <div class="h6 mb-0" id="cuadre-diferencia">0</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="alert py-2 mb-1" role="alert" id="cuadre-status">
-                <small class="mb-0" id="cuadre-mensaje">Ingresa el saldo en bancos para calcular el cuadre</small>
-              </div>
-              <small class="text-muted">Diferencia = Cierre Final - Saldo en Bancos</small>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Botones de acción al final -->
-    <div class="cierre-botones-row">
-      <button type="button" class="btn btn-success btn-lg w-100" id="btn-realizar-cierre">
-        <i class="fas fa-save me-2"></i>💾 Realizar Cierre
-      </button>
-      <a href="{{ url_for('cierre.historial') }}" class="btn btn-info btn-lg w-100" style="text-decoration: none;">
-        <i class="fas fa-history me-2"></i>📋 Ver Historial
-      </a>
-    </div>
-    <div class="mt-2 text-center" id="estado-guardado" style="display: none;">
-      <small class="text-success">
-        <i class="fas fa-check-circle me-1"></i>
-        <span id="mensaje-guardado">Cierre guardado exitosamente</span>
-      </small>
-    </div>
-  </div>
-</div>
+         
+         <!-- Saldo en Bancos - Campo separado -->
+         <div class="mt-2">
+           <div class="card border-info">
+             <div class="card-header bg-info text-white text-center py-2">
+               <h6 class="mb-0">💳 Saldo en Bancos</h6>
+             </div>
+             <div class="card-body py-2 text-center">
+               <div class="row align-items-center">
+                 <div class="col-md-4">
+                   <span class="field-label info-field" title="Preguntar a Gilmar">
+                     <strong>Saldo Actual:</strong>
+                   </span>
+                 </div>
+                 <div class="col-md-8">
+                   <input type="text" id="saldo-bancos" class="form-control text-center" inputmode="numeric" placeholder="Ingresa monto..." style="font-size: 1rem; font-weight: bold;">
+                 </div>
+               </div>
+               <small class="text-muted mt-1 d-block">Independiente del cierre de caja</small>
+             </div>
+           </div>
+         </div>
+         
+         <!-- Cuadre - Tarjeta independiente -->
+         <div class="mt-2">
+           <div class="card" id="cuadre-card">
+             <div class="card-header text-white text-center py-2" id="cuadre-header">
+               <h6 class="mb-0">⚖️ Cuadre</h6>
+             </div>
+             <div class="card-body py-2 text-center">
+               <div class="row mb-2">
+                 <div class="col-md-4">
+                   <div class="card bg-light">
+                     <div class="card-body py-2">
+                       <small class="card-title">Cierre Final</small>
+                       <div class="h6 text-primary mb-0" id="cuadre-cierre-final">0</div>
+                     </div>
+                   </div>
+                 </div>
+                 <div class="col-md-4">
+                   <div class="card bg-light">
+                     <div class="card-body py-2">
+                       <small class="card-title">Saldo Bancos</small>
+                       <div class="h6 text-info mb-0" id="cuadre-saldo-bancos">0</div>
+                     </div>
+                   </div>
+                 </div>
+                 <div class="col-md-4">
+                   <div class="card" id="diferencia-card">
+                     <div class="card-body py-2">
+                       <small class="card-title">Diferencia</small>
+                       <div class="h6 mb-0" id="cuadre-diferencia">0</div>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+               
+               <div class="alert py-2 mb-1" role="alert" id="cuadre-status">
+                 <small class="mb-0" id="cuadre-mensaje">Ingresa el saldo en bancos para calcular el cuadre</small>
+               </div>
+               
+               <small class="text-muted">Diferencia = Cierre Final - Saldo en Bancos</small>
+             </div>
+           </div>
+         </div>
+
+         <!-- Botones de acción -->
+         <div class="mt-3 text-center">
+           <div class="row justify-content-center">
+             <div class="col-md-6 mb-2">
+               <button type="button" class="btn btn-success btn-lg w-100 py-3" id="btn-realizar-cierre" style="font-size: 1.1rem; font-weight: bold; border-radius: 15px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                 <i class="fas fa-save me-2"></i>💾 Realizar Cierre
+               </button>
+             </div>
+             <div class="col-md-6 mb-2">
+               <a href="{{ url_for('cierre.historial') }}" class="btn btn-info btn-lg w-100 py-3" style="font-size: 1.1rem; font-weight: bold; border-radius: 15px; box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3); text-decoration: none;">
+                 <i class="fas fa-history me-2"></i>📋 Ver Historial
+               </a>
+             </div>
+           </div>
+           <div class="mt-2" id="estado-guardado" style="display: none;">
+             <small class="text-success">
+               <i class="fas fa-check-circle me-1"></i>
+               <span id="mensaje-guardado">Cierre guardado exitosamente</span>
+             </small>
+           </div>
+         </div>
+       </div>
+     </div>
+   </div>
+ </div>
 
 <!-- Modal para Gastos -->
 <div class="modal fade" id="gastosModal" tabindex="-1" aria-labelledby="gastosModalLabel" aria-hidden="true">
