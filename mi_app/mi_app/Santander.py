@@ -51,7 +51,7 @@ CARPETA_ARCHIVOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 
 if not all([SUPABASE_URL, SUPABASE_KEY, CARPETA_ARCHIVOS]):
     logger.error("Error: Faltan variables de entorno o rutas.")
-    sys.exit(1)
+    sys.exit(0)
 
 # Después de cargar las variables de entorno
 logger.info(f"Buscando archivos en la carpeta: {CARPETA_ARCHIVOS}")
@@ -59,7 +59,7 @@ logger.info(f"Buscando archivos en la carpeta: {CARPETA_ARCHIVOS}")
 # Verificar si la carpeta existe
 if not os.path.exists(CARPETA_ARCHIVOS):
     logger.error(f"La carpeta {CARPETA_ARCHIVOS} no existe")
-    sys.exit(1)
+    sys.exit(0)
 
 # Listar archivos en la carpeta para debug
 logger.info("Archivos encontrados en la carpeta:")
@@ -74,7 +74,7 @@ try:
     logger.info("Cliente de Supabase inicializado correctamente.")
 except Exception as e:
     logger.error(f"Error al inicializar el cliente de Supabase: {e}")
-    sys.exit(1)
+    sys.exit(0)
 
 # --------------------------------------------------------------------------------
 # Diccionario que mapea cada cadena a su empresa o banco (usado en SANTANDER)
@@ -233,6 +233,13 @@ def SANTANDER():
                 dataframes.append(columnas_relevantes)
                 archivos_procesados.add(archivo)
                 logger.info(f"Archivo procesado exitosamente: {archivo}")
+                
+                # Borrar el archivo después de procesarlo exitosamente
+                try:
+                    os.remove(ruta_archivo)
+                    logger.info(f"Archivo borrado exitosamente: {archivo}")
+                except Exception as e:
+                    logger.error(f"Error al borrar el archivo {archivo}: {e}")
             except Exception as e:
                 logger.error(f"Error al procesar el archivo {archivo} en SANTANDER: {e}")
     if archivos_encontrados == 0:
@@ -315,6 +322,7 @@ def BASE_DE_DATOS(df_resultado, supabase_client):
             "enviada": 0,
             "fecha_detec": fecha_detec.strftime("%Y-%m-%d %H:%M:%S")
         })
+        print(f"Nuevo hash insertado: {row['hash']} (monto={row['monto']}, fecha={row['fecha']}, rut={row['rut']})")
     if datos_insertar:
         logger.info("Insertando nuevos registros en la base de datos...")
         try:
@@ -338,13 +346,22 @@ def BASE_DE_DATOS(df_resultado, supabase_client):
     else:
         logger.info("No se agregaron registros nuevos a la base de datos.")
 
+    # Mostrar hashes duplicados (omitidos)
+    df_duplicados = df_resultado[df_resultado['hash'].isin(hashes_existentes)]
+    for _, row in df_duplicados.iterrows():
+        print(f"Hash duplicado (omitido): {row['hash']} (monto={row['monto']}, fecha={row['fecha']}, rut={row['rut']})")
+
 if __name__ == "__main__":
     try:
         logger.info("Iniciando procesamiento de datos de Santander...")
+        # Silenciar logs de httpx, httpcore y supabase a WARNING o superior
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("httpcore").setLevel(logging.WARNING)
+        logging.getLogger("supabase").setLevel(logging.WARNING)
         df_resultado = SANTANDER()
         if df_resultado is not None:
             BASE_DE_DATOS(df_resultado, supabase)
         logger.info("Procesamiento completado exitosamente.")
     except Exception as e:
         logger.error(f"Error durante la ejecución: {e}")
-        sys.exit(1)
+        sys.exit(0)
