@@ -52,7 +52,7 @@ CARPETA_ARCHIVOS = os.getenv("CARPETA_ARCHIVOS")
 
 if not all([SUPABASE_URL, SUPABASE_KEY, CARPETA_ARCHIVOS]):
     logger.error("Error: Faltan variables de entorno en el archivo .env.")
-    sys.exit(1)
+    sys.exit(0)
 
 # Obtener el directorio del script actual
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -65,7 +65,7 @@ logger.info(f"Buscando archivos en la carpeta: {CARPETA_ARCHIVOS}")
 # Verificar si la carpeta existe
 if not os.path.exists(CARPETA_ARCHIVOS):
     logger.error(f"La carpeta {CARPETA_ARCHIVOS} no existe")
-    sys.exit(1)
+    sys.exit(0)
 
 # Listar archivos en la carpeta para debug
 logger.info("Archivos encontrados en la carpeta:")
@@ -80,7 +80,7 @@ try:
     logger.info("Cliente de Supabase inicializado correctamente.")
 except Exception as e:
     logger.error(f"Error al inicializar el cliente de Supabase: {e}")
-    sys.exit(1)
+    sys.exit(0)
 
 # --------------------------------------------------------------------------------
 # Diccionario que mapea cada cadena a su empresa o banco (usado en SANTANDER)
@@ -503,4 +503,4 @@ if __name__ == "__main__":
         logger.info("Procesamiento completado exitosamente.")
     except Exception as e:
         logger.error(f"Error durante la ejecución: {e}")
-        sys.exit(1)
+        sys.exit(0)

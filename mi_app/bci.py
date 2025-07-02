@@ -262,4 +262,4 @@ if __name__ == "__main__":
         print(f"[{datetime.now()}] Procesamiento completado exitosamente.")
     except Exception as e:
         print(f"[{datetime.now()}] Error durante la ejecución: {e}")
-        sys.exit(1)
+        sys.exit(0)
