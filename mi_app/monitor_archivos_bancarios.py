@@ -51,7 +51,7 @@ def procesar_archivo(ruta_completa):
             destino = os.path.join(BCI_INPUT_DIR, BCI_EXPECTED_NAME)
             shutil.copy2(ruta_completa, destino)
             logging.info(f"Copiado a {destino}")
-            subprocess.run(['python3', 'bci.py'], cwd=BASE_DIR, check=True)
+            subprocess.run(['/home/sacristobalspa/webfinal/venv/bin/python', 'bci.py'], cwd=BASE_DIR, check=True)
             logging.info("Ejecución de bci.py completada.")
 
         elif SANTANDER_KEYWORD in nombre:
