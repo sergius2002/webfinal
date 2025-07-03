@@ -3,8 +3,8 @@ from functools import wraps
 import logging
 from datetime import datetime
 import pytz
-from mi_app.extensions import supabase
-from mi_app.blueprints.utilidades import adjust_datetime
+from mi_app.mi_app.extensions import supabase
+from mi_app.mi_app.blueprints.utilidades import adjust_datetime
 
 # Configuración de zona horaria
 chile_tz = pytz.timezone('America/Santiago')
