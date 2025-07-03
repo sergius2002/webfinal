@@ -1,0 +1,265 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Cuentas Activas{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.index') }}">Admin</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Cuentas Activas</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block admin_content %}
+<div class="container-fluid mt-2">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+      <div class="card shadow-lg">
+        <div class="card-header bg-azul-oscuro text-white d-flex justify-content-between align-items-center" style="background: #003366;">
+          <h3 class="mb-0" style="font-weight: bold; letter-spacing: 1px;">
+            <i class="fas fa-university me-2"></i>
+            Cuentas Activas
+          </h3>
+          <a href="{{ url_for('cuentas_activas.nuevo') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>
+            Nueva Cuenta
+          </a>
+        </div>
+        <div class="card-body">
+          {% if cuentas %}
+            <div class="table-responsive">
+              <table class="table table-hover table-bordered text-center align-middle">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Nombre del Titular</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for cuenta in cuentas %}
+                  <tr>
+                    <td style="font-weight: bold;">{{ cuenta.nombre_titular }}</td>
+                    <td>
+                      {% if cuenta.activa %}
+                        <span class="badge bg-success">
+                          <i class="fas fa-check me-1"></i>Activa
+                        </span>
+                      {% else %}
+                        <span class="badge bg-secondary">
+                          <i class="fas fa-times me-1"></i>Inactiva
+                        </span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <div class="btn-group-action">
+                        <button class="btn btn-icon btn-outline-primary" title="Editar" data-bs-toggle="modal" data-bs-target="#modalEditarCuenta{{ cuenta.id }}">
+                          <i class="fas fa-edit"></i>
+                        </button>
+                        {% if cuenta.activa %}
+                          <form method="POST" action="{{ url_for('cuentas_activas.eliminar', id=cuenta.id) }}" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que quieres desactivar esta cuenta?')">
+                            <button type="submit" class="btn btn-icon btn-outline-danger" title="Eliminar" data-bs-toggle="tooltip" data-bs-placement="top">
+                              <i class="fas fa-trash-alt"></i>
+                            </button>
+                          </form>
+                        {% else %}
+                          <form method="POST" action="{{ url_for('cuentas_activas.activar', id=cuenta.id) }}" style="display: inline;">
+                            <button type="submit" class="btn btn-icon btn-outline-success" title="Activar" data-bs-toggle="tooltip" data-bs-placement="top">
+                              <i class="fas fa-check"></i>
+                            </button>
+                          </form>
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Modal de edición -->
+                  <div class="modal fade" id="modalEditarCuenta{{ cuenta.id }}" tabindex="-1" aria-labelledby="modalEditarCuentaLabel{{ cuenta.id }}" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                      <div class="modal-content">
+                        <form method="POST" action="{{ url_for('cuentas_activas.editar', id=cuenta.id) }}">
+                          <div class="modal-header bg-azul-oscuro text-white">
+                            <h5 class="modal-title" id="modalEditarCuentaLabel{{ cuenta.id }}">
+                              <i class="fas fa-edit me-2"></i>Editar Cuenta
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                          </div>
+                          <div class="modal-body">
+                            <div class="mb-3">
+                              <label for="banco{{ cuenta.id }}" class="form-label">Banco</label>
+                              <input type="text" class="form-control" id="banco{{ cuenta.id }}" name="banco" value="{{ cuenta.banco }}" required>
+                            </div>
+                            <div class="mb-3">
+                              <label for="numero_cuenta{{ cuenta.id }}" class="form-label">Número de Cuenta</label>
+                              <input type="text" class="form-control" id="numero_cuenta{{ cuenta.id }}" name="numero_cuenta" value="{{ cuenta.numero_cuenta }}" required>
+                            </div>
+                            <div class="mb-3">
+                              <label for="cedula{{ cuenta.id }}" class="form-label">Cédula</label>
+                              <input type="text" class="form-control" id="cedula{{ cuenta.id }}" name="cedula" value="{{ cuenta.cedula }}" required>
+                            </div>
+                            <div class="mb-3">
+                              <label for="nombre_titular{{ cuenta.id }}" class="form-label">Nombre del Titular</label>
+                              <input type="text" class="form-control" id="nombre_titular{{ cuenta.id }}" name="nombre_titular" value="{{ cuenta.nombre_titular }}" required>
+                            </div>
+                            <div class="mb-3">
+                              <label for="pais{{ cuenta.id }}" class="form-label">País</label>
+                              <input type="text" class="form-control" id="pais{{ cuenta.id }}" name="pais" value="{{ cuenta.pais }}" required>
+                            </div>
+                            <div class="form-check mb-3">
+                              <input class="form-check-input" type="checkbox" id="activa{{ cuenta.id }}" name="activa" {% if cuenta.activa %}checked{% endif %}>
+                              <label class="form-check-label" for="activa{{ cuenta.id }}">Cuenta activa</label>
+                            </div>
+                          </div>
+                          <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Fin Modal -->
+
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- Resumen -->
+            <div class="row mt-4">
+              <div class="col-md-6">
+                <div class="card bg-light">
+                  <div class="card-body text-center">
+                    <h5 class="card-title text-azul-oscuro">Resumen</h5>
+                    <div class="row">
+                      <div class="col-6">
+                        <p class="mb-1"><strong>Total Cuentas</strong></p>
+                        <h4 class="text-primary">{{ cuentas | length }}</h4>
+                      </div>
+                      <div class="col-6">
+                        <p class="mb-1"><strong>Cuentas Activas</strong></p>
+                        <h4 class="text-success">{{ cuentas | selectattr('activa', 'equalto', true) | list | length }}</h4>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="card bg-light">
+                  <div class="card-body text-center">
+                    <h5 class="card-title text-azul-oscuro">Bancos</h5>
+                    <div class="row">
+                      <div class="col-12">
+                        <p class="mb-1"><strong>Bancos Únicos</strong></p>
+                        <h4 class="text-info">{{ cuentas | map(attribute='banco') | unique | list | length }}</h4>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+          {% else %}
+            <div class="text-center py-5">
+              <i class="fas fa-university fa-3x text-muted mb-3"></i>
+              <h4 class="text-muted">No hay cuentas registradas</h4>
+              <p class="text-muted">Comienza agregando tu primera cuenta activa</p>
+              <a href="{{ url_for('cuentas_activas.nuevo') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>
+                Agregar Primera Cuenta
+              </a>
+            </div>
+          {% endif %}
+        </div>
+        
+        <div class="card-footer text-center">
+          <a href="{{ url_for('admin.index') }}" class="btn btn-lg btn-custom">
+            <i class="fas fa-arrow-left me-1"></i>
+            Volver al Admin
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap 5 Modal JS (si no está incluido en tu base.html) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<style>
+  .table th {
+    background-color: #f4f6fa;
+    border-bottom: 2px solid #003366;
+    color: #003366;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+    text-align: center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .table td {
+    vertical-align: middle;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    border-color: #e0e6ed;
+    font-size: 1.01rem;
+  }
+  .table tbody tr {
+    border-bottom: 1.5px solid #e0e6ed;
+    transition: background 0.15s;
+  }
+  .table tbody tr:hover {
+    background: #eaf3ff;
+    box-shadow: 0 2px 8px rgba(0,51,102,0.04);
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  .btn-group-action {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+  }
+  .btn-icon {
+    padding: 6px 10px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    line-height: 1;
+    background: none;
+    box-shadow: none;
+    transition: background 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #003366;
+  }
+  .btn-icon.btn-outline-danger {
+    color: #dc3545;
+  }
+  .btn-icon.btn-outline-success {
+    color: #198754;
+  }
+  .btn-icon:hover, .btn-icon:focus {
+    background: #dbeafe;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,51,102,0.08);
+  }
+  .btn-icon.btn-outline-danger:hover, .btn-icon.btn-outline-danger:focus {
+    background: #dc3545;
+    color: #fff;
+  }
+  .btn-icon.btn-outline-success:hover, .btn-icon.btn-outline-success:focus {
+    background: #198754;
+    color: #fff;
+  }
+</style>
+<script>
+  // Inicializar tooltips de Bootstrap 5 con menor delay
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl, { delay: { show: 100, hide: 50 } });
+  });
+</script>
+{% endblock %} 

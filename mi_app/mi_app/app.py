@@ -7,6 +7,7 @@ import requests
 import json
 import urllib.parse
 import logging
+from flask import g
 
 # Cargar variables de entorno
 load_dotenv()
@@ -43,6 +44,7 @@ from mi_app.mi_app.blueprints.admin import admin_bp
 from mi_app.mi_app.blueprints.pagos import pagos_bp
 from mi_app.mi_app.blueprints.clientes import clientes_bp
 from mi_app.mi_app.blueprints.cierre import cierre_bp
+from mi_app.mi_app.blueprints.cuentas_activas import cuentas_activas_bp
 
 from mi_app.mi_app.extensions import cache
 
@@ -110,6 +112,7 @@ app.register_blueprint(admin_bp, url_prefix="/admin")
 app.register_blueprint(pagos_bp, url_prefix="/pagos")
 app.register_blueprint(clientes_bp, url_prefix="/clientes")
 app.register_blueprint(cierre_bp, url_prefix="/cierre")
+app.register_blueprint(cuentas_activas_bp, url_prefix="/cuentas-activas")
 
 # -----------------------------------------------------------------------------
 # Decorador login_required
@@ -392,6 +395,16 @@ def format_currency(value):
         return f"${float(value):,.2f}"
     except (ValueError, TypeError):
         return str(value)
+
+@app.before_request
+def set_is_superuser():
+    g.is_superuser = False
+    if "email" in session:
+        try:
+            response = supabase.table("superusuarios").select("email").eq("email", session["email"]).execute()
+            g.is_superuser = bool(response.data)
+        except Exception as e:
+            logging.error("Error al verificar permisos de superusuario: %s", e)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)

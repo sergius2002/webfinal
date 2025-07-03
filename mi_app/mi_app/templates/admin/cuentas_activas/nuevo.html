@@ -1,0 +1,181 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Nueva Cuenta Activa{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.index') }}">Admin</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('cuentas_activas.index') }}">Cuentas Activas</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Nueva Cuenta</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block admin_content %}
+<div class="container-fluid mt-2">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+      <div class="card shadow-lg">
+        <div class="card-header bg-azul-oscuro text-white">
+          <h3 class="mb-0">
+            <i class="fas fa-plus me-2"></i>
+            Nueva Cuenta Activa
+          </h3>
+        </div>
+        
+        <div class="card-body">
+          <form method="POST">
+            <div class="row">
+              <!-- Banco -->
+              <div class="col-md-6 mb-3">
+                <label for="banco" class="form-label">
+                  <i class="fas fa-university me-1"></i>
+                  Banco <span class="text-danger">*</span>
+                </label>
+                <input type="text" 
+                       class="form-control form-control-lg" 
+                       id="banco" 
+                       name="banco" 
+                       required 
+                       placeholder="Ej: Banesco, Mercantil, Provincial"
+                       value="{{ request.form.get('banco', '') }}">
+                <div class="form-text">Nombre del banco donde está registrada la cuenta</div>
+              </div>
+              
+              <!-- Número de Cuenta -->
+              <div class="col-md-6 mb-3">
+                <label for="numero_cuenta" class="form-label">
+                  <i class="fas fa-credit-card me-1"></i>
+                  Número de Cuenta <span class="text-danger">*</span>
+                </label>
+                <input type="number" 
+                       class="form-control form-control-lg" 
+                       id="numero_cuenta" 
+                       name="numero_cuenta" 
+                       required 
+                       placeholder="12345678901234567890"
+                       value="{{ request.form.get('numero_cuenta', '') }}">
+                <div class="form-text">Número completo de la cuenta bancaria</div>
+              </div>
+            </div>
+            
+            <div class="row">
+              <!-- Cédula -->
+              <div class="col-md-6 mb-3">
+                <label for="cedula" class="form-label">
+                  <i class="fas fa-id-card me-1"></i>
+                  Cédula <span class="text-danger">*</span>
+                </label>
+                <input type="text" 
+                       class="form-control form-control-lg" 
+                       id="cedula" 
+                       name="cedula" 
+                       required 
+                       placeholder="V-12345678"
+                       value="{{ request.form.get('cedula', '') }}">
+                <div class="form-text">Cédula de identidad del titular</div>
+              </div>
+              
+              <!-- País -->
+              <div class="col-md-6 mb-3">
+                <label for="pais" class="form-label">
+                  <i class="fas fa-flag me-1"></i>
+                  País
+                </label>
+                <select class="form-select form-select-lg" id="pais" name="pais">
+                  <option value="Venezuela" {% if request.form.get('pais', 'Venezuela') == 'Venezuela' %}selected{% endif %}>Venezuela</option>
+                  <option value="Chile" {% if request.form.get('pais') == 'Chile' %}selected{% endif %}>Chile</option>
+                  <option value="Colombia" {% if request.form.get('pais') == 'Colombia' %}selected{% endif %}>Colombia</option>
+                  <option value="Perú" {% if request.form.get('pais') == 'Perú' %}selected{% endif %}>Perú</option>
+                  <option value="Argentina" {% if request.form.get('pais') == 'Argentina' %}selected{% endif %}>Argentina</option>
+                  <option value="Brasil" {% if request.form.get('pais') == 'Brasil' %}selected{% endif %}>Brasil</option>
+                  <option value="México" {% if request.form.get('pais') == 'México' %}selected{% endif %}>México</option>
+                  <option value="Otro" {% if request.form.get('pais') == 'Otro' %}selected{% endif %}>Otro</option>
+                </select>
+                <div class="form-text">País donde está registrada la cuenta</div>
+              </div>
+            </div>
+            
+            <!-- Nombre del Titular -->
+            <div class="mb-3">
+              <label for="nombre_titular" class="form-label">
+                <i class="fas fa-user me-1"></i>
+                Nombre del Titular <span class="text-danger">*</span>
+              </label>
+              <input type="text" 
+                     class="form-control form-control-lg" 
+                     id="nombre_titular" 
+                     name="nombre_titular" 
+                     required 
+                     placeholder="Nombre y Apellido del titular"
+                     value="{{ request.form.get('nombre_titular', '') }}">
+              <div class="form-text">Nombre completo del titular de la cuenta</div>
+            </div>
+            
+            <!-- Estado -->
+            <div class="mb-4">
+              <div class="form-check">
+                <input class="form-check-input" 
+                       type="checkbox" 
+                       id="activa" 
+                       name="activa" 
+                       checked>
+                <label class="form-check-label" for="activa">
+                  <i class="fas fa-check-circle me-1"></i>
+                  Cuenta activa
+                </label>
+                <div class="form-text">Desmarca esta opción si la cuenta no está activa</div>
+              </div>
+            </div>
+            
+            <!-- Botones -->
+            <div class="d-flex justify-content-between">
+              <a href="{{ url_for('cuentas_activas.index') }}" class="btn btn-lg btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>
+                Cancelar
+              </a>
+              <button type="submit" class="btn btn-lg btn-custom">
+                <i class="fas fa-save me-1"></i>
+                Guardar Cuenta
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .form-control:focus,
+  .form-select:focus {
+    border-color: #003366;
+    box-shadow: 0 0 0 0.2rem rgba(0, 51, 102, 0.25);
+  }
+  
+  .form-check-input:checked {
+    background-color: #003366;
+    border-color: #003366;
+  }
+  
+  .form-check-input:focus {
+    border-color: #003366;
+    box-shadow: 0 0 0 0.2rem rgba(0, 51, 102, 0.25);
+  }
+</style>
+
+<script>
+  // Validación del número de cuenta
+  document.getElementById('numero_cuenta').addEventListener('input', function(e) {
+    // Solo permitir números
+    this.value = this.value.replace(/[^0-9]/g, '');
+  });
+  
+  // Validación de la cédula
+  document.getElementById('cedula').addEventListener('input', function(e) {
+    // Permitir formato V-12345678 o solo números
+    this.value = this.value.replace(/[^0-9V\-]/g, '');
+  });
+</script>
+{% endblock %} 

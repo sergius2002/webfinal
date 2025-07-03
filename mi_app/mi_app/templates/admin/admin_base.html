@@ -27,6 +27,9 @@
         <a href="{{ url_for('admin.tasa_actual') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.tasa_actual' %}active{% endif %}">
           <i class="fas fa-chart-line"></i> Tasa actual
         </a>
+        <a href="{{ url_for('cuentas_activas.index') }}" class="list-group-item list-group-item-action {% if request.endpoint.startswith('cuentas_activas.') %}active{% endif %}">
+          <i class="fas fa-university"></i> Cuentas Activas
+        </a>
         <div class="dropdown-divider"></div>
                   <a href="{{ url_for('admin.configuracion_inicial') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.configuracion_inicial' %}active{% endif %}">
             <i class="fas fa-cog"></i> Configuración Inicial
