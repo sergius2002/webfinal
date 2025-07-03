@@ -144,7 +144,7 @@ def tasa_compras():
     fin = fecha + "T23:59:59"
     try:
         response = supabase.table("vista_compras_fifo") \
-            .select("totalprice, paymethodname, createtime, unitprice, costo_no_vendido") \
+            .select("id, totalprice, paymethodname, createtime, unitprice, costo_no_vendido") \
             .eq("fiat", "VES") \
             .gte("createtime", inicio) \
             .lte("createtime", fin) \
@@ -164,11 +164,38 @@ def tasa_compras():
         for row in compras_data:
             if costo_no_vendido:
                 row['tasa'] = round(row['unitprice'] / costo_no_vendido, 6)
+        # CONSULTA DE CUENTAS ACTIVAS
+        cuentas_activas = supabase.table("cuentas_activas").select("*").eq("activa", True).execute().data
+        # CONSULTA DE DEPOSITOS BRS PARA EL DIA
+        depositos = supabase.table("depositos_brs").select("compra_id, cuenta_id").execute().data
+        # Crear un diccionario para lookup rápido
+        cuenta_por_compra = {dep['compra_id']: dep['cuenta_id'] for dep in depositos}
+        # SUMAR BRS POR CUENTA
+        brs_por_cuenta = {}
+        for row in compras_data:
+            # Asignar cuenta_id a cada compra si existe
+            row['cuenta_id'] = cuenta_por_compra.get(row['id'])
+        for dep in depositos:
+            compra = next((c for c in compras_data if c['id'] == dep['compra_id']), None)
+            if compra:
+                cuenta_id = dep['cuenta_id']
+                brs = compra['totalprice']
+                if cuenta_id not in brs_por_cuenta:
+                    brs_por_cuenta[cuenta_id] = 0
+                brs_por_cuenta[cuenta_id] += brs
+        resumen_cuentas = []
+        for cuenta in cuentas_activas:
+            resumen_cuentas.append({
+                "nombre_titular": cuenta["nombre_titular"],
+                "brs": brs_por_cuenta.get(cuenta["id"], 0)
+            })
     except Exception as e:
         logging.error("Error al obtener los datos: %s", e)
         compras_data = []
+        cuentas_activas = []
+        resumen_cuentas = []
     return render_template("admin/tasa_compras.html", active_page="admin",
-                           compras_data=compras_data, fecha=fecha)
+                           compras_data=compras_data, fecha=fecha, cuentas_activas=cuentas_activas, resumen_cuentas=resumen_cuentas)
 
 @admin_bp.route("/ingresar_usdt", methods=["GET", "POST"])
 @login_required
@@ -659,4 +686,71 @@ def migrar_usuario_a_superusuario(user_id):
             
     except Exception as e:
         logging.error(f"Error al migrar usuario a superusuario: {e}")
-        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500 
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
+
+@admin_bp.route("/asignar_cuenta_compra", methods=["POST"])
+@login_required
+@user_allowed
+def asignar_cuenta_compra():
+    data = request.get_json()
+    compra_id = data.get("compra_id")
+    cuenta_id = data.get("cuenta_id")
+    if not compra_id or not cuenta_id:
+        return jsonify({"success": False, "error": "Datos incompletos"}), 400
+    try:
+        # Verificar si ya existe un registro para esa compra
+        existing = supabase.table("depositos_brs").select("id").eq("compra_id", compra_id).execute().data
+        if existing:
+            # Actualizar el registro existente
+            supabase.table("depositos_brs").update({
+                "cuenta_id": cuenta_id,
+                "fecha_asignacion": datetime.now().isoformat()
+            }).eq("compra_id", compra_id).execute()
+        else:
+            # Crear nuevo registro
+            supabase.table("depositos_brs").insert({
+                "compra_id": compra_id,
+                "cuenta_id": cuenta_id
+            }).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@admin_bp.route("/resumen_cuentas_brs", methods=["GET"])
+@login_required
+@user_allowed
+def resumen_cuentas_brs():
+    fecha = request.args.get("fecha")
+    if not fecha:
+        fecha = adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d")
+    inicio = fecha + "T00:00:00"
+    fin = fecha + "T23:59:59"
+    try:
+        compras_data = supabase.table("vista_compras_fifo") \
+            .select("id, totalprice, paymethodname, createtime, unitprice, costo_no_vendido") \
+            .eq("fiat", "VES") \
+            .gte("createtime", inicio) \
+            .lte("createtime", fin) \
+            .execute().data or []
+        cuentas_activas = supabase.table("cuentas_activas").select("*").eq("activa", True).execute().data
+        depositos = supabase.table("depositos_brs").select("compra_id, cuenta_id").execute().data
+        brs_por_cuenta = {}
+        for dep in depositos:
+            compra = next((c for c in compras_data if c['id'] == dep['compra_id']), None)
+            if compra:
+                cuenta_id = dep['cuenta_id']
+                brs = compra['totalprice']
+                if cuenta_id not in brs_por_cuenta:
+                    brs_por_cuenta[cuenta_id] = 0
+                brs_por_cuenta[cuenta_id] += brs
+        resumen_cuentas = []
+        for cuenta in cuentas_activas:
+            resumen_cuentas.append({
+                "nombre_titular": cuenta["nombre_titular"],
+                "brs": brs_por_cuenta.get(cuenta["id"], 0)
+            })
+        # Solo cuentas con más de 1000 BRS
+        resumen_cuentas = [c for c in resumen_cuentas if c["brs"] > 1000]
+        return jsonify({"resumen_cuentas": resumen_cuentas})
+    except Exception as e:
+        return jsonify({"resumen_cuentas": [], "error": str(e)}), 500 

@@ -32,6 +32,11 @@
     </div>
   </div>
 
+  <!-- Feedback visual para resumen actualizado -->
+  <div id="resumen-feedback" style="display:none;" class="alert alert-success py-1 mb-2 text-center">
+    Resumen actualizado
+  </div>
+
   <!-- Tarjeta para mostrar la tabla de datos -->
   <div class="card shadow-lg">
     <div class="card-body">
@@ -68,6 +73,33 @@
         </div>
       </div>
 
+      <!-- Tabla de resumen de BRS por cuenta -->
+      <div class="row mb-4">
+        <div class="col-md-8 mx-auto">
+          <div class="card bg-light">
+            <div class="card-body">
+              <h5 class="card-title text-azul-oscuro mb-3">BRS depositados por cuenta</h5>
+              <table class="table table-sm table-bordered tabla-resumen-cuentas">
+                <thead>
+                  <tr>
+                    <th>Cuenta</th>
+                    <th>Total BRS</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-resumen-cuentas-body">
+                  {% for cuenta in resumen_cuentas if cuenta.brs > 1000 %}
+                  <tr>
+                    <td>{{ cuenta.nombre_titular }}</td>
+                    <td>{{ cuenta.brs | format_int }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="table-responsive">
         <table class="table table-hover table-bordered text-center mb-0">
           <thead class="thead-light">
@@ -77,16 +109,27 @@
               <th>Brs</th>
               <th>CLP</th>
               <th>Hora</th>
+              <th>Cuenta</th>
             </tr>
           </thead>
           <tbody>
             {% for row in compras_data %}
-            <tr>
+            <tr{% if not row.cuenta_id %} class="fila-no-asignada"{% endif %}>
               <td>{{ row.paymethodname }}</td>
               <td>{{ (row.unitprice / row.costo_no_vendido) | format_decimal(6) if row.costo_no_vendido and row.costo_no_vendido != 0 else 0 }}</td>
               <td>{{ row.totalprice | format_int }}</td>
               <td>{{ ((row.totalprice / (row.unitprice / row.costo_no_vendido)) | round | int | format_int) if row.costo_no_vendido and row.costo_no_vendido != 0 else 0 }}</td>
               <td>{{ row.createtime | format_time }}</td>
+              <td>
+                <select class="form-select select-cuenta{% if not row.cuenta_id %} select-no-asignada{% endif %}" data-compra-id="{{ row.id }}">
+                  <option value="">Seleccionar cuenta</option>
+                  {% for cuenta in cuentas_activas %}
+                    <option value="{{ cuenta.id }}" {% if row.cuenta_id == cuenta.id %}selected{% endif %}>
+                      {{ cuenta.nombre_titular }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </td>
             </tr>
             {% endfor %}
           </tbody>
@@ -103,4 +146,117 @@
     </div>
   </div>
 </div>
+
+<script>
+function actualizarResumenCuentas() {
+    const fecha = document.getElementById('fecha') ? document.getElementById('fecha').value : '';
+    const tbody = document.querySelector('#tabla-resumen-cuentas-body');
+    tbody.style.transition = 'opacity 0.3s';
+    tbody.style.opacity = 0.3;
+    fetch(`{{ url_for('admin.resumen_cuentas_brs') }}?fecha=${fecha}`)
+        .then(response => response.json())
+        .then(data => {
+            const resumen = data.resumen_cuentas || [];
+            setTimeout(() => {
+                tbody.innerHTML = '';
+                resumen.forEach(cuenta => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${cuenta.nombre_titular}</td><td>${cuenta.brs.toLocaleString('es-CL')}</td>`;
+                    tbody.appendChild(tr);
+                });
+                tbody.style.opacity = 1;
+                // Mostrar feedback visual
+                const feedback = document.getElementById('resumen-feedback');
+                if (feedback) {
+                    feedback.style.display = 'block';
+                    setTimeout(() => feedback.style.display = 'none', 1200);
+                }
+            }, 200);
+        });
+}
+
+document.querySelectorAll('.select-cuenta').forEach(function(select) {
+    select.addEventListener('change', function() {
+        const compraId = this.getAttribute('data-compra-id');
+        const cuentaId = this.value;
+        console.log('compraId:', compraId, 'cuentaId:', cuentaId);
+        if (!cuentaId) return; // No guardar si no seleccionó nada
+        select.disabled = true;
+        fetch('{{ url_for("admin.asignar_cuenta_compra") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                compra_id: compraId,
+                cuenta_id: cuentaId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                this.classList.add('is-valid');
+                setTimeout(() => this.classList.remove('is-valid'), 1500);
+                actualizarResumenCuentas();
+            } else {
+                this.classList.add('is-invalid');
+                setTimeout(() => this.classList.remove('is-invalid'), 1500);
+                alert('Error al guardar: ' + (data.error || 'Error desconocido'));
+            }
+        })
+        .catch(() => {
+            this.classList.add('is-invalid');
+            setTimeout(() => this.classList.remove('is-invalid'), 1500);
+            alert('Error de red al guardar');
+        })
+        .finally(() => {
+            select.disabled = false;
+        });
+    });
+});
+</script>
+
+<style>
+.tabla-resumen-cuentas {
+  /* border-radius: 12px; */
+  border-radius: 0;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  margin-bottom: 0;
+}
+.tabla-resumen-cuentas th {
+  background: #003366;
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+  border: none;
+}
+.tabla-resumen-cuentas td {
+  background: #fff;
+  border: none;
+  vertical-align: middle;
+  font-size: 1.08em;
+  padding: 0.7em 1em;
+  text-align: center;
+}
+.tabla-resumen-cuentas tr:nth-child(even) td {
+  background: #f4f8fb;
+}
+.tabla-resumen-cuentas tr {
+  transition: background 0.2s;
+}
+.tabla-resumen-cuentas tr:hover td {
+  background: #e6f0fa;
+}
+.fila-no-asignada {
+  background: #fff3cd !important;   /* Amarillo más fuerte */
+  border-left: 5px solid #ff9800;   /* Naranja fuerte y más ancho */
+}
+.select-no-asignada {
+  background: #fff3cd !important;   /* Amarillo fuerte */
+  border: 2px solid #ff9800 !important; /* Naranja fuerte */
+  box-shadow: 0 0 0 2px #ffe0a3;
+  color: #333;
+}
+</style>
 {% endblock %}
