@@ -202,7 +202,7 @@
           <td>
             <div class="d-flex justify-content-center align-items-center gap-2">
               <a href="{{ url_for('clientes.editar', cliente_id=cliente.id) }}" class="btn btn-warning btn-sm btn-accion-cliente">Editar</a>
-              {% if is_admin %}
+              {% if is_superuser %}
               <form action="{{ url_for('clientes.eliminar', cliente_id=cliente.id) }}" method="post" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar este cliente?');">
                 <button type="submit" class="btn btn-danger btn-sm btn-accion-cliente">Eliminar</button>
               </form>

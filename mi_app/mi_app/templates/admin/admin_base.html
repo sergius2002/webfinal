@@ -28,9 +28,12 @@
           <i class="fas fa-chart-line"></i> Tasa actual
         </a>
         <div class="dropdown-divider"></div>
-        <a href="{{ url_for('admin.configuracion_inicial') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.configuracion_inicial' %}active{% endif %}">
-          <i class="fas fa-cog"></i> Configuración Inicial
-        </a>
+                  <a href="{{ url_for('admin.configuracion_inicial') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.configuracion_inicial' %}active{% endif %}">
+            <i class="fas fa-cog"></i> Configuración Inicial
+          </a>
+          <a href="{{ url_for('admin.gestion_superusuarios') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.gestion_superusuarios' %}active{% endif %}">
+            <i class="fas fa-crown"></i> Superusuarios
+          </a>
       </div>
     </div>
 

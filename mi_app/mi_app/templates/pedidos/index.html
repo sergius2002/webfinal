@@ -14,7 +14,7 @@
     <a href="{{ url_for('pedidos.nuevo') }}" class="btn btn-success">
       <i class="fas fa-plus me-1"></i>Nuevo Pedido
     </a>
-    {% if is_admin %}
+    {% if is_superuser %}
     <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditarTasas">
       <i class="fas fa-edit me-1"></i>Editar Tasas
     </button>

@@ -99,10 +99,10 @@
             <i class="fas fa-archive"></i> Cierre
           </a>
         </li>
-        {% if is_admin %}
+        {% if is_superuser %}
           <li class="nav-item">
             <a class="nav-link {% if active_page=='admin' %}active{% endif %}" href="{{ url_for('admin.index') }}">
-              <i class="fas fa-user-shield"></i> Módulo Restringido
+              <i class="fas fa-crown"></i> Módulo Administrativo
             </a>
           </li>
         {% endif %}

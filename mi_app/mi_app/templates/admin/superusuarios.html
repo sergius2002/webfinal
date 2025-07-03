@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Superusuarios{% endblock %}
+
+{% block content %}
+<style>
+  .superusuarios-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: calc(100vh - 100px);
+    padding: 1rem 0;
+  }
+  
+  .superusuarios-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    overflow: hidden;
+    margin: 0 auto;
+  }
+  
+  .superusuarios-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    padding: 2rem;
+    text-align: center;
+  }
+  
+  .superusuarios-body {
+    padding: 2rem;
+  }
+  
+  .section-title {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #3498db;
+  }
+  
+  .table-responsive {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+  
+  .table th {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    border: none;
+    font-weight: 600;
+  }
+  
+  .table td {
+    vertical-align: middle;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .btn-superuser {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-superuser:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+  }
+  
+  .btn-migrar {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-migrar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+  }
+  
+  .btn-agregar {
+    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-agregar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(155, 89, 182, 0.3);
+  }
+  
+  .form-control {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+  }
+  
+  .form-control:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    outline: none;
+  }
+  
+  .badge-superuser {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  
+  .badge-allowed {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  
+  .alert-info {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border: none;
+    color: white;
+    border-radius: 10px;
+    padding: 1rem;
+  }
+  
+  .alert-warning {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    border: none;
+    color: white;
+    border-radius: 10px;
+    padding: 1rem;
+  }
+  
+  .icon-large {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+</style>
+
+<div class="superusuarios-container">
+  <div class="container mt-4">
+    <div class="row">
+      <!-- Menú lateral -->
+      <div class="col-md-3">
+        <div class="list-group admin-menu">
+          <a href="{{ url_for('admin.tasa_compras') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-shopping-cart"></i> Compras BRS
+          </a>
+          <a href="{{ url_for('admin.ingresar_usdt') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-dollar-sign"></i> Ingresar Transaccion
+          </a>
+          <a href="{{ url_for('admin.resumen_compras_usdt') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-list"></i> Transacciones USDT/CLP
+          </a>
+          <a href="{{ url_for('admin.tasa_actual') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-chart-line"></i> Tasa actual
+          </a>
+          <div class="dropdown-divider"></div>
+          <a href="{{ url_for('admin.configuracion_inicial') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-cog"></i> Configuración Inicial
+          </a>
+          <a href="{{ url_for('admin.gestion_superusuarios') }}" class="list-group-item list-group-item-action active">
+            <i class="fas fa-crown"></i> Superusuarios
+          </a>
+        </div>
+      </div>
+      
+      <!-- Contenido principal -->
+      <div class="col-md-9">
+        <div class="content-header text-center mb-4">
+          <h1 class="text-azul-oscuro">Gestión de Superusuarios</h1>
+        </div>
+        <div class="content-body">
+          <div class="superusuarios-card">
+            <div class="superusuarios-header">
+              <div class="icon-large">👑</div>
+              <h3 class="mb-0">Control de Acceso Administrativo</h3>
+              <p class="mb-0 mt-2">Gestiona quién puede acceder al módulo restringido</p>
+            </div>
+            
+            <div class="superusuarios-body">
+              <!-- Información del sistema -->
+              <div class="alert alert-warning mb-4">
+                <strong>👑 Acceso Exclusivo:</strong><br>
+                • Solo los <strong>superusuarios</strong> pueden acceder al módulo administrativo<br>
+                • Los usuarios normales tienen acceso a todos los demás módulos<br>
+                • Puedes migrar usuarios permitidos a superusuarios
+              </div>
+              
+              <!-- Agregar nuevo superusuario -->
+              <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                  <h5 class="mb-0">➕ Agregar Nuevo Superusuario</h5>
+                </div>
+                <div class="card-body">
+                  <form id="form-agregar-superusuario">
+                    <div class="row">
+                      <div class="col-md-8">
+                        <input type="email" 
+                               id="email-superusuario" 
+                               class="form-control" 
+                               placeholder="Ingresa el email del nuevo superusuario"
+                               required>
+                      </div>
+                      <div class="col-md-4">
+                        <button type="submit" class="btn btn-agregar w-100">
+                          <i class="fas fa-plus me-2"></i>Agregar
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+              
+              <!-- Lista de Superusuarios -->
+              <div class="mb-4">
+                <h4 class="section-title">
+                  <i class="fas fa-crown me-2"></i>Superusuarios Activos
+                </h4>
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Email</th>
+                        <th>Fecha Creación</th>
+                        <th>Creado Por</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbody-superusuarios">
+                      {% for superusuario in superusuarios %}
+                      <tr>
+                        <td>
+                          <span class="badge-superuser">{{ superusuario.email }}</span>
+                        </td>
+                        <td>{{ superusuario.created_at[:10] if superusuario.created_at else 'N/A' }}</td>
+                        <td>{{ superusuario.usuario_creacion or 'Sistema' }}</td>
+                        <td>
+                          {% if superusuario.activo %}
+                            <span class="badge bg-success">Activo</span>
+                          {% else %}
+                            <span class="badge bg-danger">Inactivo</span>
+                          {% endif %}
+                        </td>
+                        <td>
+                          {% if superusuario.email != session.get('email') %}
+                          <button class="btn btn-superuser btn-sm" 
+                                  onclick="eliminarSuperusuario({{ superusuario.id }}, '{{ superusuario.email }}')">
+                            <i class="fas fa-trash me-1"></i>Eliminar
+                          </button>
+                          {% else %}
+                          <small class="text-muted">Tu cuenta</small>
+                          {% endif %}
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              
+              <!-- Lista de Usuarios Permitidos (para migración) -->
+              {% if allowed_users %}
+              <div class="alert alert-info mb-4">
+                <strong>ℹ️ Usuarios Permitidos (Legacy):</strong><br>
+                Estos usuarios del sistema anterior. Considera migrarlos a superusuarios o eliminarlos.
+              </div>
+              
+              <div class="mb-4">
+                <h4 class="section-title">
+                  <i class="fas fa-users me-2"></i>Usuarios Permitidos
+                </h4>
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Email</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for usuario in allowed_users %}
+                      <tr>
+                        <td>
+                          <span class="badge-allowed">{{ usuario.email }}</span>
+                        </td>
+                        <td>
+                          <button class="btn btn-migrar btn-sm" 
+                                  onclick="migrarUsuario({{ usuario.id }}, '{{ usuario.email }}')">
+                            <i class="fas fa-arrow-up me-1"></i>Migrar a Superusuario
+                          </button>
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              {% endif %}
+              
+              <!-- Mensaje de estado -->
+              <div id="mensaje-estado" style="display: none;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('form-agregar-superusuario');
+  const mensajeEstado = document.getElementById('mensaje-estado');
+  
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('email-superusuario').value.trim();
+    
+    if (!email) {
+      mostrarMensaje('Por favor ingresa un email válido', 'error');
+      return;
+    }
+    
+    try {
+      const response = await fetch('/admin/agregar-superusuario', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        mostrarMensaje(result.message, 'success');
+        form.reset();
+        // Recargar página después de 2 segundos
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        mostrarMensaje(result.message, 'error');
+      }
+      
+    } catch (error) {
+      mostrarMensaje('Error de conexión. Intenta nuevamente.', 'error');
+    }
+  });
+  
+  function mostrarMensaje(mensaje, tipo) {
+    mensajeEstado.style.display = 'block';
+    mensajeEstado.className = `alert alert-${tipo === 'success' ? 'success' : 'danger'} mt-3`;
+    mensajeEstado.innerHTML = `
+      <strong>${tipo === 'success' ? '✅' : '❌'}</strong> ${mensaje}
+    `;
+    
+    // Ocultar después de 5 segundos si es error
+    if (tipo === 'error') {
+      setTimeout(() => {
+        mensajeEstado.style.display = 'none';
+      }, 5000);
+    }
+  }
+});
+
+// Función para eliminar superusuario
+async function eliminarSuperusuario(id, email) {
+  if (!confirm(`¿Estás seguro de que quieres eliminar al superusuario ${email}?`)) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/admin/eliminar-superusuario/${id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      alert(result.message);
+      window.location.reload();
+    } else {
+      alert(result.message);
+    }
+    
+  } catch (error) {
+    alert('Error de conexión. Intenta nuevamente.');
+  }
+}
+
+// Función para migrar usuario a superusuario
+async function migrarUsuario(id, email) {
+  if (!confirm(`¿Estás seguro de que quieres migrar a ${email} como superusuario?`)) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/admin/migrar-usuario-a-superusuario/${id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      alert(result.message);
+      window.location.reload();
+    } else {
+      alert(result.message);
+    }
+    
+  } catch (error) {
+    alert('Error de conexión. Intenta nuevamente.');
+  }
+}
+</script>
+{% endblock %} 

@@ -1,16 +1,30 @@
 {% extends "base.html" %}
 
+{% block title %}Módulo Administrativo{% endblock %}
+
 {% block breadcrumbs %}
 <nav aria-label="breadcrumb">
   <ol class="breadcrumb">
     <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Inicio</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Módulo Restringido</li>
+    <li class="breadcrumb-item active" aria-current="page">Módulo Administrativo</li>
   </ol>
 </nav>
 {% endblock %}
 
 {% block content %}
 <div class="row">
+  <!-- Información del superusuario -->
+  <div class="col-md-12 mb-3">
+    <div class="alert alert-warning">
+      <h5><i class="fas fa-crown"></i> Panel de Superusuario</h5>
+      <p><strong>Usuario actual:</strong> {{ session.email }}</p>
+      <p><strong>Tipo de acceso:</strong> 
+        <span class="badge bg-warning">Superusuario</span>
+      </p>
+      <p class="mb-0"><small>Este módulo es de acceso exclusivo para superusuarios.</small></p>
+    </div>
+  </div>
+  
   <!-- Menú lateral -->
   <div class="col-md-3">
     <div class="list-group admin-menu">
@@ -33,7 +47,7 @@
     </div>
   </div>
 
-  <!-- Contenido principal del módulo restringido -->
+  <!-- Contenido principal del módulo administrativo -->
   <div class="col-md-9">
     {% block admin_content %}
     <!-- Aquí se mostrará, por ejemplo, el cálculo de la tasa ponderada -->

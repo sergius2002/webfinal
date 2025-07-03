@@ -135,14 +135,14 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # -----------------------------------------------------------------------------
 @app.context_processor
 def inject_user_permissions():
-    is_admin = False
+    is_superuser = False
     if "email" in session:
         try:
-            response = supabase.table("allowed_users").select("email").eq("email", session["email"]).execute()
-            is_admin = bool(response.data)  # True si el email está en allowed_users
+            response = supabase.table("superusuarios").select("email").eq("email", session["email"]).execute()
+            is_superuser = bool(response.data)  # True si el email está en superusuarios
         except Exception as e:
-            logging.error("Error al verificar permisos de usuario: %s", e)
-    return dict(is_admin=is_admin)
+            logging.error("Error al verificar permisos de superusuario: %s", e)
+    return dict(is_superuser=is_superuser)
 
 # -----------------------------------------------------------------------------
 # Función para generar hash único para cada transferencia

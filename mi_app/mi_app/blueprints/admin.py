@@ -51,8 +51,33 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Decorador para módulos restringidos
+# Decorador para módulos restringidos - SOLO SUPERUSUARIOS
 def user_allowed(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        email = session.get("email")
+        logging.info(f"Verificando acceso para email: {email}")
+        if not email:
+            flash("Debes iniciar sesión.")
+            return redirect(url_for("login"))
+        try:
+            # SOLO verificar si es superusuario
+            logging.info(f"Consultando tabla superusuarios para: {email}")
+            superuser_response = supabase.table("superusuarios").select("email").eq("email", email).execute()
+            logging.info(f"Respuesta de superusuarios: {superuser_response.data}")
+            if not superuser_response.data:
+                flash("Acceso denegado. Solo superusuarios pueden acceder al módulo administrativo.")
+                return redirect(url_for("index"))
+            logging.info(f"Acceso permitido para superusuario: {email}")
+        except Exception as e:
+            logging.error("Error al verificar superusuario: %s", e)
+            flash("Error interno al verificar permisos.")
+            return redirect(url_for("index"))
+        return f(*args, **kwargs)
+    return wrapper
+
+# Decorador específico para superusuarios
+def superuser_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         email = session.get("email")
@@ -60,12 +85,12 @@ def user_allowed(f):
             flash("Debes iniciar sesión.")
             return redirect(url_for("login"))
         try:
-            response = supabase.table("allowed_users").select("email").eq("email", email).execute()
+            response = supabase.table("superusuarios").select("email").eq("email", email).execute()
             if not response.data:
-                flash("No tienes permisos para acceder a este módulo.")
+                flash("Acceso denegado. Solo superusuarios pueden acceder a esta función.")
                 return redirect(url_for("index"))
         except Exception as e:
-            logging.error("Error al verificar usuario permitido: %s", e)
+            logging.error("Error al verificar superusuario: %s", e)
             flash("Error interno al verificar permisos.")
             return redirect(url_for("index"))
         return f(*args, **kwargs)
@@ -495,4 +520,143 @@ def guardar_configuracion_inicial():
         return jsonify({'success': False, 'message': 'Saldo inicial debe ser un número válido'}), 400
     except Exception as e:
         logging.error(f"Error al guardar configuración inicial: {e}")
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
+
+@admin_bp.route('/superusuarios')
+@login_required
+@user_allowed
+def gestion_superusuarios():
+    """Gestión de superusuarios - solo accesible por superusuarios"""
+    try:
+        # Obtener lista de superusuarios
+        superusuarios_response = supabase.table("superusuarios").select("*").order("created_at", desc=True).execute()
+        superusuarios = superusuarios_response.data if superusuarios_response.data else []
+        
+        # Obtener lista de usuarios permitidos (para migración)
+        try:
+            # Primero intentar obtener solo las columnas básicas
+            allowed_response = supabase.table("allowed_users").select("id, email").execute()
+            allowed_users = allowed_response.data if allowed_response.data else []
+            logging.info(f"Usuarios permitidos encontrados: {len(allowed_users)}")
+        except Exception as e:
+            logging.warning(f"No se pudo obtener usuarios permitidos: {e}")
+            allowed_users = []
+        
+        return render_template('admin/superusuarios.html', 
+                             active_page='admin',
+                             superusuarios=superusuarios,
+                             allowed_users=allowed_users)
+    except Exception as e:
+        logging.error(f"Error al cargar gestión de superusuarios: {e}")
+        flash("Error al cargar la gestión de superusuarios")
+        return redirect(url_for('admin.index'))
+
+@admin_bp.route('/agregar-superusuario', methods=['POST'])
+@login_required
+@user_allowed
+def agregar_superusuario():
+    """Agregar un nuevo superusuario"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({'success': False, 'message': 'El email es requerido'}), 400
+        
+        # Validar formato de email
+        if '@' not in email or '.' not in email:
+            return jsonify({'success': False, 'message': 'Formato de email inválido'}), 400
+        
+        # Verificar si ya existe
+        existing_response = supabase.table("superusuarios").select("id").eq("email", email).execute()
+        if existing_response.data:
+            return jsonify({'success': False, 'message': 'Este email ya está registrado como superusuario'}), 400
+        
+        # Agregar superusuario
+        superusuario_data = {
+            'email': email,
+            'usuario_creacion': session.get('email', 'usuario_desconocido'),
+            'activo': True
+        }
+        
+        response = supabase.table("superusuarios").insert(superusuario_data).execute()
+        
+        if response.data:
+            logging.info(f"Superusuario agregado: {email} por {session.get('email')}")
+            return jsonify({'success': True, 'message': 'Superusuario agregado exitosamente'})
+        else:
+            return jsonify({'success': False, 'message': 'Error al agregar superusuario'}), 500
+            
+    except Exception as e:
+        logging.error(f"Error al agregar superusuario: {e}")
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
+
+@admin_bp.route('/eliminar-superusuario/<int:superusuario_id>', methods=['POST'])
+@login_required
+@user_allowed
+def eliminar_superusuario(superusuario_id):
+    """Eliminar un superusuario"""
+    try:
+        # Verificar que no se elimine a sí mismo
+        current_email = session.get('email')
+        superusuario_response = supabase.table("superusuarios").select("email").eq("id", superusuario_id).execute()
+        
+        if not superusuario_response.data:
+            return jsonify({'success': False, 'message': 'Superusuario no encontrado'}), 404
+        
+        superusuario_email = superusuario_response.data[0]['email']
+        
+        if superusuario_email == current_email:
+            return jsonify({'success': False, 'message': 'No puedes eliminar tu propia cuenta de superusuario'}), 400
+        
+        # Eliminar superusuario
+        response = supabase.table("superusuarios").delete().eq("id", superusuario_id).execute()
+        
+        if response.data:
+            logging.info(f"Superusuario eliminado: {superusuario_email} por {current_email}")
+            return jsonify({'success': True, 'message': 'Superusuario eliminado exitosamente'})
+        else:
+            return jsonify({'success': False, 'message': 'Error al eliminar superusuario'}), 500
+            
+    except Exception as e:
+        logging.error(f"Error al eliminar superusuario: {e}")
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
+
+@admin_bp.route('/migrar-usuario-a-superusuario/<int:user_id>', methods=['POST'])
+@login_required
+@user_allowed
+def migrar_usuario_a_superusuario(user_id):
+    """Migrar un usuario permitido a superusuario"""
+    try:
+        # Obtener datos del usuario permitido
+        user_response = supabase.table("allowed_users").select("*").eq("id", user_id).execute()
+        
+        if not user_response.data:
+            return jsonify({'success': False, 'message': 'Usuario no encontrado'}), 404
+        
+        user_data = user_response.data[0]
+        email = user_data['email']
+        
+        # Verificar si ya es superusuario
+        existing_response = supabase.table("superusuarios").select("id").eq("email", email).execute()
+        if existing_response.data:
+            return jsonify({'success': False, 'message': 'Este usuario ya es superusuario'}), 400
+        
+        # Agregar como superusuario
+        superusuario_data = {
+            'email': email,
+            'usuario_creacion': session.get('email', 'usuario_desconocido'),
+            'activo': True
+        }
+        
+        response = supabase.table("superusuarios").insert(superusuario_data).execute()
+        
+        if response.data:
+            logging.info(f"Usuario migrado a superusuario: {email} por {session.get('email')}")
+            return jsonify({'success': True, 'message': 'Usuario migrado a superusuario exitosamente'})
+        else:
+            return jsonify({'success': False, 'message': 'Error al migrar usuario'}), 500
+            
+    except Exception as e:
+        logging.error(f"Error al migrar usuario a superusuario: {e}")
         return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500 
