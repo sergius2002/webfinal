@@ -10,6 +10,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from supabase import create_client, Client
 import pytz
 from mi_app.mi_app.usdt_ves import obtener_valor_usdt_por_banco
+from mi_app.mi_app.blueprints.pedidos import registrar_movimiento_cuenta
 
 # Configuración de zona horaria
 chile_tz = pytz.timezone('America/Santiago')
@@ -699,7 +700,8 @@ def asignar_cuenta_compra():
         return jsonify({"success": False, "error": "Datos incompletos"}), 400
     try:
         # Verificar si ya existe un registro para esa compra
-        existing = supabase.table("depositos_brs").select("id").eq("compra_id", compra_id).execute().data
+        existing = supabase.table("depositos_brs").select("cuenta_id").eq("compra_id", compra_id).execute().data
+        cuenta_anterior = existing[0]["cuenta_id"] if existing else None
         if existing:
             # Actualizar el registro existente
             supabase.table("depositos_brs").update({
@@ -712,8 +714,25 @@ def asignar_cuenta_compra():
                 "compra_id": compra_id,
                 "cuenta_id": cuenta_id
             }).execute()
+        # Obtener el monto de la compra (BRS)
+        compra = supabase.table("vista_compras_fifo").select("totalprice").eq("id", compra_id).single().execute().data
+        logging.info(f"[asignar_cuenta_compra] compra_id={compra_id}, cuenta_id={cuenta_id}, compra={compra}, cuenta_anterior={cuenta_anterior}")
+        if compra and "totalprice" in compra:
+            monto_brs = int(round(compra["totalprice"]))
+            descripcion = f"Compra asignada desde módulo compras"
+            # Si la cuenta anterior es distinta, revertir saldo en la anterior
+            if cuenta_anterior and cuenta_anterior != cuenta_id:
+                descripcion_ajuste = f"Ajuste por reasignación de compra (ID {compra_id})"
+                registrar_movimiento_cuenta(cuenta_anterior, "AJUSTE", -monto_brs, compra_id, "compra", descripcion_ajuste)
+                logging.info(f"[asignar_cuenta_compra] Ajuste negativo en cuenta_anterior={cuenta_anterior} por {-monto_brs}")
+            # Registrar movimiento COMPRA en la cuenta nueva
+            resultado = registrar_movimiento_cuenta(cuenta_id, "COMPRA", monto_brs, compra_id, "compra", descripcion)
+            logging.info(f"[asignar_cuenta_compra] registrar_movimiento_cuenta resultado={resultado}, monto_brs={monto_brs}")
+        else:
+            logging.warning(f"[asignar_cuenta_compra] No se encontró totalprice para compra_id={compra_id}")
         return jsonify({"success": True})
     except Exception as e:
+        logging.error(f"[asignar_cuenta_compra] Excepción: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @admin_bp.route("/resumen_cuentas_brs", methods=["GET"])

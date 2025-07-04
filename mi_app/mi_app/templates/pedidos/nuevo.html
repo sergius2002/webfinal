@@ -94,6 +94,26 @@
             <input type="date" name="fecha" id="fecha" class="form-control" value="{{ current_date }}" required>
             <div class="invalid-feedback">Por favor seleccione una fecha válida.</div>
           </div>
+          <div class="mb-3">
+            <label for="cuenta_id" class="form-label">
+              <i class="fas fa-university me-1"></i>Cuenta Corriente
+            </label>
+            <select name="cuenta_id" id="cuenta_id" class="form-select" required>
+              <option value="">Seleccionar cuenta corriente</option>
+              {% for cuenta in cuentas_activas %}
+                <option value="{{ cuenta.id }}" {% if request.form.get('cuenta_id') == cuenta.id|string %}selected{% endif %}>
+                  {{ cuenta.numero_cuenta }} - {{ cuenta.nombre_titular }}
+                </option>
+              {% endfor %}
+            </select>
+            <div class="invalid-feedback">Por favor seleccione una cuenta corriente.</div>
+            <div id="saldo-info" class="form-text" style="display: none;">
+              <i class="fas fa-info-circle me-1"></i><span id="saldo-text"></span>
+            </div>
+            <div id="saldo-warning" class="alert alert-warning mt-2" style="display: none;">
+              <i class="fas fa-exclamation-triangle me-1"></i><span id="saldo-warning-text"></span>
+            </div>
+          </div>
           <div class="d-flex align-items-center gap-2 mb-3">
             <button type="submit" class="btn btn-primary w-100" id="btn-guardar">
               <span id="spinner-guardar" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
@@ -300,21 +320,28 @@ document.addEventListener('DOMContentLoaded', function() {
   // Validación en tiempo real
   const form = document.getElementById('form-nuevo-pedido');
   const btnGuardar = document.getElementById('btn-guardar');
+  
+  // Variables para validación de saldo
+  let saldoActual = 0;
+  let saldoSuficiente = true;
+  
   function validarFormulario() {
     const cliente = document.getElementById('cliente').value;
     const brs = hiddenInput.value;
     const tasa = document.getElementById('tasa').value;
     const fecha = document.getElementById('fecha').value;
+    const cuentaId = document.getElementById('cuenta_id').value;
     
-    const isValid = cliente && brs && parseInt(brs) > 0 && tasa && fecha;
-    btnGuardar.disabled = !isValid;
+    const isValid = cliente && brs && parseInt(brs) > 0 && tasa && fecha && cuentaId;
+    btnGuardar.disabled = !isValid || !saldoSuficiente;
     
     // Agregar clases de validación visual
     const fields = [
       { element: document.getElementById('cliente'), value: cliente },
       { element: document.getElementById('brs_display'), value: brs },
       { element: document.getElementById('tasa'), value: tasa },
-      { element: document.getElementById('fecha'), value: fecha }
+      { element: document.getElementById('fecha'), value: fecha },
+      { element: document.getElementById('cuenta_id'), value: cuentaId }
     ];
     
     fields.forEach(field => {
@@ -329,10 +356,98 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+  
+  // Función para consultar saldo de cuenta
+  async function consultarSaldoCuenta(cuentaId) {
+    if (!cuentaId) {
+      document.getElementById('saldo-info').style.display = 'none';
+      document.getElementById('saldo-warning').style.display = 'none';
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/pedidos/saldo_cuenta/${cuentaId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        saldoActual = data.saldo;
+        document.getElementById('saldo-text').textContent = `Saldo actual: ${data.saldo_formateado}`;
+        document.getElementById('saldo-info').style.display = 'block';
+        document.getElementById('saldo-warning').style.display = 'none';
+      } else {
+        console.error('Error al consultar saldo:', data.error);
+      }
+    } catch (error) {
+      console.error('Error al consultar saldo:', error);
+    }
+  }
+  
+  // Función para validar saldo para el pedido
+  async function validarSaldoPedido(cuentaId, montoBrs) {
+    if (!cuentaId || !montoBrs) {
+      saldoSuficiente = true;
+      document.getElementById('saldo-warning').style.display = 'none';
+      validarFormulario();
+      return;
+    }
+    
+    try {
+      const response = await fetch('/pedidos/validar_saldo_pedido', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cuenta_id: cuentaId,
+          monto_brs: montoBrs
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        saldoSuficiente = data.saldo_suficiente;
+        
+        if (data.saldo_suficiente) {
+          document.getElementById('saldo-warning').style.display = 'none';
+        } else {
+          document.getElementById('saldo-warning-text').textContent = data.mensaje;
+          document.getElementById('saldo-warning').style.display = 'block';
+        }
+      } else {
+        console.error('Error al validar saldo:', data.error);
+      }
+    } catch (error) {
+      console.error('Error al validar saldo:', error);
+    }
+    
+    validarFormulario();
+  }
   document.getElementById('cliente').addEventListener('change', validarFormulario);
   displayInput.addEventListener('input', validarFormulario);
   document.getElementById('tasa').addEventListener('input', validarFormulario);
   document.getElementById('fecha').addEventListener('input', validarFormulario);
+  
+  // Event listeners para validación de saldo
+  document.getElementById('cuenta_id').addEventListener('change', function() {
+    const cuentaId = this.value;
+    const brs = hiddenInput.value;
+    
+    consultarSaldoCuenta(cuentaId);
+    validarSaldoPedido(cuentaId, brs);
+    validarFormulario();
+  });
+  
+  // Validar saldo cuando cambie el monto BRS
+  displayInput.addEventListener('input', function() {
+    const cuentaId = document.getElementById('cuenta_id').value;
+    const brs = hiddenInput.value;
+    
+    if (cuentaId && brs) {
+      validarSaldoPedido(cuentaId, brs);
+    }
+  });
+  
   validarFormulario();
 
   // Mostrar botón limpiar solo tras guardar

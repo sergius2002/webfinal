@@ -220,11 +220,15 @@ def nuevo():
         # Obtener tasa_venezuela como valor por defecto
         tasa_resp = supabase.table("configuracion").select("valor").eq("clave", "tasa_venezuela").single().execute()
         tasa_venezuela = tasa_resp.data["valor"] if tasa_resp.data and "valor" in tasa_resp.data else "0.000"
+        # Obtener cuentas activas
+        response_cuentas = supabase.table("cuentas_activas").select("id, numero_cuenta, nombre_titular").eq("activa", True).order("nombre_titular").execute()
+        cuentas_activas = response_cuentas.data if response_cuentas.data else []
     except Exception as e:
-        logging.error("Error al obtener cliente de pagadores o tasa venezuela: %s", e)
+        logging.error("Error al obtener cliente de pagadores, tasa venezuela o cuentas activas: %s", e)
         flash("Error al cargar datos iniciales. Por favor, recarga la página.")
         cliente_pagadores = []
         tasa_venezuela = "0.000"
+        cuentas_activas = []
     
     if request.method == "POST":
         try:
@@ -233,6 +237,7 @@ def nuevo():
             brs_raw = sanitize_input(request.form.get("brs", ""))
             tasa_raw = sanitize_input(request.form.get("tasa", ""))
             fecha = sanitize_input(request.form.get("fecha", ""))
+            cuenta_id = request.form.get("cuenta_id", "")
             
             # Prioridad: valor del formulario si existe, si no el de la sesión
             ultimo_cliente = cliente if cliente else session.get('ultimo_cliente_pedidos', '')
@@ -248,10 +253,11 @@ def nuevo():
                                      current_date=adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d"),
                                      active_page="pedidos", 
                                      tasa_venezuela=tasa_venezuela,
-                                     ultimo_cliente=ultimo_cliente)
+                                     ultimo_cliente=ultimo_cliente,
+                                     cuentas_activas=cuentas_activas)
             
             # Validar datos usando la función de validación mejorada
-            is_valid, error_message = validate_pedido_data(cliente, brs_num, tasa_num, fecha)
+            is_valid, error_message = validate_pedido_data(cliente, brs_num, tasa_num, fecha, cuenta_id)
             if not is_valid:
                 flash(error_message)
                 return render_template("pedidos/nuevo.html", 
@@ -259,7 +265,8 @@ def nuevo():
                                      current_date=adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d"),
                                      active_page="pedidos", 
                                      tasa_venezuela=tasa_venezuela,
-                                     ultimo_cliente=ultimo_cliente)
+                                     ultimo_cliente=ultimo_cliente,
+                                     cuentas_activas=cuentas_activas)
             
             # Calcular CLP para mostrar al usuario
             clp_calculado = round(brs_num / tasa_num, 2)
@@ -268,19 +275,48 @@ def nuevo():
             # Log de información (sin datos sensibles)
             logging.info(f"Insertando pedido - Cliente: {cliente}, Fecha: {fecha}, Usuario: {usuario}")
             
+            # Validar saldo si se seleccionó una cuenta
+            if cuenta_id:
+                saldo_suficiente, saldo_actual, mensaje_saldo = validar_saldo_suficiente(cuenta_id, brs_num)
+                if not saldo_suficiente:
+                    flash(f"Error: {mensaje_saldo}")
+                    return render_template("pedidos/nuevo.html", 
+                                         cliente_pagadores=cliente_pagadores, 
+                                         current_date=adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d"),
+                                         active_page="pedidos", 
+                                         tasa_venezuela=tasa_venezuela,
+                                         ultimo_cliente=ultimo_cliente,
+                                         cuentas_activas=cuentas_activas)
+            
             # Insertar en base de datos
-            result = supabase.table("pedidos").insert({
+            pedido_data = {
                 "cliente": cliente, 
                 "brs": str(brs_num), 
                 "tasa": str(tasa_num), 
                 "fecha": fecha, 
                 "usuario": usuario
-            }).execute()
+            }
+            
+            # Agregar cuenta_id si se seleccionó una cuenta
+            if cuenta_id:
+                pedido_data["cuenta_id"] = cuenta_id
+            
+            result = supabase.table("pedidos").insert(pedido_data).execute()
             
             if result.data:
+                # Registrar movimiento en la cuenta si se seleccionó una
+                if cuenta_id:
+                    pedido_id = result.data[0]["id"]
+                    descripcion = f"Pedido para cliente {cliente} - CLP: {clp_calculado:,.0f}"
+                    if registrar_movimiento_cuenta(cuenta_id, "PEDIDO", brs_num, pedido_id, "pedido", descripcion):
+                        flash(f"Pedido ingresado con éxito. CLP calculado: {clp_calculado:,.0f}. Saldo descontado de la cuenta.")
+                    else:
+                        flash(f"Pedido ingresado con éxito. CLP calculado: {clp_calculado:,.0f}. Error al registrar movimiento en cuenta.")
+                else:
+                    flash(f"Pedido ingresado con éxito. CLP calculado: {clp_calculado:,.0f}")
+                
                 # Guardar el cliente en la sesión para el próximo ingreso
                 session['ultimo_cliente_pedidos'] = cliente
-                flash(f"Pedido ingresado con éxito. CLP calculado: {clp_calculado:,.0f}")
             else:
                 flash("Error: No se pudo insertar el pedido en la base de datos.")
                 
@@ -295,7 +331,8 @@ def nuevo():
     # Obtener el último cliente de la sesión para preseleccionarlo
     ultimo_cliente = session.get('ultimo_cliente_pedidos', '')
     return render_template("pedidos/nuevo.html", cliente_pagadores=cliente_pagadores, current_date=current_date,
-                           active_page="pedidos", tasa_venezuela=tasa_venezuela, ultimo_cliente=ultimo_cliente)
+                           active_page="pedidos", tasa_venezuela=tasa_venezuela, ultimo_cliente=ultimo_cliente,
+                           cuentas_activas=cuentas_activas)
 
 @pedidos_bp.route("/editar/<pedido_id>", methods=["GET", "POST"])
 @login_required
@@ -303,12 +340,16 @@ def editar(pedido_id):
     try:
         response_pagadores = supabase.table("pagadores").select("cliente").execute()
         cliente_pagadores = [p["cliente"] for p in response_pagadores.data] if response_pagadores.data else []
+        # Obtener cuentas activas
+        response_cuentas = supabase.table("cuentas_activas").select("id, numero_cuenta, nombre_titular").eq("activa", True).order("nombre_titular").execute()
+        cuentas_activas = response_cuentas.data if response_cuentas.data else []
     except Exception as e:
-        logging.error("Error al obtener cliente de pagadores: %s", e)
+        logging.error("Error al obtener cliente de pagadores o cuentas activas: %s", e)
         cliente_pagadores = []
+        cuentas_activas = []
     
     try:
-        pedido_response = supabase.table("pedidos").select("id, cliente, fecha, brs, tasa, clp").eq("id", pedido_id).eq("eliminado", False).execute()
+        pedido_response = supabase.table("pedidos").select("id, cliente, fecha, brs, tasa, clp, cuenta_id").eq("id", pedido_id).eq("eliminado", False).execute()
         if not pedido_response.data:
             flash("Pedido no encontrado.")
             return redirect(url_for("pedidos.index"))
@@ -333,6 +374,7 @@ def editar(pedido_id):
             nuevo_brs_raw = sanitize_input(request.form.get("brs"))
             nuevo_tasa_raw = sanitize_input(request.form.get("tasa"))
             nuevo_fecha = sanitize_input(request.form.get("fecha"))
+            nuevo_cuenta_id = request.form.get("cuenta_id", "")
             
             # Procesar valores con manejo de errores mejorado
             try:
@@ -344,11 +386,11 @@ def editar(pedido_id):
                                        active_page="pedidos")
             
             # Validar datos usando la función de validación mejorada
-            is_valid, error_message = validate_pedido_data(nuevo_cliente, nuevo_brs, nuevo_tasa, nuevo_fecha)
+            is_valid, error_message = validate_pedido_data(nuevo_cliente, nuevo_brs, nuevo_tasa, nuevo_fecha, nuevo_cuenta_id)
             if not is_valid:
                 flash(error_message)
                 return render_template("pedidos/editar.html", pedido=pedido, cliente_pagadores=cliente_pagadores, logs=logs,
-                                       active_page="pedidos")
+                                       active_page="pedidos", cuentas_activas=cuentas_activas)
             
             # Detectar cambios
             cambios = []
@@ -361,13 +403,43 @@ def editar(pedido_id):
             if pedido["fecha"] != nuevo_fecha:
                 cambios.append(f"fecha: {pedido['fecha']} -> {nuevo_fecha}")
             
+            # Verificar cambio en cuenta_id
+            cuenta_actual = pedido.get("cuenta_id")
+            if cuenta_actual != nuevo_cuenta_id:
+                # Eliminar el movimiento PEDIDO anterior en la cuenta original
+                if cuenta_actual:
+                    try:
+                        supabase.table("movimientos_cuenta").delete().eq("cuenta_id", cuenta_actual).eq("tipo_movimiento", "PEDIDO").eq("referencia_id", pedido_id).eq("referencia_tipo", "pedido").execute()
+                    except Exception as e:
+                        logging.error(f"Error al eliminar movimiento PEDIDO anterior: {e}")
+                # Crear el nuevo movimiento PEDIDO en la cuenta nueva
+                if nuevo_cuenta_id:
+                    descripcion_pedido = f"PEDIDO reasignado para cliente {nuevo_cliente} (cuenta editada)"
+                    registrar_movimiento_cuenta(nuevo_cuenta_id, "PEDIDO", nuevo_brs, pedido_id, "pedido", descripcion_pedido)
+            # Si no cambió la cuenta pero cambió el monto, eliminar y crear el movimiento en la misma cuenta
+            elif cuenta_actual and int(pedido["brs"]) != nuevo_brs:
+                try:
+                    supabase.table("movimientos_cuenta").delete().eq("cuenta_id", cuenta_actual).eq("tipo_movimiento", "PEDIDO").eq("referencia_id", pedido_id).eq("referencia_tipo", "pedido").execute()
+                except Exception as e:
+                    logging.error(f"Error al eliminar movimiento PEDIDO anterior (monto editado): {e}")
+                descripcion_pedido = f"PEDIDO editado para cliente {nuevo_cliente} (monto editado)"
+                registrar_movimiento_cuenta(cuenta_actual, "PEDIDO", nuevo_brs, pedido_id, "pedido", descripcion_pedido)
+            
             # Actualizar pedido
-            supabase.table("pedidos").update({
+            pedido_update = {
                 "cliente": nuevo_cliente, 
                 "brs": str(nuevo_brs), 
                 "tasa": str(nuevo_tasa), 
                 "fecha": nuevo_fecha
-            }).eq("id", pedido_id).execute()
+            }
+            
+            # Agregar cuenta_id si se proporciona o establecer como NULL si está vacío
+            if nuevo_cuenta_id:
+                pedido_update["cuenta_id"] = nuevo_cuenta_id
+            else:
+                pedido_update["cuenta_id"] = None
+            
+            supabase.table("pedidos").update(pedido_update).eq("id", pedido_id).execute()
             
             # Registrar cambios en el log
             if cambios:
@@ -392,7 +464,7 @@ def editar(pedido_id):
             return redirect(url_for("pedidos.editar", pedido_id=pedido_id))
     
     return render_template("pedidos/editar.html", pedido=pedido, cliente_pagadores=cliente_pagadores, logs=logs,
-                           active_page="pedidos")
+                           active_page="pedidos", cuentas_activas=cuentas_activas)
 
 @pedidos_bp.route("/test_insert")
 @login_required
@@ -643,11 +715,272 @@ def system_status():
             "errors": [str(e)]
         })
 
+@pedidos_bp.route('/saldo_cuenta/<int:cuenta_id>')
+@login_required
+def obtener_saldo_cuenta_ajax(cuenta_id):
+    """
+    Ruta AJAX para obtener el saldo de una cuenta
+    """
+    try:
+        saldo = obtener_saldo_cuenta(cuenta_id)
+        
+        # Obtener información de la cuenta
+        response = supabase.table("cuentas_activas").select("numero_cuenta, nombre_titular").eq("id", cuenta_id).execute()
+        cuenta_info = response.data[0] if response.data else {}
+        
+        return jsonify({
+            "success": True,
+            "saldo": saldo,
+            "saldo_formateado": f"{saldo:,} BRS",
+            "cuenta_info": cuenta_info
+        })
+        
+    except Exception as e:
+        logging.error(f"Error al obtener saldo de cuenta {cuenta_id}: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        })
+
+@pedidos_bp.route('/validar_saldo_pedido', methods=['POST'])
+@login_required
+def validar_saldo_pedido_ajax():
+    """
+    Ruta AJAX para validar si hay saldo suficiente para un pedido
+    """
+    try:
+        data = request.get_json()
+        cuenta_id = data.get('cuenta_id')
+        monto_brs = data.get('monto_brs')
+        
+        if not cuenta_id or not monto_brs:
+            return jsonify({
+                "success": False,
+                "error": "Faltan parámetros requeridos"
+            })
+        
+        saldo_suficiente, saldo_actual, mensaje = validar_saldo_suficiente(cuenta_id, monto_brs)
+        saldo_restante = saldo_actual - monto_brs
+        
+        return jsonify({
+            "success": True,
+            "saldo_suficiente": saldo_suficiente,
+            "saldo_actual": saldo_actual,
+            "saldo_restante": saldo_restante,
+            "mensaje": mensaje,
+            "saldo_actual_formateado": f"{saldo_actual:,} BRS",
+            "saldo_restante_formateado": f"{saldo_restante:,} BRS"
+        })
+        
+    except Exception as e:
+        logging.error(f"Error al validar saldo para pedido: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        })
+
+@pedidos_bp.route('/flujo_caja')
+@login_required
+def flujo_caja():
+    """
+    Vista para mostrar el flujo de caja de todas las cuentas activas
+    """
+    try:
+        # Obtener todas las cuentas activas con su saldo
+        response = supabase.table("cuentas_activas").select("id, numero_cuenta, nombre_titular, saldo_actual").eq("activa", True).order("nombre_titular").execute()
+        cuentas = response.data if response.data else []
+        
+        # Obtener movimientos recientes (últimos 20)
+        movimientos_recientes = []
+        try:
+            response_mov = supabase.table("movimientos_cuenta").select("*, cuentas_activas(numero_cuenta, nombre_titular)").order("fecha", desc=True).limit(20).execute()
+            movimientos_recientes = response_mov.data if response_mov.data else []
+        except Exception as e:
+            logging.error(f"Error al obtener movimientos recientes: {e}")
+        
+        # Calcular totales
+        total_saldo = sum(cuenta.get("saldo_actual", 0) for cuenta in cuentas)
+        
+        return render_template("pedidos/flujo_caja.html", 
+                             cuentas=cuentas, 
+                             movimientos_recientes=movimientos_recientes,
+                             total_saldo=total_saldo,
+                             active_page="pedidos")
+                             
+    except Exception as e:
+        logging.error(f"Error en flujo_caja: {e}")
+        flash(f"Error al cargar el flujo de caja: {str(e)}")
+        return redirect(url_for("pedidos.index"))
+
+@pedidos_bp.route('/movimientos_cuenta/<int:cuenta_id>')
+@login_required
+def movimientos_cuenta(cuenta_id):
+    """
+    Vista para mostrar los movimientos de una cuenta específica
+    """
+    try:
+        # Obtener información de la cuenta
+        response = supabase.table("cuentas_activas").select("id, numero_cuenta, nombre_titular, saldo_actual").eq("id", cuenta_id).eq("activa", True).execute()
+        if not response.data:
+            flash("Cuenta no encontrada o inactiva.")
+            return redirect(url_for("pedidos.flujo_caja"))
+        
+        cuenta = response.data[0]
+        
+        # Obtener movimientos de la cuenta
+        movimientos = obtener_movimientos_cuenta(cuenta_id, 100)
+        
+        return render_template("pedidos/movimientos_cuenta.html", 
+                             cuenta=cuenta, 
+                             movimientos=movimientos,
+                             active_page="pedidos")
+                             
+    except Exception as e:
+        logging.error(f"Error en movimientos_cuenta: {e}")
+        flash(f"Error al cargar los movimientos: {str(e)}")
+        return redirect(url_for("pedidos.flujo_caja"))
+
+# -----------------------------------------------------------------------------
+# Funciones de Flujo de Caja
+# -----------------------------------------------------------------------------
+
+def registrar_movimiento_cuenta(cuenta_id, tipo_movimiento, monto_brs, referencia_id, referencia_tipo, descripcion=""):
+    """
+    Registra un movimiento en la cuenta corriente
+    Args:
+        cuenta_id: ID de la cuenta
+        tipo_movimiento: 'PEDIDO', 'COMPRA', 'AJUSTE'
+        monto_brs: Cantidad de BRS
+        referencia_id: ID del pedido o compra
+        referencia_tipo: 'pedido', 'compra'
+        descripcion: Descripción adicional del movimiento
+    Returns:
+        bool: True si se registró correctamente
+    """
+    try:
+        usuario = session.get("email", "sistema")
+        
+        # Insertar movimiento
+        movimiento_data = {
+            "cuenta_id": cuenta_id,
+            "tipo_movimiento": tipo_movimiento,
+            "monto_brs": monto_brs,
+            "referencia_id": referencia_id,
+            "referencia_tipo": referencia_tipo,
+            "usuario": usuario,
+            "descripcion": descripcion,
+            "fecha": adjust_datetime(datetime.now(chile_tz)).isoformat()
+        }
+        
+        result = supabase.table("movimientos_cuenta").insert(movimiento_data).execute()
+        
+        if result.data:
+            # Actualizar saldo de la cuenta
+            actualizar_saldo_cuenta(cuenta_id)
+            logging.info(f"Movimiento registrado: {tipo_movimiento} - {monto_brs} BRS en cuenta {cuenta_id}")
+            return True
+        else:
+            logging.error("Error al insertar movimiento en la base de datos")
+            return False
+            
+    except Exception as e:
+        logging.error(f"Error al registrar movimiento: {e}")
+        return False
+
+def actualizar_saldo_cuenta(cuenta_id):
+    """
+    Actualiza el saldo actual de una cuenta basado en sus movimientos
+    Args:
+        cuenta_id: ID de la cuenta
+    Returns:
+        bool: True si se actualizó correctamente
+    """
+    try:
+        # Calcular saldo sumando compras, restando pedidos y sumando ajustes
+        response = supabase.table("movimientos_cuenta").select("tipo_movimiento, monto_brs").eq("cuenta_id", cuenta_id).execute()
+        
+        if not response.data:
+            saldo = 0
+        else:
+            saldo = 0
+            for movimiento in response.data:
+                if movimiento["tipo_movimiento"] == "COMPRA":
+                    saldo += movimiento["monto_brs"]
+                elif movimiento["tipo_movimiento"] == "PEDIDO":
+                    saldo -= movimiento["monto_brs"]
+                elif movimiento["tipo_movimiento"] == "AJUSTE":
+                    saldo += movimiento["monto_brs"]
+        
+        # Actualizar saldo en la tabla cuentas_activas
+        supabase.table("cuentas_activas").update({"saldo_actual": saldo}).eq("id", cuenta_id).execute()
+        
+        logging.info(f"Saldo actualizado para cuenta {cuenta_id}: {saldo} BRS")
+        return True
+        
+    except Exception as e:
+        logging.error(f"Error al actualizar saldo de cuenta {cuenta_id}: {e}")
+        return False
+
+def obtener_saldo_cuenta(cuenta_id):
+    """
+    Obtiene el saldo actual de una cuenta
+    Args:
+        cuenta_id: ID de la cuenta
+    Returns:
+        int: Saldo actual en BRS
+    """
+    try:
+        response = supabase.table("cuentas_activas").select("saldo_actual").eq("id", cuenta_id).execute()
+        if response.data:
+            return response.data[0].get("saldo_actual", 0)
+        return 0
+    except Exception as e:
+        logging.error(f"Error al obtener saldo de cuenta {cuenta_id}: {e}")
+        return 0
+
+def validar_saldo_suficiente(cuenta_id, monto_brs):
+    """
+    Valida si una cuenta tiene saldo suficiente para un pedido
+    Args:
+        cuenta_id: ID de la cuenta
+        monto_brs: Cantidad de BRS a descontar
+    Returns:
+        tuple: (is_suficiente, saldo_actual, mensaje)
+    """
+    try:
+        saldo_actual = obtener_saldo_cuenta(cuenta_id)
+        saldo_restante = saldo_actual - monto_brs
+        
+        if saldo_restante >= 0:
+            return True, saldo_actual, f"Saldo suficiente. Saldo actual: {saldo_actual:,} BRS, Saldo restante: {saldo_restante:,} BRS"
+        else:
+            return False, saldo_actual, f"Saldo insuficiente. Saldo actual: {saldo_actual:,} BRS, Faltan: {abs(saldo_restante):,} BRS"
+            
+    except Exception as e:
+        logging.error(f"Error al validar saldo de cuenta {cuenta_id}: {e}")
+        return False, 0, f"Error al validar saldo: {str(e)}"
+
+def obtener_movimientos_cuenta(cuenta_id, limite=50):
+    """
+    Obtiene el historial de movimientos de una cuenta
+    Args:
+        cuenta_id: ID de la cuenta
+        limite: Número máximo de movimientos a retornar
+    Returns:
+        list: Lista de movimientos ordenados por fecha descendente
+    """
+    try:
+        response = supabase.table("movimientos_cuenta").select("*").eq("cuenta_id", cuenta_id).order("fecha", desc=True).limit(limite).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        logging.error(f"Error al obtener movimientos de cuenta {cuenta_id}: {e}")
+        return []
+
 # -----------------------------------------------------------------------------
 # Funciones de validación y utilidades
 # -----------------------------------------------------------------------------
 
-def validate_pedido_data(cliente, brs, tasa, fecha):
+def validate_pedido_data(cliente, brs, tasa, fecha, cuenta_id=None):
     """
     Valida los datos de un pedido antes de insertar
     Args:
@@ -655,6 +988,7 @@ def validate_pedido_data(cliente, brs, tasa, fecha):
         brs: Valor BRS
         tasa: Tasa de cambio
         fecha: Fecha del pedido
+        cuenta_id: ID de la cuenta corriente (opcional)
     Returns: 
         tuple: (is_valid, error_message)
     """
@@ -681,6 +1015,16 @@ def validate_pedido_data(cliente, brs, tasa, fecha):
     fecha_actual = adjust_datetime(datetime.now(chile_tz)).date()
     if fecha_pedido > fecha_actual:
         return False, "La fecha del pedido no puede ser futura."
+    
+    # Validar cuenta_id si se proporciona
+    if cuenta_id:
+        try:
+            response = supabase.table("cuentas_activas").select("id").eq("id", cuenta_id).eq("activa", True).execute()
+            if not response.data:
+                return False, "La cuenta corriente seleccionada no es válida o no está activa."
+        except Exception as e:
+            logging.warning(f"Error al validar cuenta_id {cuenta_id}: {e}")
+            return False, "Error al validar la cuenta corriente seleccionada."
     
     # Validar CLP máximo del cliente
     try:
@@ -722,7 +1066,7 @@ def check_table_structure():
     """
     try:
         # Intentar una consulta simple para verificar la estructura
-        test_query = supabase.table("pedidos").select("id, cliente, fecha, brs, tasa, clp, usuario, eliminado").limit(1).execute()
+        test_query = supabase.table("pedidos").select("id, cliente, fecha, brs, tasa, clp, usuario, eliminado, cuenta_id").limit(1).execute()
         
         if test_query.data is None:
             return False, "No se pudo acceder a la tabla pedidos"

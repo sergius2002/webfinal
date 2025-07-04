@@ -34,6 +34,20 @@
       <label for="fecha" class="form-label">Fecha</label>
       <input type="date" name="fecha" id="fecha" class="form-control" value="{{ pedido.fecha }}" required>
     </div>
+    <div class="mb-3">
+      <label for="cuenta_id" class="form-label">
+        <i class="fas fa-university me-1"></i>Cuenta Corriente
+      </label>
+      <select name="cuenta_id" id="cuenta_id" class="form-select">
+        <option value="">Sin cuenta corriente</option>
+        {% for cuenta in cuentas_activas %}
+          <option value="{{ cuenta.id }}" {% if pedido.cuenta_id == cuenta.id %}selected{% endif %}>
+            {{ cuenta.numero_cuenta }} - {{ cuenta.nombre_titular }}
+          </option>
+        {% endfor %}
+      </select>
+      <div class="form-text">Opcional: Asignar a una cuenta corriente específica</div>
+    </div>
     <div class="d-flex gap-3 mb-4">
       <button type="submit" class="btn btn-primary btn-lg flex-fill">Actualizar Pedido</button>
       <button type="button" class="btn btn-danger btn-lg flex-fill" data-bs-toggle="modal" data-bs-target="#modalEliminarPedido">

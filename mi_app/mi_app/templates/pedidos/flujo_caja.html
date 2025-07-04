@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('pedidos.index') }}">Pedidos</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Flujo de Caja</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <h1 class="mb-0">
+          <i class="fas fa-chart-line me-2"></i>Flujo de Caja
+        </h1>
+        <div class="d-flex gap-2">
+          <a href="{{ url_for('pedidos.nuevo') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>Nuevo Pedido
+          </a>
+          <a href="{{ url_for('pedidos.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Volver
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resumen General -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card bg-primary text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <h6 class="card-title">Total Saldo</h6>
+              <h3 class="mb-0">{{ "{:,}".format(total_saldo) }} BRS</h3>
+            </div>
+            <div class="align-self-center">
+              <i class="fas fa-wallet fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card bg-success text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <h6 class="card-title">Cuentas Activas</h6>
+              <h3 class="mb-0">{{ cuentas|length }}</h3>
+            </div>
+            <div class="align-self-center">
+              <i class="fas fa-university fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card bg-info text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <h6 class="card-title">Movimientos Recientes</h6>
+              <h3 class="mb-0">{{ movimientos_recientes|length }}</h3>
+            </div>
+            <div class="align-self-center">
+              <i class="fas fa-exchange-alt fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Tabla de Cuentas -->
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-university me-2"></i>Cuentas Corrientes
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if cuentas %}
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>Cuenta</th>
+                    <th>Titular</th>
+                    <th class="text-end">Saldo Actual</th>
+                    <th class="text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for cuenta in cuentas %}
+                    <tr>
+                      <td>
+                        <strong>{{ cuenta.numero_cuenta }}</strong>
+                      </td>
+                      <td>{{ cuenta.nombre_titular }}</td>
+                      <td class="text-end">
+                        <span class="badge {% if cuenta.saldo_actual > 0 %}bg-success{% elif cuenta.saldo_actual < 0 %}bg-danger{% else %}bg-secondary{% endif %} fs-6">
+                          {{ "{:,}".format(cuenta.saldo_actual) }} BRS
+                        </span>
+                      </td>
+                      <td class="text-center">
+                        <a href="{{ url_for('pedidos.movimientos_cuenta', cuenta_id=cuenta.id) }}" 
+                           class="btn btn-sm btn-outline-primary">
+                          <i class="fas fa-eye me-1"></i>Ver Movimientos
+                        </a>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-center py-4">
+              <i class="fas fa-university fa-3x text-muted mb-3"></i>
+              <h5 class="text-muted">No hay cuentas activas</h5>
+              <p class="text-muted">Las cuentas activas aparecerán aquí con su saldo actual.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Movimientos Recientes -->
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-history me-2"></i>Movimientos Recientes
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if movimientos_recientes %}
+            <div class="list-group list-group-flush">
+              {% for movimiento in movimientos_recientes %}
+                <div class="list-group-item px-0">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                      <div class="d-flex justify-content-between">
+                        <strong class="text-primary">{{ movimiento.cuentas_activas.numero_cuenta }}</strong>
+                        <small class="text-muted">{{ movimiento.fecha|format_datetime_short }}</small>
+                      </div>
+                      <div class="text-muted small">{{ movimiento.cuentas_activas.nombre_titular }}</div>
+                      <div class="small">{{ movimiento.descripcion or movimiento.tipo_movimiento }}</div>
+                    </div>
+                    <div class="ms-2">
+                      <span class="badge {% if movimiento.tipo_movimiento == 'COMPRA' %}bg-success{% elif movimiento.tipo_movimiento == 'PEDIDO' %}bg-danger{% else %}bg-warning{% endif %}">
+                        {% if movimiento.tipo_movimiento == 'COMPRA' %}+{% else %}-{% endif %}{{ "{:,}".format(movimiento.monto_brs) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-center py-4">
+              <i class="fas fa-history fa-2x text-muted mb-2"></i>
+              <p class="text-muted mb-0">No hay movimientos recientes</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.card {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.table th {
+  border-top: none;
+  font-weight: 600;
+}
+
+.list-group-item {
+  border-left: none;
+  border-right: none;
+}
+
+.list-group-item:first-child {
+  border-top: none;
+}
+
+.list-group-item:last-child {
+  border-bottom: none;
+}
+</style>
+{% endblock %} 

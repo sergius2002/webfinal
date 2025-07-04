@@ -232,6 +232,18 @@ def format_decimal5(value):
     except Exception:
         return value
 
+def format_datetime_short(value):
+    try:
+        if isinstance(value, str):
+            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        else:
+            dt = value
+        
+        dt = adjust_datetime(dt)
+        return dt.strftime("%d/%m %H:%M")
+    except Exception:
+        return str(value)
+
 def format_clp_decimal(value):
     try:
         # Formatea con separador de miles (punto) y decimales (coma)
@@ -252,6 +264,7 @@ app.jinja_env.filters['format_datetime'] = format_datetime
 app.jinja_env.filters['format_decimal'] = format_decimal
 app.jinja_env.filters['format_decimal5'] = format_decimal5
 app.jinja_env.filters['format_clp_decimal'] = format_clp_decimal
+app.jinja_env.filters['format_datetime_short'] = format_datetime_short
 
 # -----------------------------------------------------------------------------
 # Funciones helper para filtrar y ordenar consultas
