@@ -24,6 +24,17 @@
           <a href="{{ url_for('pedidos.index') }}" class="btn btn-secondary">
             <i class="fas fa-arrow-left me-1"></i>Volver
           </a>
+          <form method="post" action="{{ url_for('pedidos.borrar_historial_flujo_caja') }}" style="display:inline;">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('¿Estás seguro de que deseas borrar todo el historial de movimientos? Esta acción no se puede deshacer.');">
+              <i class="fas fa-trash me-1"></i>Borrar Historial
+            </button>
+          </form>
+          <a href="{{ url_for('admin.tasa_compras') }}" class="btn btn-warning">
+            <i class="fas fa-exchange-alt me-1"></i> Compras BRS
+          </a>
+          <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalTransferenciaBRS">
+            <i class="fas fa-exchange-alt me-1"></i> Transferir BRS
+          </button>
         </div>
       </div>
     </div>
@@ -172,6 +183,52 @@
           {% endif %}
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Transferencia BRS -->
+<div class="modal fade" id="modalTransferenciaBRS" tabindex="-1" aria-labelledby="modalTransferenciaBRSLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('pedidos.transferir_brs') }}">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTransferenciaBRSLabel">Transferir BRS entre cuentas</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="cuenta_origen" class="form-label">Cuenta Origen</label>
+            <select class="form-select" id="cuenta_origen" name="cuenta_origen" required>
+              <option value="" disabled selected>Selecciona cuenta origen</option>
+              {% for cuenta in cuentas %}
+                <option value="{{ cuenta.id }}">{{ cuenta.numero_cuenta }} - {{ cuenta.nombre_titular }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="cuenta_destino" class="form-label">Cuenta Destino</label>
+            <select class="form-select" id="cuenta_destino" name="cuenta_destino" required>
+              <option value="" disabled selected>Selecciona cuenta destino</option>
+              {% for cuenta in cuentas %}
+                <option value="{{ cuenta.id }}">{{ cuenta.numero_cuenta }} - {{ cuenta.nombre_titular }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="monto" class="form-label">Monto a transferir (BRS)</label>
+            <input type="number" class="form-control" id="monto" name="monto" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label for="descripcion" class="form-label">Descripción (opcional)</label>
+            <input type="text" class="form-control" id="descripcion" name="descripcion">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Transferir</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>

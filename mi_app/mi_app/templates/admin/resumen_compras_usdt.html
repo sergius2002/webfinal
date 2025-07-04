@@ -12,6 +12,12 @@
           <h3 class="mb-0">Transacciones USDT/CLP</h3>
         </div>
         <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1>Resumen Compras USDT</h1>
+            <a href="{{ url_for('pedidos.flujo_caja') }}" class="btn btn-info">
+              <i class="fas fa-chart-line me-1"></i> Flujo de Caja
+            </a>
+          </div>
           <!-- Formulario de fecha -->
           <form method="get" action="{{ url_for('admin.resumen_compras_usdt') }}" class="mb-4">
             <div class="d-flex justify-content-center">

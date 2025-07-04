@@ -550,31 +550,17 @@ def eliminar(pedido_id):
 @pedidos_bp.route('/editar_tasas', methods=['POST'])
 @login_required
 def editar_tasas():
-    # Solo permitir a administradores
-    if "email" not in session:
-        return jsonify({"success": False, "error": "No autorizado"})
-    
-    try:
-        response_admin = supabase.table("allowed_users").select("email").eq("email", session["email"]).execute()
-        if not response_admin.data:
-            return jsonify({"success": False, "error": "Solo administradores pueden editar tasas"})
-    except Exception as e:
-        logging.error("Error al verificar permisos de usuario: %s", e)
-        return jsonify({"success": False, "error": "Error al verificar permisos"})
-    
     try:
         data = request.get_json()
         tasa_banesco = data.get('tasa_banesco')
         tasa_venezuela = data.get('tasa_venezuela')
         tasa_otros = data.get('tasa_otros')
-        
         # Validar que los valores sean números válidos
         for tasa, valor in [('tasa_banesco', tasa_banesco), ('tasa_venezuela', tasa_venezuela), ('tasa_otros', tasa_otros)]:
             try:
                 float(valor)
             except (ValueError, TypeError):
                 return jsonify({"success": False, "error": f"Valor inválido para {tasa}"})
-        
         # Actualizar tasas en la base de datos (workaround manual)
         for clave, valor in [
             ("tasa_banesco", tasa_banesco),
@@ -591,9 +577,7 @@ def editar_tasas():
                     "clave": clave,
                     "valor": str(valor)
                 }).execute()
-        
         return jsonify({"success": True, "message": "Tasas actualizadas correctamente"})
-        
     except Exception as e:
         logging.error("Error al actualizar tasas: %s", e)
         return jsonify({"success": False, "error": str(e)})
@@ -790,6 +774,19 @@ def flujo_caja():
         response = supabase.table("cuentas_activas").select("id, numero_cuenta, nombre_titular, saldo_actual").eq("activa", True).order("nombre_titular").execute()
         cuentas = response.data if response.data else []
         
+        # Obtener el último movimiento de cada cuenta
+        ultimos_movimientos = {}
+        try:
+            response_mov = supabase.table("movimientos_cuenta").select("cuenta_id, fecha").order("fecha", desc=True).execute()
+            for mov in response_mov.data if response_mov.data else []:
+                cid = mov["cuenta_id"]
+                if cid not in ultimos_movimientos:
+                    ultimos_movimientos[cid] = mov["fecha"]
+        except Exception as e:
+            logging.error(f"Error al obtener últimos movimientos por cuenta: {e}")
+        # Ordenar cuentas por fecha de último movimiento (más reciente primero)
+        cuentas.sort(key=lambda c: ultimos_movimientos.get(c["id"], ""), reverse=True)
+        
         # Obtener movimientos recientes (últimos 20)
         movimientos_recientes = []
         try:
@@ -839,6 +836,54 @@ def movimientos_cuenta(cuenta_id):
         logging.error(f"Error en movimientos_cuenta: {e}")
         flash(f"Error al cargar los movimientos: {str(e)}")
         return redirect(url_for("pedidos.flujo_caja"))
+
+@pedidos_bp.route('/borrar_historial_flujo_caja', methods=['POST'])
+@login_required
+def borrar_historial_flujo_caja():
+    try:
+        supabase.table("movimientos_cuenta").delete().neq("id", 0).execute()  # Borra todos los movimientos
+        supabase.table("depositos_brs").delete().neq("id", 0).execute()  # Borra todos los depósitos
+        supabase.table("cuentas_activas").update({"saldo_actual": 0}).neq("id", 0).execute()  # Pone todos los saldos en 0
+        flash("Historial de movimientos, depósitos y saldos de cuentas borrados correctamente.", "success")
+    except Exception as e:
+        logging.error(f"Error al borrar historial de flujo de caja: {e}")
+        flash(f"Error al borrar historial: {str(e)}", "danger")
+    return redirect(url_for("pedidos.flujo_caja"))
+
+@pedidos_bp.route('/transferir_brs', methods=['POST'])
+@login_required
+def transferir_brs():
+    try:
+        cuenta_origen = request.form.get('cuenta_origen')
+        cuenta_destino = request.form.get('cuenta_destino')
+        monto = request.form.get('monto')
+        descripcion = request.form.get('descripcion', '')
+        if not cuenta_origen or not cuenta_destino or not monto:
+            flash('Todos los campos son obligatorios.', 'danger')
+            return redirect(url_for('pedidos.flujo_caja'))
+        if cuenta_origen == cuenta_destino:
+            flash('La cuenta origen y destino deben ser diferentes.', 'danger')
+            return redirect(url_for('pedidos.flujo_caja'))
+        try:
+            monto = int(monto)
+            if monto <= 0:
+                raise ValueError
+        except Exception:
+            flash('El monto debe ser un número positivo.', 'danger')
+            return redirect(url_for('pedidos.flujo_caja'))
+        # Validar saldo suficiente en cuenta origen
+        saldo_origen = obtener_saldo_cuenta(cuenta_origen)
+        if saldo_origen < monto:
+            flash(f'Saldo insuficiente en la cuenta origen. Saldo actual: {saldo_origen:,} BRS', 'danger')
+            return redirect(url_for('pedidos.flujo_caja'))
+        # Registrar movimientos
+        registrar_movimiento_cuenta(cuenta_origen, 'TRANSFERENCIA_SALIDA', monto, None, 'transferencia', descripcion or 'Transferencia a otra cuenta')
+        registrar_movimiento_cuenta(cuenta_destino, 'TRANSFERENCIA_ENTRADA', monto, None, 'transferencia', descripcion or 'Transferencia recibida')
+        flash('Transferencia realizada con éxito.', 'success')
+    except Exception as e:
+        logging.error(f'Error al transferir BRS: {e}')
+        flash(f'Error al transferir BRS: {str(e)}', 'danger')
+    return redirect(url_for('pedidos.flujo_caja'))
 
 # -----------------------------------------------------------------------------
 # Funciones de Flujo de Caja

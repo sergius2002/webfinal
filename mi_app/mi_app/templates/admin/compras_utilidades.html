@@ -7,7 +7,12 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h1>Compras de Fiat VES</h1>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Compras de Fiat VES</h1>
+        <a href="{{ url_for('pedidos.flujo_caja') }}" class="btn btn-info">
+            <i class="fas fa-chart-line me-1"></i> Flujo de Caja
+        </a>
+    </div>
     <!-- Formulario para filtrar por fecha -->
     <form method="GET" action="{{ url_for('utilidades.compras') }}" class="form-inline mb-3">
         <div class="form-group">
