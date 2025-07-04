@@ -198,6 +198,10 @@ document.querySelectorAll('.select-cuenta').forEach(function(select) {
                 this.classList.add('is-valid');
                 setTimeout(() => this.classList.remove('is-valid'), 1500);
                 actualizarResumenCuentas();
+                // Remover resaltado de fila y select
+                this.classList.remove('select-no-asignada');
+                const fila = this.closest('tr');
+                if (fila) fila.classList.remove('fila-no-asignada');
             } else {
                 this.classList.add('is-invalid');
                 setTimeout(() => this.classList.remove('is-invalid'), 1500);
