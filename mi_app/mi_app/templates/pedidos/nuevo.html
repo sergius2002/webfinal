@@ -3,132 +3,178 @@
 
 {% block content %}
 <div class="container">
-  <div class="d-flex justify-content-center">
-    <div class="card shadow-lg" style="max-width: 400px; width: 100%;">
-      <div class="card-header bg-azul-oscuro text-white text-center">
-        <h5 class="mb-0">Nuevo Pedido</h5>
-      </div>
-      <div class="card-body">
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            {% for message in messages %}
-              {% if 'Error' in message or 'error' in message.lower() %}
-                <div id="alert-error" class="alert alert-danger alert-dismissible fade show" role="alert">
-                  <i class="fas fa-exclamation-triangle me-2"></i>
-                  {{ message }}
-                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                </div>
-              {% else %}
-                <div id="alert-exito" class="alert alert-success alert-dismissible fade show" role="alert">
-                  <i class="fas fa-check-circle me-2"></i>
-                  {{ message }}
-                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                </div>
-              {% endif %}
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-        
-        <!-- Indicador de carga -->
-        <div id="loading-indicator" class="text-center d-none">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Cargando...</span>
-          </div>
-          <p class="mt-2 text-muted">Procesando pedido...</p>
+  <div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8 col-12 mb-3">
+      <div class="card shadow-lg" style="width: 100%;">
+        <div class="card-header bg-azul-oscuro text-white text-center">
+          <h5 class="mb-0">Nuevo Pedido</h5>
         </div>
-        
-        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-        <form id="form-nuevo-pedido" action="{{ url_for('pedidos.nuevo') }}" method="post" novalidate autocomplete="off">
-          <div class="mb-3">
-            <label for="cliente" class="form-label">
-              <i class="fas fa-user me-1"></i>Cliente
-            </label>
-            <select name="cliente" id="cliente" class="form-select" required autofocus>
-              <option value="">Seleccione un cliente</option>
-              {% for client in cliente_pagadores %}
-                <option value="{{ client }}" {% if ultimo_cliente == client or request.form.get('cliente') == client %}selected{% endif %}>{{ client }}</option>
+        <div class="card-body">
+          {% with messages = get_flashed_messages() %}
+            {% if messages %}
+              {% for message in messages %}
+                {% if 'Error' in message or 'error' in message.lower() %}
+                  <div id="alert-error" class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                  </div>
+                {% else %}
+                  <div id="alert-exito" class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                  </div>
+                {% endif %}
               {% endfor %}
-            </select>
-            <div class="invalid-feedback">Por favor seleccione un cliente.</div>
-          </div>
-          <div class="mb-3">
-            <label for="brs_display" class="form-label">
-              <i class="fas fa-coins me-1"></i>BRS
-            </label>
-            <input type="text" id="brs_display" class="form-control" autocomplete="off" placeholder="Ingrese BRS" required>
-            <input type="hidden" id="brs" name="brs" required>
-            <div id="brs-warning" class="form-text text-warning" style="display: none;">
-              <i class="fas fa-exclamation-triangle me-1"></i>Advertencia: BRS superior a 50,000
+            {% endif %}
+          {% endwith %}
+          
+          <!-- Indicador de carga -->
+          <div id="loading-indicator" class="text-center d-none">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Cargando...</span>
             </div>
-            <div class="invalid-feedback">Por favor ingrese un valor válido para BRS.</div>
+            <p class="mt-2 text-muted">Procesando pedido...</p>
           </div>
-          <div class="mb-3">
-            <label for="tasa" class="form-label">
-              <i class="fas fa-percentage me-1"></i>Tasa
-            </label>
-            <input type="text" name="tasa" id="tasa" class="form-control" required value="{{ tasa_venezuela }}">
-            <div id="tasa-warning" class="form-text text-warning" style="display: none;">
-              <i class="fas fa-exclamation-triangle me-1"></i>Advertencia: Valor de tasa fuera de rango
+          
+          <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+          <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+          <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+          <form id="form-nuevo-pedido" action="{{ url_for('pedidos.nuevo') }}" method="post" novalidate autocomplete="off">
+            <div class="mb-3">
+              <label for="cliente" class="form-label">
+                <i class="fas fa-user me-1"></i>Cliente
+              </label>
+              <select name="cliente" id="cliente" class="form-select" required autofocus>
+                <option value="">Seleccione un cliente</option>
+                {% for client in cliente_pagadores %}
+                  <option value="{{ client }}" {% if ultimo_cliente == client or request.form.get('cliente') == client %}selected{% endif %}>{{ client }}</option>
+                {% endfor %}
+              </select>
+              <div class="invalid-feedback">Por favor seleccione un cliente.</div>
             </div>
-            <div class="invalid-feedback">Por favor ingrese una tasa válida.</div>
-          </div>
-          <!-- Campo de CLP calculado automáticamente -->
-          <div class="mb-3">
-            <label for="clp_calculado" class="form-label">
-              <i class="fas fa-calculator me-1"></i>CLP Calculado
-            </label>
-            <input type="text" id="clp_calculado" class="form-control" readonly placeholder="Se calcula automáticamente">
-            <div id="clp-maximo-info" class="form-text text-info" style="display: none;">
-              <i class="fas fa-info-circle me-1"></i>Límite del cliente: <span id="clp-limite"></span> CLP
+            <div class="mb-3">
+              <label for="brs_display" class="form-label">
+                <i class="fas fa-coins me-1"></i>BRS
+              </label>
+              <input type="text" id="brs_display" class="form-control" autocomplete="off" placeholder="Ingrese BRS" required>
+              <input type="hidden" id="brs" name="brs" required>
+              <div id="brs-warning" class="form-text text-warning" style="display: none;">
+                <i class="fas fa-exclamation-triangle me-1"></i>Advertencia: BRS superior a 50,000
+              </div>
+              <div class="invalid-feedback">Por favor ingrese un valor válido para BRS.</div>
             </div>
-            <div id="clp-exceso-warning" class="form-text text-danger" style="display: none;">
-              <i class="fas fa-exclamation-triangle"></i> ¡ADVERTENCIA! El CLP excede el límite del cliente
+            <div class="mb-3">
+              <label for="tasa" class="form-label">
+                <i class="fas fa-percentage me-1"></i>Tasa
+              </label>
+              <input type="text" name="tasa" id="tasa" class="form-control" required value="{{ tasa_venezuela }}">
+              <div id="tasa-warning" class="form-text text-warning" style="display: none;">
+                <i class="fas fa-exclamation-triangle me-1"></i>Advertencia: Valor de tasa fuera de rango
+              </div>
+              <div class="invalid-feedback">Por favor ingrese una tasa válida.</div>
             </div>
-          </div>
-          <div class="mb-3">
-            <label for="fecha" class="form-label">
-              <i class="fas fa-calendar me-1"></i>Fecha
-            </label>
-            <input type="date" name="fecha" id="fecha" class="form-control" value="{{ current_date }}" required>
-            <div class="invalid-feedback">Por favor seleccione una fecha válida.</div>
-          </div>
-          <div class="mb-3">
-            <label for="cuenta_id" class="form-label">
-              <i class="fas fa-university me-1"></i>Cuenta Corriente
-            </label>
-            <select name="cuenta_id" id="cuenta_id" class="form-select" required>
-              <option value="">Seleccionar cuenta corriente</option>
-              {% for cuenta in cuentas_activas %}
-                <option value="{{ cuenta.id }}" {% if request.form.get('cuenta_id') == cuenta.id|string %}selected{% endif %}>
-                  {{ cuenta.numero_cuenta }} - {{ cuenta.nombre_titular }}
-                </option>
-              {% endfor %}
-            </select>
-            <div class="invalid-feedback">Por favor seleccione una cuenta corriente.</div>
-            <div id="saldo-info" class="form-text" style="display: none;">
-              <i class="fas fa-info-circle me-1"></i><span id="saldo-text"></span>
+            <!-- Campo de CLP calculado automáticamente -->
+            <div class="mb-3">
+              <label for="clp_calculado" class="form-label">
+                <i class="fas fa-calculator me-1"></i>CLP Calculado
+              </label>
+              <input type="text" id="clp_calculado" class="form-control" readonly placeholder="Se calcula automáticamente">
+              <div id="clp-maximo-info" class="form-text text-info" style="display: none;">
+                <i class="fas fa-info-circle me-1"></i>Límite del cliente: <span id="clp-limite"></span> CLP
+              </div>
+              <div id="clp-exceso-warning" class="form-text text-danger" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i> ¡ADVERTENCIA! El CLP excede el límite del cliente
+              </div>
             </div>
-            <div id="saldo-warning" class="alert alert-warning mt-2" style="display: none;">
-              <i class="fas fa-exclamation-triangle me-1"></i><span id="saldo-warning-text"></span>
+            <div class="mb-3">
+              <label for="fecha" class="form-label">
+                <i class="fas fa-calendar me-1"></i>Fecha
+              </label>
+              <input type="date" name="fecha" id="fecha" class="form-control" value="{{ current_date }}" required>
+              <div class="invalid-feedback">Por favor seleccione una fecha válida.</div>
             </div>
-          </div>
-          <div class="d-flex align-items-center gap-2 mb-3">
-            <button type="submit" class="btn btn-primary w-100" id="btn-guardar">
-              <span id="spinner-guardar" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-              <i class="fas fa-save me-1"></i>Guardar Pedido
-            </button>
-            <button type="button" class="btn btn-secondary d-none" id="btn-limpiar">
-              <i class="fas fa-eraser me-1"></i>Limpiar
-            </button>
-          </div>
-        </form>
+            <div class="mb-3">
+              <label for="cuenta_id" class="form-label">
+                <i class="fas fa-university me-1"></i>Cuenta Corriente
+              </label>
+              <select name="cuenta_id" id="cuenta_id" class="form-select" required>
+                <option value="">Seleccionar cuenta corriente</option>
+                {% for cuenta in cuentas_activas %}
+                  <option value="{{ cuenta.id }}" {% if request.form.get('cuenta_id') == cuenta.id|string %}selected{% endif %}>
+                    {{ cuenta.numero_cuenta }} - {{ cuenta.nombre_titular }}
+                  </option>
+                {% endfor %}
+              </select>
+              <div class="invalid-feedback">Por favor seleccione una cuenta corriente.</div>
+              <div id="saldo-info" class="form-text" style="display: none;">
+                <i class="fas fa-info-circle me-1"></i><span id="saldo-text"></span>
+              </div>
+              <div id="saldo-warning" class="alert alert-warning mt-2" style="display: none;">
+                <i class="fas fa-exclamation-triangle me-1"></i><span id="saldo-warning-text"></span>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <button type="submit" class="btn btn-primary w-100" id="btn-guardar">
+                <span id="spinner-guardar" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                <i class="fas fa-save me-1"></i>Guardar Pedido
+              </button>
+              <button type="button" class="btn btn-secondary d-none" id="btn-limpiar">
+                <i class="fas fa-eraser me-1"></i>Limpiar
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="card-footer text-center">
+          <a href="{{ url_for('pedidos.index') }}" class="btn btn-lg btn-custom">
+            <i class="fas fa-arrow-left me-1"></i>Volver
+          </a>
+        </div>
       </div>
-      <div class="card-footer text-center">
-        <a href="{{ url_for('pedidos.index') }}" class="btn btn-lg btn-custom">
-          <i class="fas fa-arrow-left me-1"></i>Volver
-        </a>
+    </div>
+    <div class="col-lg-5 col-md-8 col-12 mb-3 d-flex align-items-start">
+      <!-- Tabla de pedidos del cliente seleccionado -->
+      <div class="w-100" id="pedidos-cliente-container" style="display:none; max-width: 500px;">
+        <div class="card">
+          <div class="card-header bg-info text-white">
+            <i class="fas fa-list me-1"></i>Pedidos del cliente hoy
+          </div>
+          <div class="card-body p-2">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div id="resumen-pedidos-cliente" style="display:none;">
+                <span class="badge bg-primary me-2">Total BRS: <span id="total-brs">0</span></span>
+                <span class="badge bg-success" id="badge-total-clp">Total CLP: <span id="total-clp">0</span></span>
+                <div id="alerta-clp-limite" class="mt-2 text-danger fw-bold" style="display:none;">
+                  <i class="fas fa-exclamation-triangle me-1"></i>¡El total CLP del período supera el límite del cliente!
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <label for="dias-pedidos" class="form-label mb-0 me-1">Ver últimos</label>
+                <select id="dias-pedidos" class="form-select form-select-sm d-inline-block" style="width:auto;">
+                  <option value="1">1 día</option>
+                  <option value="3">3 días</option>
+                  <option value="7">7 días</option>
+                </select>
+                <button id="btn-copiar-pedidos" class="btn btn-outline-secondary btn-sm ms-2" title="Copiar resumen" style="display:none;"><i class="fas fa-copy"></i></button>
+              </div>
+            </div>
+            <div id="pedidos-cliente-msg" class="text-center text-muted small"></div>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered mb-0" id="tabla-pedidos-cliente" style="display:none;">
+                <thead>
+                  <tr>
+                    <th>BRS</th>
+                    <th>CLP</th>
+                    <th>Tasa</th>
+                    <th>Fecha</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -301,15 +347,11 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Event listener para cambio de cliente
-  document.getElementById('cliente').addEventListener('change', function() {
+  $('#cliente').on('change', function () {
     const cliente = this.value;
-    if (cliente) {
-      obtenerCLPMaximoCliente(cliente);
-    } else {
-      clpMaximoCliente = 0;
-      document.getElementById('clp-maximo-info').style.display = 'none';
-      document.getElementById('clp-exceso-warning').style.display = 'none';
-    }
+    const fecha = document.getElementById('fecha').value;
+    const dias = document.getElementById('dias-pedidos').value;
+    cargarPedidosCliente(cliente, fecha, dias);
   });
 
   // Event listener para cambio de tasa
@@ -358,28 +400,27 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Función para consultar saldo de cuenta
-  async function consultarSaldoCuenta(cuentaId) {
+  function consultarSaldoCuenta(cuentaId) {
     if (!cuentaId) {
       document.getElementById('saldo-info').style.display = 'none';
       document.getElementById('saldo-warning').style.display = 'none';
       return;
     }
-    
-    try {
-      const response = await fetch(`/pedidos/saldo_cuenta/${cuentaId}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        saldoActual = data.saldo;
-        document.getElementById('saldo-text').textContent = `Saldo actual: ${data.saldo_formateado}`;
-        document.getElementById('saldo-info').style.display = 'block';
-        document.getElementById('saldo-warning').style.display = 'none';
-      } else {
-        console.error('Error al consultar saldo:', data.error);
-      }
-    } catch (error) {
-      console.error('Error al consultar saldo:', error);
-    }
+    fetch(`/pedidos/saldo_cuenta/${cuentaId}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          saldoActual = data.saldo;
+          document.getElementById('saldo-text').innerHTML = `<span class='badge bg-info text-dark fs-6'>Saldo actual: ${data.saldo_formateado}</span>`;
+          document.getElementById('saldo-info').style.display = 'block';
+          document.getElementById('saldo-warning').style.display = 'none';
+        } else {
+          document.getElementById('saldo-info').style.display = 'none';
+        }
+      })
+      .catch(() => {
+        document.getElementById('saldo-info').style.display = 'none';
+      });
   }
   
   // Función para validar saldo para el pedido
@@ -489,6 +530,23 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
       document.querySelector('.select2-container--open .select2-search__field').focus();
     }, 0);
+  });
+
+  // Inicializar Select2 para el campo cuenta_id (cuenta corriente)
+  $('#cuenta_id').select2({
+    width: '100%',
+    placeholder: 'Seleccionar cuenta corriente',
+    allowClear: true,
+    minimumResultsForSearch: 0
+  });
+  $('#cuenta_id').on('select2:open', function (e) {
+    setTimeout(function() {
+      document.querySelector('.select2-container--open .select2-search__field').focus();
+    }, 0);
+  });
+  $('#cuenta_id').on('change', function() {
+    consultarSaldoCuenta(this.value);
+    validarFormulario();
   });
 
   // Manejo del envío del formulario con validaciones
@@ -634,6 +692,128 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
+
+<script>
+function cargarPedidosCliente(cliente, fecha, dias=1) {
+  if (!cliente || !fecha) {
+    document.getElementById('pedidos-cliente-container').style.display = 'none';
+    return;
+  }
+  fetch(`/pedidos/pedidos_cliente?cliente=${encodeURIComponent(cliente)}&fecha=${encodeURIComponent(fecha)}&dias=${dias}`)
+    .then(r => r.json())
+    .then(data => {
+      const cont = document.getElementById('pedidos-cliente-container');
+      const msg = document.getElementById('pedidos-cliente-msg');
+      const tabla = document.getElementById('tabla-pedidos-cliente');
+      const tbody = tabla.querySelector('tbody');
+      const resumen = document.getElementById('resumen-pedidos-cliente');
+      const totalBrs = document.getElementById('total-brs');
+      const totalClp = document.getElementById('total-clp');
+      const badgeClp = document.getElementById('badge-total-clp');
+      const alertaClp = document.getElementById('alerta-clp-limite');
+      tbody.innerHTML = '';
+      let sumaBrs = 0;
+      let sumaClp = 0;
+      if (data.success && data.pedidos.length > 0) {
+        data.pedidos.forEach(p => {
+          sumaBrs += parseFloat(p.brs);
+          sumaClp += parseFloat(p.clp);
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${parseInt(p.brs).toLocaleString('de-DE')}</td><td>${parseInt(p.clp).toLocaleString('de-DE')}</td><td>${parseFloat(p.tasa).toLocaleString('de-DE', {minimumFractionDigits: 5})}</td><td>${p.fecha}</td>`;
+          tbody.appendChild(tr);
+        });
+        totalBrs.textContent = sumaBrs.toLocaleString('de-DE');
+        totalClp.textContent = sumaClp.toLocaleString('de-DE');
+        // Resaltar si supera el límite
+        if (typeof clpMaximoCliente !== 'undefined' && clpMaximoCliente > 0 && sumaClp >= clpMaximoCliente) {
+          badgeClp.classList.remove('bg-success');
+          badgeClp.classList.add('bg-danger');
+          alertaClp.style.display = '';
+        } else {
+          badgeClp.classList.remove('bg-danger');
+          badgeClp.classList.add('bg-success');
+          alertaClp.style.display = 'none';
+        }
+        resumen.style.display = '';
+        tabla.style.display = '';
+        msg.textContent = '';
+        cont.style.display = '';
+        mostrarBotonCopiar(true);
+      } else {
+        resumen.style.display = 'none';
+        tabla.style.display = 'none';
+        msg.textContent = 'No hay pedidos para este cliente en el período seleccionado.';
+        cont.style.display = '';
+        mostrarBotonCopiar(false);
+      }
+    })
+    .catch(() => {
+      document.getElementById('pedidos-cliente-container').style.display = 'none';
+    });
+}
+// Reemplazar el event listener estándar por el de Select2 para el cambio de cliente
+$('#cliente').on('select2:select', function (e) {
+  const cliente = this.value;
+  const fecha = document.getElementById('fecha').value;
+  const dias = document.getElementById('dias-pedidos').value;
+  cargarPedidosCliente(cliente, fecha, dias);
+});
+document.getElementById('fecha').addEventListener('change', function() {
+  const cliente = document.getElementById('cliente').value;
+  const fecha = this.value;
+  const dias = document.getElementById('dias-pedidos').value;
+  cargarPedidosCliente(cliente, fecha, dias);
+});
+document.getElementById('dias-pedidos').addEventListener('change', function() {
+  const cliente = document.getElementById('cliente').value;
+  const fecha = document.getElementById('fecha').value;
+  const dias = this.value;
+  cargarPedidosCliente(cliente, fecha, dias);
+});
+window.addEventListener('DOMContentLoaded', function() {
+  const cliente = document.getElementById('cliente').value;
+  const fecha = document.getElementById('fecha').value;
+  const dias = document.getElementById('dias-pedidos').value;
+  cargarPedidosCliente(cliente, fecha, dias);
+});
+</script>
+
 <!-- Bootstrap JS Bundle (necesario para modales) -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// Mostrar/ocultar botón copiar según si hay pedidos
+function mostrarBotonCopiar(mostrar) {
+  const btn = document.getElementById('btn-copiar-pedidos');
+  if (btn) btn.style.display = mostrar ? '' : 'none';
+}
+// Copiar resumen de pedidos al portapapeles
+function copiarResumenPedidos() {
+  const cliente = document.getElementById('cliente').value;
+  const fecha = document.getElementById('fecha').value;
+  const dias = document.getElementById('dias-pedidos').value;
+  const totalBrs = document.getElementById('total-brs').textContent;
+  const totalClp = document.getElementById('total-clp').textContent;
+  const tabla = document.getElementById('tabla-pedidos-cliente');
+  let texto = `Pedidos de ${cliente} (${dias} día(s)) hasta ${fecha}\n`;
+  texto += `Total BRS: ${totalBrs}\nTotal CLP: ${totalClp}\n`;
+  texto += 'BRS\tCLP\tTasa\tFecha\n';
+  for (const row of tabla.querySelectorAll('tbody tr')) {
+    const cols = Array.from(row.children).map(td => td.textContent.trim());
+    texto += cols.join('\t') + '\n';
+  }
+  navigator.clipboard.writeText(texto).then(() => {
+    const btn = document.getElementById('btn-copiar-pedidos');
+    btn.classList.remove('btn-outline-secondary');
+    btn.classList.add('btn-success');
+    btn.innerHTML = '<i class="fas fa-check"></i>';
+    setTimeout(() => {
+      btn.classList.remove('btn-success');
+      btn.classList.add('btn-outline-secondary');
+      btn.innerHTML = '<i class="fas fa-copy"></i>';
+    }, 1200);
+  });
+}
+document.getElementById('btn-copiar-pedidos').addEventListener('click', copiarResumenPedidos);
+</script>
 {% endblock %}

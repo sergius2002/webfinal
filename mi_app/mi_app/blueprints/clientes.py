@@ -226,14 +226,12 @@ def normalizar_y_validar_rut(rut):
 
 @clientes_bp.route("/")
 @login_required
-@user_allowed
 def index():
     clientes = get_cached_clientes()
     return render_template("clientes/index.html", clientes=clientes, active_page="clientes")
 
 @clientes_bp.route("/nuevo", methods=["GET", "POST"])
 @login_required
-@user_allowed
 def nuevo():
     if request.method == "POST":
         cliente = request.form.get("cliente")
@@ -263,7 +261,6 @@ def nuevo():
 
 @clientes_bp.route("/editar/<int:cliente_id>", methods=["GET", "POST"])
 @login_required
-@user_allowed
 def editar(cliente_id):
     response = supabase.table("clientes").select("id, cliente, clp_maximo").eq("id", cliente_id).single().execute()
     cliente = response.data if response.data else None
@@ -298,7 +295,6 @@ def editar(cliente_id):
 
 @clientes_bp.route("/detalle/<int:cliente_id>")
 @login_required
-@user_allowed
 def detalle(cliente_id):
     response = supabase.table("clientes").select("id, cliente").eq("id", cliente_id).single().execute()
     cliente = response.data if response.data else None
@@ -322,7 +318,6 @@ def detalle(cliente_id):
 
 @clientes_bp.route("/agregar_pagador/<int:cliente_id>", methods=["POST"])
 @login_required
-@user_allowed
 def agregar_pagador(cliente_id):
     try:
         data = request.get_json()
@@ -382,7 +377,6 @@ def agregar_pagador(cliente_id):
 
 @clientes_bp.route("/eliminar_pagador/<int:cliente_id>", methods=["POST"])
 @login_required
-@user_allowed
 def eliminar_pagador(cliente_id):
     try:
         data = request.get_json()
@@ -432,7 +426,6 @@ def eliminar_pagador(cliente_id):
 
 @clientes_bp.route("/eliminar/<int:cliente_id>", methods=["POST"])
 @login_required
-@user_allowed
 def eliminar(cliente_id):
     supabase.table("clientes").delete().eq("id", cliente_id).execute()
     
@@ -444,7 +437,6 @@ def eliminar(cliente_id):
 
 @clientes_bp.route("/link_pagador/<int:cliente_id>")
 @login_required
-@user_allowed
 def link_pagador(cliente_id):
     try:
         # Obtener el cliente
@@ -659,7 +651,6 @@ def agregar_pagador_publico(token):
 
 @clientes_bp.route('/buscar_por_rut', methods=['POST'])
 @login_required
-@user_allowed
 def buscar_por_rut():
     data = request.get_json()
     rut = data.get('rut', '').strip()
@@ -685,7 +676,6 @@ def buscar_por_rut():
 
 @clientes_bp.route("/limpiar-cache", methods=["POST"])
 @login_required
-@user_allowed
 def limpiar_cache():
     """Limpia el caché de clientes manualmente"""
     clear_clientes_cache()

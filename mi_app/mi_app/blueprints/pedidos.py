@@ -885,6 +885,52 @@ def transferir_brs():
         flash(f'Error al transferir BRS: {str(e)}', 'danger')
     return redirect(url_for('pedidos.flujo_caja'))
 
+@pedidos_bp.route('/agregar_brs_manual', methods=['POST'])
+@login_required
+def agregar_brs_manual():
+    try:
+        cuenta_id = request.form.get('cuenta_id')
+        monto = request.form.get('monto')
+        descripcion = request.form.get('descripcion', '')
+        if not cuenta_id or not monto:
+            flash('Todos los campos son obligatorios.', 'danger')
+            return redirect(url_for('pedidos.flujo_caja'))
+        try:
+            monto = int(monto)
+            if monto <= 0:
+                raise ValueError
+        except Exception:
+            flash('El monto debe ser un número positivo.', 'danger')
+            return redirect(url_for('pedidos.flujo_caja'))
+        registrar_movimiento_cuenta(cuenta_id, 'AJUSTE_MANUAL', monto, None, 'ajuste_manual', descripcion or 'Ingreso manual de BRS')
+        flash('BRS ingresado manualmente con éxito.', 'success')
+    except Exception as e:
+        logging.error(f'Error al agregar BRS manual: {e}')
+        flash(f'Error al agregar BRS manual: {str(e)}', 'danger')
+    return redirect(url_for('pedidos.flujo_caja'))
+
+@pedidos_bp.route('/pedidos_cliente', methods=['GET'])
+@login_required
+def pedidos_cliente():
+    cliente = request.args.get('cliente')
+    fecha = request.args.get('fecha')
+    dias = int(request.args.get('dias', 1))
+    if not cliente or not fecha:
+        return {'success': False, 'error': 'Faltan parámetros'}, 400
+    try:
+        fecha_dt = datetime.strptime(fecha, '%Y-%m-%d')
+        fecha_inicio = (fecha_dt - timedelta(days=dias-1)).strftime('%Y-%m-%d')
+        response = supabase.table('pedidos').select('id, brs, clp, tasa, fecha') \
+            .eq('cliente', cliente) \
+            .gte('fecha', fecha_inicio) \
+            .lte('fecha', fecha) \
+            .eq('eliminado', False) \
+            .order('fecha', desc=False).execute()
+        pedidos = response.data if response.data else []
+        return {'success': True, 'pedidos': pedidos}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}, 500
+
 # -----------------------------------------------------------------------------
 # Funciones de Flujo de Caja
 # -----------------------------------------------------------------------------
