@@ -1005,4 +1005,38 @@ $('#envios-multiples').on('change', actualizarTituloClienteMultiple);
 
 <!-- Agregar SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+// Validación personalizada para el campo tasa y habilitación del botón Guardar
+$(document).ready(function() {
+  const tasaInput = document.getElementById('tasa');
+  const tasaWarning = document.getElementById('tasa-warning');
+  const tasaPredeterminada = parseFloat(window.tasaVenezuela);
+  const btnGuardar = document.getElementById('btn-guardar');
+
+  function validarTasa() {
+    let valor = parseFloat(tasaInput.value.replace(',', '.'));
+    let error = '';
+    if (isNaN(valor) || valor <= 0 || valor >= 1) {
+      error = 'La tasa debe ser un número positivo menor que 1.';
+    } else if (valor > tasaPredeterminada * 1.003) {
+      error = `La tasa no puede superar el 0.3% de la tasa predeterminada (${(tasaPredeterminada * 1.003).toFixed(5)}).`;
+    }
+    if (error) {
+      tasaInput.classList.add('is-invalid');
+      tasaWarning.textContent = error;
+      tasaWarning.style.display = 'block';
+      btnGuardar.disabled = true;
+    } else {
+      tasaInput.classList.remove('is-invalid');
+      tasaWarning.style.display = 'none';
+      btnGuardar.disabled = false;
+    }
+  }
+
+  tasaInput.addEventListener('input', validarTasa);
+  // Ejecutar validación al cargar la página
+  validarTasa();
+});
+</script>
 {% endblock %}

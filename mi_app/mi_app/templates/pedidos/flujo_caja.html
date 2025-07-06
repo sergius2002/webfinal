@@ -173,8 +173,11 @@
                       <div class="small">{{ movimiento.descripcion or movimiento.tipo_movimiento }}</div>
                     </div>
                     <div class="ms-2">
-                      <span class="badge {% if movimiento.tipo_movimiento == 'COMPRA' %}bg-success{% elif movimiento.tipo_movimiento == 'PEDIDO' %}bg-danger{% else %}bg-warning{% endif %}">
-                        {% if movimiento.tipo_movimiento == 'COMPRA' %}+{% else %}-{% endif %}{{ "{:,}".format(movimiento.monto_brs) }}
+                      <span class="badge 
+                        {% if movimiento.tipo_movimiento == 'COMPRA' or movimiento.tipo_movimiento == 'AJUSTE_MANUAL' %}bg-success
+                        {% elif movimiento.tipo_movimiento == 'PEDIDO' %}bg-danger
+                        {% else %}bg-warning{% endif %}">
+                        {% if movimiento.tipo_movimiento == 'COMPRA' or movimiento.tipo_movimiento == 'AJUSTE_MANUAL' %}+{% else %}-{% endif %}{{ "{:,}".format(movimiento.monto_brs) }}
                       </span>
                     </div>
                   </div>

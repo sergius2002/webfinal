@@ -1057,7 +1057,7 @@ def actualizar_saldo_cuenta(cuenta_id):
         bool: True si se actualizó correctamente
     """
     try:
-        # Calcular saldo sumando compras, restando pedidos y sumando ajustes
+        # Calcular saldo sumando compras, restando pedidos y sumando ajustes y ajustes manuales
         response = supabase.table("movimientos_cuenta").select("tipo_movimiento, monto_brs").eq("cuenta_id", cuenta_id).execute()
         
         if not response.data:
@@ -1070,6 +1070,8 @@ def actualizar_saldo_cuenta(cuenta_id):
                 elif movimiento["tipo_movimiento"] == "PEDIDO":
                     saldo -= movimiento["monto_brs"]
                 elif movimiento["tipo_movimiento"] == "AJUSTE":
+                    saldo += movimiento["monto_brs"]
+                elif movimiento["tipo_movimiento"] == "AJUSTE_MANUAL":
                     saldo += movimiento["monto_brs"]
         
         # Actualizar saldo en la tabla cuentas_activas
