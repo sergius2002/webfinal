@@ -140,7 +140,7 @@ def parse_brs(num_str):
 @login_required
 def index():
     try:
-        query = supabase.table("pedidos").select("id, cliente, fecha, brs, tasa, clp")
+        query = supabase.table("pedidos").select("id, cliente, fecha, brs, tasa, clp, cuenta_id, cuentas_activas(numero_cuenta, nombre_titular)")
         
         # Filtrar pedidos no eliminados
         query = query.eq("eliminado", False)
@@ -156,23 +156,46 @@ def index():
         query = query.eq("fecha", fecha)
 
         brs = request.args.get("brs", "").strip()
+        logging.info(f"Valor de BRS recibido: '{brs}' (tipo: {type(brs)})")
         if brs:
             try:
-                query = query.eq("brs", float(brs))
-            except ValueError:
-                logging.warning("Valor de BRS no válido: %s", brs)
+                # Convertir a int y luego a string ya que BRS se almacena como string en la BD
+                brs_int = int(brs)
+                brs_str = str(brs_int)
+                logging.info(f"BRS convertido a string: {brs_str}")
+                query = query.eq("brs", brs_str)
+            except ValueError as e:
+                logging.warning("Valor de BRS no válido: %s - Error: %s", brs, str(e))
 
         clp = request.args.get("clp", "").replace(".", "").strip()
+        logging.info(f"Valor de CLP recibido: '{clp}' (tipo: {type(clp)})")
         if clp:
             try:
-                query = query.eq("clp", int(clp))
-            except ValueError:
-                logging.warning("Valor de CLP no válido: %s", clp)
+                clp_int = int(clp)
+                clp_str = str(clp_int)
+                logging.info(f"CLP convertido a string: {clp_str}")
+                query = query.eq("clp", clp_str)
+            except ValueError as e:
+                logging.warning("Valor de CLP no válido: %s - Error: %s", clp, str(e))
+
+        # Filtro por cuenta
+        cuenta_id = request.args.get("cuenta_id")
+        if cuenta_id:
+            query = query.eq("cuenta_id", cuenta_id)
 
         query = query.order("fecha", desc=False)
         response = query.execute()
         pedidos_data = response.data if response.data is not None else []
         clientes = sorted({p["cliente"] for p in pedidos_data if p.get("cliente")})
+        
+        # Obtener cuentas activas para el filtro
+        try:
+            response_cuentas = supabase.table("cuentas_activas").select("id, numero_cuenta, nombre_titular").eq("activa", True).order("nombre_titular").execute()
+            cuentas_activas = response_cuentas.data if response_cuentas.data else []
+        except Exception as e:
+            logging.error("Error al obtener cuentas activas: %s", e)
+            cuentas_activas = []
+        
         # Calcular tasa ponderada por BRS
         suma_brs = sum(p["brs"] for p in pedidos_data if p.get("brs") and p.get("tasa"))
         suma_brs_tasa = sum(p["brs"] * p["tasa"] for p in pedidos_data if p.get("brs") and p.get("tasa"))
@@ -191,15 +214,28 @@ def index():
                 is_admin = bool(response_admin.data)
             except Exception as e:
                 logging.error("Error al verificar permisos de usuario: %s", e)
+        
+        # Obtener comisiones asociadas a los pedidos
+        pedido_ids = [p["id"] for p in pedidos_data]
+        comisiones_dict = {}
+        if pedido_ids:
+            comisiones_resp = supabase.table("movimientos_cuenta").select("referencia_id, monto_brs").in_("referencia_id", pedido_ids).eq("tipo_movimiento", "COMISION_PEDIDO").eq("referencia_tipo", "pedido").execute()
+            if comisiones_resp.data:
+                for c in comisiones_resp.data:
+                    comisiones_dict[c["referencia_id"]] = c["monto_brs"]
+        # Añadir la comisión a cada pedido
+        for p in pedidos_data:
+            p["comision"] = comisiones_dict.get(p["id"], 0)
     except Exception as e:
         logging.error("Error al cargar los pedidos: %s", e)
         flash("Error al cargar los pedidos: " + str(e))
         pedidos_data, clientes = [], []
+        cuentas_activas = []
         tasa_banesco = tasa_venezuela = tasa_otros = "0.000"
         is_admin = False
         tasa_ponderada = 0
     current_date = adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d")
-    return render_template("pedidos/index.html", pedidos=pedidos_data, cliente=clientes, active_page="pedidos",
+    return render_template("pedidos/index.html", pedidos=pedidos_data, cliente=clientes, cuentas_activas=cuentas_activas, active_page="pedidos",
                            current_date=current_date,
                            tasa_banesco=tasa_banesco, tasa_venezuela=tasa_venezuela, tasa_otros=tasa_otros,
                            is_admin=is_admin, tasa_ponderada=tasa_ponderada)
@@ -904,11 +940,12 @@ def transferir_brs():
             flash(f'Saldo insuficiente en la cuenta origen. Saldo actual: {saldo_origen:,} BRS', 'danger')
             return redirect(url_for('pedidos.flujo_caja'))
         # Registrar movimientos
-        registrar_movimiento_cuenta(cuenta_origen, 'TRANSFERENCIA_SALIDA', monto, None, 'transferencia', descripcion or 'Transferencia a otra cuenta')
-        registrar_movimiento_cuenta(cuenta_destino, 'TRANSFERENCIA_ENTRADA', monto, None, 'transferencia', descripcion or 'Transferencia recibida')
-        if agregar_comision and comision > 0:
+        registrar_movimiento_cuenta(cuenta_origen, 'TRANS_SALIDA', monto, None, 'transferencia', descripcion or 'Transferencia a otra cuenta')
+        registrar_movimiento_cuenta(cuenta_destino, 'TRANS_ENTRADA', monto, None, 'transferencia', descripcion or 'Transferencia recibida')
+        
+        if agregar_comision:
             descripcion_comision = f'Comisión 0.3% asociada a transferencia entre cuentas'
-            registrar_movimiento_cuenta(cuenta_origen, 'COMISION_TRANSFERENCIA', comision, None, 'transferencia', descripcion_comision)
+            registrar_movimiento_cuenta(cuenta_origen, 'COMISION_TRANS', comision, None, 'transferencia', descripcion_comision)
         flash('Transferencia realizada con éxito.', 'success')
     except Exception as e:
         logging.error(f'Error al transferir BRS: {e}')
@@ -937,6 +974,33 @@ def agregar_brs_manual():
     except Exception as e:
         logging.error(f'Error al agregar BRS manual: {e}')
         flash(f'Error al agregar BRS manual: {str(e)}', 'danger')
+    return redirect(url_for('pedidos.flujo_caja'))
+
+@pedidos_bp.route('/recalcular_saldos', methods=['POST'])
+@login_required
+def recalcular_saldos():
+    """
+    Recalcula todos los saldos de las cuentas basado en sus movimientos
+    """
+    try:
+        # Obtener todas las cuentas activas
+        response = supabase.table("cuentas_activas").select("id").eq("activa", True).execute()
+        if not response.data:
+            flash('No se encontraron cuentas activas.', 'warning')
+            return redirect(url_for('pedidos.flujo_caja'))
+        
+        cuentas_actualizadas = 0
+        for cuenta in response.data:
+            cuenta_id = cuenta["id"]
+            if actualizar_saldo_cuenta(cuenta_id):
+                cuentas_actualizadas += 1
+        
+        flash(f'Saldos recalculados correctamente para {cuentas_actualizadas} cuentas.', 'success')
+        
+    except Exception as e:
+        logging.error(f'Error al recalcular saldos: {e}')
+        flash(f'Error al recalcular saldos: {str(e)}', 'danger')
+    
     return redirect(url_for('pedidos.flujo_caja'))
 
 @pedidos_bp.route('/pedidos_cliente', methods=['GET'])
@@ -1068,19 +1132,30 @@ def registrar_movimiento_cuenta(cuenta_id, tipo_movimiento, monto_brs, referenci
             "fecha": adjust_datetime(datetime.now(chile_tz)).isoformat()
         }
         
+        logging.info(f"Intentando insertar movimiento: {tipo_movimiento} - {monto_brs} BRS en cuenta {cuenta_id}")
+        logging.info(f"Datos del movimiento: {movimiento_data}")
+        
         result = supabase.table("movimientos_cuenta").insert(movimiento_data).execute()
+        
+        logging.info(f"Resultado de la inserción: {result}")
+        logging.info(f"Result.data: {result.data}")
+        logging.info(f"Result.error: {getattr(result, 'error', 'No error')}")
         
         if result.data:
             # Actualizar saldo de la cuenta
             actualizar_saldo_cuenta(cuenta_id)
-            logging.info(f"Movimiento registrado: {tipo_movimiento} - {monto_brs} BRS en cuenta {cuenta_id}")
+            logging.info(f"Movimiento registrado exitosamente: {tipo_movimiento} - {monto_brs} BRS en cuenta {cuenta_id}")
             return True
         else:
-            logging.error("Error al insertar movimiento en la base de datos")
+            logging.error(f"Error al insertar movimiento en la base de datos. Result: {result}")
+            if hasattr(result, 'error'):
+                logging.error(f"Error específico: {result.error}")
             return False
             
     except Exception as e:
-        logging.error(f"Error al registrar movimiento: {e}")
+        logging.error(f"Excepción al registrar movimiento: {e}")
+        logging.error(f"Tipo de excepción: {type(e)}")
+        logging.error(f"Traceback completo: ", exc_info=True)
         return False
 
 def actualizar_saldo_cuenta(cuenta_id):
@@ -1105,9 +1180,15 @@ def actualizar_saldo_cuenta(cuenta_id):
                     saldo -= movimiento["monto_brs"]
                 elif movimiento["tipo_movimiento"] == "COMISION_PEDIDO":
                     saldo -= movimiento["monto_brs"]
+                elif movimiento["tipo_movimiento"] == "COMISION_TRANS":
+                    saldo -= movimiento["monto_brs"]
                 elif movimiento["tipo_movimiento"] == "AJUSTE":
                     saldo += movimiento["monto_brs"]
                 elif movimiento["tipo_movimiento"] == "AJUSTE_MANUAL":
+                    saldo += movimiento["monto_brs"]
+                elif movimiento["tipo_movimiento"] == "TRANS_SALIDA":
+                    saldo -= movimiento["monto_brs"]
+                elif movimiento["tipo_movimiento"] == "TRANS_ENTRADA":
                     saldo += movimiento["monto_brs"]
         # Actualizar saldo en la tabla cuentas_activas
         supabase.table("cuentas_activas").update({"saldo_actual": saldo}).eq("id", cuenta_id).execute()
@@ -1281,3 +1362,59 @@ def check_table_structure():
     except Exception as e:
         logging.error(f"Error al verificar estructura de tabla: {e}")
         return False, f"Error al verificar estructura: {str(e)}" 
+
+@pedidos_bp.route('/actualizar_tipos_movimiento', methods=['POST'])
+@login_required
+def actualizar_tipos_movimiento():
+    """
+    Función para actualizar los tipos de movimiento existentes en la base de datos
+    de los valores largos a los valores cortos
+    """
+    try:
+        # Mapeo de valores antiguos a nuevos
+        mapeo_tipos = {
+            "TRANSFERENCIA_SALIDA": "TRANS_SALIDA",
+            "TRANSFERENCIA_ENTRADA": "TRANS_ENTRADA", 
+            "COMISION_TRANSFERENCIA": "COMISION_TRANS"
+        }
+        
+        resultados = {}
+        
+        for tipo_antiguo, tipo_nuevo in mapeo_tipos.items():
+            try:
+                # Contar registros con el tipo antiguo
+                count_response = supabase.table("movimientos_cuenta").select("id", count="exact").eq("tipo_movimiento", tipo_antiguo).execute()
+                cantidad_antigua = count_response.count if hasattr(count_response, 'count') else 0
+                
+                # Actualizar registros
+                update_response = supabase.table("movimientos_cuenta").update({"tipo_movimiento": tipo_nuevo}).eq("tipo_movimiento", tipo_antiguo).execute()
+                
+                # Contar registros con el tipo nuevo
+                count_response_nuevo = supabase.table("movimientos_cuenta").select("id", count="exact").eq("tipo_movimiento", tipo_nuevo).execute()
+                cantidad_nueva = count_response_nuevo.count if hasattr(count_response_nuevo, 'count') else 0
+                
+                resultados[tipo_antiguo] = {
+                    "nuevo_tipo": tipo_nuevo,
+                    "registros_actualizados": cantidad_antigua,
+                    "registros_nuevo_tipo": cantidad_nueva,
+                    "exito": True
+                }
+                
+                logging.info(f"Actualizados {cantidad_antigua} registros de '{tipo_antiguo}' a '{tipo_nuevo}'")
+                
+            except Exception as e:
+                logging.error(f"Error al actualizar {tipo_antiguo}: {e}")
+                resultados[tipo_antiguo] = {
+                    "error": str(e),
+                    "exito": False
+                }
+        
+        return jsonify({
+            "success": True,
+            "resultados": resultados,
+            "mensaje": "Actualización de tipos de movimiento completada"
+        })
+        
+    except Exception as e:
+        logging.error(f'Error en actualizar_tipos_movimiento: {e}')
+        return jsonify({"error": str(e)}), 500

@@ -121,6 +121,19 @@
               <input type="hidden" id="clp" name="clp" value="{{ request.args.get('clp','') }}">
             </div>
             <div class="mb-3">
+              <label for="cuenta_pedidos" class="form-label">
+                <i class="fas fa-university me-1"></i>Cuenta Corriente
+              </label>
+              <select name="cuenta_id" id="cuenta_pedidos" class="form-select">
+                <option value="">Todas las cuentas</option>
+                {% for cuenta in cuentas_activas %}
+                  <option value="{{ cuenta.id }}" {% if cuenta.id|string == request.args.get('cuenta_id', '') %}selected{% endif %}>
+                    {{ cuenta.numero_cuenta }} - {{ cuenta.nombre_titular }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
               <button type="submit" class="btn btn-primary w-100">
                 <i class="fas fa-search me-1"></i>Filtrar
               </button>
@@ -143,6 +156,8 @@
                   <th><i class="fas fa-coins me-1"></i>BRS</th>
                   <th><i class="fas fa-percentage me-1"></i>Tasa</th>
                   <th><i class="fas fa-calculator me-1"></i>CLP</th>
+                  <th><i class="fas fa-university me-1"></i>Cuenta</th>
+                  <th><i class="fas fa-money-bill-wave me-1"></i>Comisión</th>
                   <th><i class="fas fa-cogs me-1"></i>Acciones</th>
                 </tr>
               </thead>
@@ -154,6 +169,15 @@
                   <td class="text-end">{{ p.brs | format_int }}</td>
                   <td class="text-end">{{ p.tasa | format_decimal5 | replace('.', ',') }}</td>
                   <td class="text-end fw-bold">{{ p.clp | format_int }}</td>
+                  <td>
+                    {% if p.cuentas_activas %}
+                      <small class="text-muted">{{ p.cuentas_activas.numero_cuenta }}</small><br>
+                      <strong>{{ p.cuentas_activas.nombre_titular }}</strong>
+                    {% else %}
+                      <span class="text-muted">Sin cuenta</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">{{ p.comision | default(0) | format_int }}</td>
                   <td>
                     <div class="btn-group" role="group">
                       <a href="{{ url_for('pedidos.editar', pedido_id=p.id) }}" class="btn btn-sm btn-primary" title="Editar">
@@ -168,7 +192,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                  <td colspan="6" class="text-center text-muted py-4">
+                  <td colspan="7" class="text-center text-muted py-4">
                     <i class="fas fa-inbox fa-2x mb-2"></i>
                     <p class="mb-0">No se encontraron pedidos con los filtros aplicados</p>
                   </td>
@@ -217,6 +241,13 @@ $(document).ready(function(){
     minimumResultsForSearch: 0
   });
   
+  $('#cuenta_pedidos').select2({
+    width: '100%',
+    placeholder: 'Seleccione una cuenta',
+    allowClear: true,
+    minimumResultsForSearch: 0
+  });
+  
   // Formateo automático para campos numéricos
   $('#brs_display').on('input', function() {
     let value = this.value.replace(/[^\d]/g, '');
@@ -228,6 +259,15 @@ $(document).ready(function(){
     }
   });
   
+  // Inicializar campos numéricos al cargar la página
+  if ($('#brs_display').val()) {
+    let value = $('#brs_display').val().replace(/[^\d]/g, '');
+    if (value) {
+      $('#brs_display').val(parseInt(value, 10).toLocaleString('de-DE'));
+      $('#brs').val(value);
+    }
+  }
+  
   $('#clp_display').on('input', function() {
     let value = this.value.replace(/[^\d]/g, '');
     if (value) {
@@ -238,9 +278,19 @@ $(document).ready(function(){
     }
   });
   
+  // Inicializar campo CLP al cargar la página
+  if ($('#clp_display').val()) {
+    let value = $('#clp_display').val().replace(/[^\d]/g, '');
+    if (value) {
+      $('#clp_display').val(parseInt(value, 10).toLocaleString('de-DE'));
+      $('#clp').val(value);
+    }
+  }
+  
   // Limpiar filtros
   $('#btn-limpiar-filtros').on('click', function() {
     $('#cliente_pedidos').val('').trigger('change');
+    $('#cuenta_pedidos').val('').trigger('change');
     $('#fecha').val('');
     $('#brs_display').val('');
     $('#brs').val('');
