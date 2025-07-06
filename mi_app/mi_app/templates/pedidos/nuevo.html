@@ -149,6 +149,20 @@
               </div>
             </div>
             <div id="formulario-multiple" style="display:none;">
+              <div class="mb-3">
+                <label for="cliente-multiples" class="form-label">Cliente</label>
+                <select name="cliente" id="cliente-multiples" class="form-select" required>
+                  <option value="">Seleccione un cliente</option>
+                  {% for client in cliente_pagadores %}
+                    <option value="{{ client }}">{{ client }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="tasa-multiples" class="form-label">Tasa</label>
+                <input type="text" name="tasa" id="tasa-multiples" class="form-control" required value="{{ tasa_venezuela }}">
+                <div id="tasa-warning-multiples" class="form-text text-warning" style="display: none;"></div>
+              </div>
               <div class="mb-2">
                 <strong>Pedidos a ingresar</strong>
                 <div id="cliente-multiple-titulo" class="h4 fw-bold text-center text-danger my-3"></div>
@@ -935,8 +949,8 @@ $('#multiples-pedidos-rows').on('click', '.quitar-fila-pedido', function() {
 
 // Botón para guardar todos los pedidos
 $('#guardar-multiples-pedidos').on('click', function() {
-  const cliente = $('#cliente').val();
-  const tasa = $('#tasa').val();
+  const cliente = $('#cliente-multiples').val();
+  const tasa = $('#tasa-multiples').val();
   const fecha = $('#fecha').val();
   let pedidos = [];
   let valido = true;
@@ -1009,14 +1023,14 @@ $('#guardar-multiples-pedidos').on('click', function() {
 
 <script>
 function actualizarTituloClienteMultiple() {
-  const cliente = $('#cliente').find('option:selected').text();
+  const cliente = $('#cliente-multiples').find('option:selected').text();
   if ($('#envios-multiples').is(':checked') && cliente && cliente !== 'Seleccione un cliente') {
     $('#cliente-multiple-titulo').html(`Envíos múltiples para <span class='text-uppercase'>${cliente}</span>`);
   } else {
     $('#cliente-multiple-titulo').text('');
   }
 }
-$('#cliente').on('change', actualizarTituloClienteMultiple);
+$('#cliente-multiples').on('change', actualizarTituloClienteMultiple);
 $('#envios-multiples').on('change', actualizarTituloClienteMultiple);
 </script>
 
@@ -1102,5 +1116,41 @@ function actualizarComisionMultiple(fila) {
   totalDescontar.text(total.toLocaleString('de-DE'));
   comisionInfo.toggle(check && brs > 0);
 }
+</script>
+
+<script>
+$(document).ready(function() {
+  // Validación de cliente obligatorio en envíos múltiples
+  $('#guardar-multiples-pedidos').on('click', function(e) {
+    if (!$('#cliente-multiples').val()) {
+      e.preventDefault();
+      toastr.error('Debes seleccionar un cliente para los envíos múltiples.');
+      return false;
+    }
+  });
+  // Validación de tasa igual que en alta individual
+  const tasaInput = document.getElementById('tasa-multiples');
+  if (tasaInput) {
+    const tasaWarning = document.getElementById('tasa-warning-multiples');
+    const tasaPredeterminada = parseFloat(window.tasaVenezuela);
+    function validarTasaMultiples() {
+      let valor = parseFloat(tasaInput.value.replace(',', '.'));
+      let error = '';
+      if (isNaN(valor) || valor <= 0 || valor >= 1) {
+        error = 'La tasa debe ser un número positivo menor que 1.';
+      } else if (valor > tasaPredeterminada * 1.003) {
+        error = `La tasa no puede superar el 0.3% de la tasa predeterminada (${(tasaPredeterminada * 1.003).toFixed(5)}).`;
+      }
+      if (error) {
+        tasaWarning.style.display = '';
+        tasaWarning.textContent = error;
+      } else {
+        tasaWarning.style.display = 'none';
+        tasaWarning.textContent = '';
+      }
+    }
+    tasaInput.addEventListener('input', validarTasaMultiples);
+  }
+});
 </script>
 {% endblock %}
