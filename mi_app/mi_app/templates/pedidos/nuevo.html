@@ -914,9 +914,14 @@ function agregarFilaPedido() {
     </div>`
   );
   $('#multiples-pedidos-rows').append(fila);
-  // Inicializar select2 en la nueva fila
+  // Inicializar select2 en la nueva fila para cuenta corriente
   const selectCuenta = fila.find('select');
-  selectCuenta.select2({width:'100%',placeholder:'Seleccionar cuenta'});
+  selectCuenta.select2({width:'100%',placeholder:'Seleccionar cuenta corriente',allowClear:true,minimumResultsForSearch:0});
+  selectCuenta.on('select2:open', function (e) {
+    setTimeout(function() {
+      document.querySelector('.select2-container--open .select2-search__field').focus();
+    }, 0);
+  });
   if (cuentaSeleccionada) {
     selectCuenta.val(cuentaSeleccionada).trigger('change');
   }
@@ -1151,6 +1156,23 @@ $(document).ready(function() {
     }
     tasaInput.addEventListener('input', validarTasaMultiples);
   }
+});
+</script>
+
+<script>
+$(document).ready(function() {
+  // Inicializar Select2 para el campo cliente en envíos múltiples
+  $('#cliente-multiples').select2({
+    width: '100%',
+    placeholder: 'Seleccione un cliente',
+    allowClear: true,
+    minimumResultsForSearch: 0
+  });
+  $('#cliente-multiples').on('select2:open', function (e) {
+    setTimeout(function() {
+      document.querySelector('.select2-container--open .select2-search__field').focus();
+    }, 0);
+  });
 });
 </script>
 {% endblock %}
