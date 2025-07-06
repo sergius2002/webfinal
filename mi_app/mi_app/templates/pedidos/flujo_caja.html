@@ -291,6 +291,27 @@
 </div>
 {% endfor %}
 
+<!-- Modal de contraseña para borrar historial -->
+<div class="modal fade" id="modalPasswordBorrar" tabindex="-1" aria-labelledby="modalPasswordBorrarLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalPasswordBorrarLabel">Confirmar Borrado de Historial</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p>Introduce la contraseña especial para borrar el historial:</p>
+        <input type="password" id="passwordBorrarHistorial" class="form-control" placeholder="Contraseña" autocomplete="off">
+        <div id="errorPasswordBorrar" class="text-danger mt-2" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmarBorrar">Borrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <style>
 .card {
   box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
@@ -339,6 +360,31 @@ $(document).ready(function() {
   $('#monto_transferencia').on('input', actualizarComisionTransferencia);
 });
 
-
+// Interceptar el botón original y mostrar el modal
+const btnBorrar = document.querySelector('form[action$="borrar_historial_flujo_caja"] button[type="submit"]');
+if (btnBorrar) {
+  btnBorrar.type = 'button';
+  btnBorrar.addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('passwordBorrarHistorial').value = '';
+    document.getElementById('errorPasswordBorrar').style.display = 'none';
+    const modal = new bootstrap.Modal(document.getElementById('modalPasswordBorrar'));
+    modal.show();
+  });
+}
+// Lógica del modal
+const btnConfirmarBorrar = document.getElementById('btnConfirmarBorrar');
+if (btnConfirmarBorrar) {
+  btnConfirmarBorrar.addEventListener('click', function() {
+    const pass = document.getElementById('passwordBorrarHistorial').value;
+    if (pass === 'Kj6mm866.-') {
+      // Enviar el formulario original
+      document.querySelector('form[action$="borrar_historial_flujo_caja"]').submit();
+    } else {
+      document.getElementById('errorPasswordBorrar').textContent = 'Contraseña incorrecta.';
+      document.getElementById('errorPasswordBorrar').style.display = 'block';
+    }
+  });
+}
 </script>
 {% endblock %} 
