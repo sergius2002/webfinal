@@ -181,6 +181,10 @@ def process_and_store_excel(file_path):
     }), axis=1)
     print(f"[{datetime.now()}] Hashes calculados. Filas restantes: {len(df)}")
 
+    # Cambiar el nombre de la empresa DESPUÉS de calcular el hash
+    df["empresa"] = "ST CRISTOBAL BCI"
+    print(f"[{datetime.now()}] Nombre de empresa actualizado a ST CRISTOBAL BCI")
+
     # Reordenar columnas
     column_order = [
         "monto", "Fecha", "rut", "facturación", "hash",
