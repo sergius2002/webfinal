@@ -296,30 +296,26 @@ def nuevo():
                 "fecha": fecha, 
                 "usuario": usuario
             }
-            
-            # Agregar cuenta_id si se seleccionó una cuenta
             if cuenta_id:
                 pedido_data["cuenta_id"] = cuenta_id
-            
             result = supabase.table("pedidos").insert(pedido_data).execute()
-            
             if result.data:
-                # Registrar movimiento en la cuenta si se seleccionó una
                 if cuenta_id:
                     pedido_id = result.data[0]["id"]
                     descripcion = f"Pedido para cliente {cliente} - CLP: {clp_calculado:,.0f}"
-                    if registrar_movimiento_cuenta(cuenta_id, "PEDIDO", brs_num, pedido_id, "pedido", descripcion):
-                        flash(f"Pedido ingresado con éxito. CLP calculado: {clp_calculado:,.0f}. Saldo descontado de la cuenta.")
-                    else:
-                        flash(f"Pedido ingresado con éxito. CLP calculado: {clp_calculado:,.0f}. Error al registrar movimiento en cuenta.")
+                    registrar_movimiento_cuenta(cuenta_id, "PEDIDO", brs_num, pedido_id, "pedido", descripcion)
+                    # --- Lógica de comisión ---
+                    agregar_comision = request.form.get("agregar_comision")
+                    if agregar_comision:
+                        comision = round(brs_num * 0.003)
+                        if comision > 0:
+                            descripcion_comision = f"Comisión 0.3% asociada al pedido #{pedido_id}"
+                            registrar_movimiento_cuenta(cuenta_id, "COMISION_PEDIDO", comision, pedido_id, "pedido", descripcion_comision)
                 else:
                     flash(f"Pedido ingresado con éxito. CLP calculado: {clp_calculado:,.0f}")
-                
-                # Guardar el cliente en la sesión para el próximo ingreso
                 session['ultimo_cliente_pedidos'] = cliente
             else:
                 flash("Error: No se pudo insertar el pedido en la base de datos.")
-                
             return redirect(url_for("pedidos.nuevo"))
             
         except Exception as e:
@@ -354,6 +350,11 @@ def editar(pedido_id):
             flash("Pedido no encontrado.")
             return redirect(url_for("pedidos.index"))
         pedido = pedido_response.data[0]
+        # Consultar si existe comisión asociada
+        tiene_comision = False
+        if pedido.get("cuenta_id"):
+            comision_resp = supabase.table("movimientos_cuenta").select("id").eq("cuenta_id", pedido["cuenta_id"]).eq("tipo_movimiento", "COMISION_PEDIDO").eq("referencia_id", pedido["id"]).eq("referencia_tipo", "pedido").execute()
+            tiene_comision = bool(comision_resp.data)
     except Exception as e:
         logging.error("Error al obtener pedido: %s", e)
         flash("Error al obtener pedido: " + str(e))
@@ -375,7 +376,7 @@ def editar(pedido_id):
             nuevo_tasa_raw = sanitize_input(request.form.get("tasa"))
             nuevo_fecha = sanitize_input(request.form.get("fecha"))
             nuevo_cuenta_id = request.form.get("cuenta_id", "")
-            
+            agregar_comision = request.form.get("agregar_comision")
             # Procesar valores con manejo de errores mejorado
             try:
                 nuevo_brs = parse_brs(nuevo_brs_raw)
@@ -383,15 +384,13 @@ def editar(pedido_id):
             except ValueError as e:
                 flash(f"Error en los datos ingresados: {str(e)}")
                 return render_template("pedidos/editar.html", pedido=pedido, cliente_pagadores=cliente_pagadores, logs=logs,
-                                       active_page="pedidos")
-            
+                                       active_page="pedidos", cuentas_activas=cuentas_activas, tiene_comision=tiene_comision)
             # Validar datos usando la función de validación mejorada
             is_valid, error_message = validate_pedido_data(nuevo_cliente, nuevo_brs, nuevo_tasa, nuevo_fecha, nuevo_cuenta_id)
             if not is_valid:
                 flash(error_message)
                 return render_template("pedidos/editar.html", pedido=pedido, cliente_pagadores=cliente_pagadores, logs=logs,
-                                       active_page="pedidos", cuentas_activas=cuentas_activas)
-            
+                                       active_page="pedidos", cuentas_activas=cuentas_activas, tiene_comision=tiene_comision)
             # Detectar cambios
             cambios = []
             if pedido["cliente"] != nuevo_cliente:
@@ -402,7 +401,6 @@ def editar(pedido_id):
                 cambios.append(f"tasa: {pedido['tasa']} -> {nuevo_tasa}")
             if pedido["fecha"] != nuevo_fecha:
                 cambios.append(f"fecha: {pedido['fecha']} -> {nuevo_fecha}")
-            
             # Verificar cambio en cuenta_id
             cuenta_actual = pedido.get("cuenta_id")
             if cuenta_actual != nuevo_cuenta_id:
@@ -410,12 +408,20 @@ def editar(pedido_id):
                 if cuenta_actual:
                     try:
                         supabase.table("movimientos_cuenta").delete().eq("cuenta_id", cuenta_actual).eq("tipo_movimiento", "PEDIDO").eq("referencia_id", pedido_id).eq("referencia_tipo", "pedido").execute()
+                        # Eliminar comisión asociada si existe
+                        supabase.table("movimientos_cuenta").delete().eq("cuenta_id", cuenta_actual).eq("tipo_movimiento", "COMISION_PEDIDO").eq("referencia_id", pedido_id).eq("referencia_tipo", "pedido").execute()
                     except Exception as e:
-                        logging.error(f"Error al eliminar movimiento PEDIDO anterior: {e}")
+                        logging.error(f"Error al eliminar movimiento PEDIDO/COMISION anterior: {e}")
                 # Crear el nuevo movimiento PEDIDO en la cuenta nueva
                 if nuevo_cuenta_id:
                     descripcion_pedido = f"PEDIDO reasignado para cliente {nuevo_cliente} (cuenta editada)"
                     registrar_movimiento_cuenta(nuevo_cuenta_id, "PEDIDO", nuevo_brs, pedido_id, "pedido", descripcion_pedido)
+                    # Crear comisión si corresponde
+                    if agregar_comision:
+                        comision = round(nuevo_brs * 0.003)
+                        if comision > 0:
+                            descripcion_comision = f"Comisión 0.3% asociada al pedido #{pedido_id}"
+                            registrar_movimiento_cuenta(nuevo_cuenta_id, "COMISION_PEDIDO", comision, pedido_id, "pedido", descripcion_comision)
             # Si no cambió la cuenta pero cambió el monto, eliminar y crear el movimiento en la misma cuenta
             elif cuenta_actual and int(pedido["brs"]) != nuevo_brs:
                 try:
@@ -424,7 +430,23 @@ def editar(pedido_id):
                     logging.error(f"Error al eliminar movimiento PEDIDO anterior (monto editado): {e}")
                 descripcion_pedido = f"PEDIDO editado para cliente {nuevo_cliente} (monto editado)"
                 registrar_movimiento_cuenta(cuenta_actual, "PEDIDO", nuevo_brs, pedido_id, "pedido", descripcion_pedido)
-            
+                # Actualizar o eliminar/crear comisión
+                # Eliminar comisión anterior si existe
+                supabase.table("movimientos_cuenta").delete().eq("cuenta_id", cuenta_actual).eq("tipo_movimiento", "COMISION_PEDIDO").eq("referencia_id", pedido_id).eq("referencia_tipo", "pedido").execute()
+                if agregar_comision:
+                    comision = round(nuevo_brs * 0.003)
+                    if comision > 0:
+                        descripcion_comision = f"Comisión 0.3% asociada al pedido #{pedido_id}"
+                        registrar_movimiento_cuenta(cuenta_actual, "COMISION_PEDIDO", comision, pedido_id, "pedido", descripcion_comision)
+            # Si no cambió la cuenta ni el monto, solo actualizar o eliminar/crear comisión
+            elif cuenta_actual:
+                # Eliminar comisión anterior si existe
+                supabase.table("movimientos_cuenta").delete().eq("cuenta_id", cuenta_actual).eq("tipo_movimiento", "COMISION_PEDIDO").eq("referencia_id", pedido_id).eq("referencia_tipo", "pedido").execute()
+                if agregar_comision:
+                    comision = round(nuevo_brs * 0.003)
+                    if comision > 0:
+                        descripcion_comision = f"Comisión 0.3% asociada al pedido #{pedido_id}"
+                        registrar_movimiento_cuenta(cuenta_actual, "COMISION_PEDIDO", comision, pedido_id, "pedido", descripcion_comision)
             # Actualizar pedido
             pedido_update = {
                 "cliente": nuevo_cliente, 
@@ -432,15 +454,12 @@ def editar(pedido_id):
                 "tasa": str(nuevo_tasa), 
                 "fecha": nuevo_fecha
             }
-            
             # Agregar cuenta_id si se proporciona o establecer como NULL si está vacío
             if nuevo_cuenta_id:
                 pedido_update["cuenta_id"] = nuevo_cuenta_id
             else:
                 pedido_update["cuenta_id"] = None
-            
             supabase.table("pedidos").update(pedido_update).eq("id", pedido_id).execute()
-            
             # Registrar cambios en el log
             if cambios:
                 cambios_str = "; ".join(cambios)
@@ -454,7 +473,6 @@ def editar(pedido_id):
                 except Exception as log_error:
                     logging.error("Error al insertar en el log de cambios: %s", log_error)
                     flash("Error al registrar el historial de cambios: " + str(log_error))
-            
             flash("Pedido actualizado con éxito.")
             return redirect(url_for("pedidos.index"))
             
@@ -464,7 +482,7 @@ def editar(pedido_id):
             return redirect(url_for("pedidos.editar", pedido_id=pedido_id))
     
     return render_template("pedidos/editar.html", pedido=pedido, cliente_pagadores=cliente_pagadores, logs=logs,
-                           active_page="pedidos", cuentas_activas=cuentas_activas)
+                           active_page="pedidos", cuentas_activas=cuentas_activas, tiene_comision=tiene_comision)
 
 @pedidos_bp.route("/test_insert")
 @login_required
@@ -519,19 +537,26 @@ def eliminar(pedido_id):
         logging.info(f"Eliminando pedido con ID: {pedido_id}")
         usuario = session.get("email", "desconocido")
         ahora = adjust_datetime(datetime.now(chile_tz)).isoformat()
-        
         # Obtener información del pedido antes de eliminarlo
-        pedido_response = supabase.table("pedidos").select("id, cliente, fecha, brs, tasa, clp").eq("id", pedido_id).execute()
+        pedido_response = supabase.table("pedidos").select("id, cliente, fecha, brs, tasa, clp, cuenta_id").eq("id", pedido_id).execute()
         if not pedido_response.data:
             flash("Pedido no encontrado.")
             return redirect(url_for("pedidos.index"))
-        
         pedido = pedido_response.data[0]
-        
         # Marcar como eliminado (borrado lógico)
         result = supabase.table("pedidos").update({"eliminado": True}).eq("id", pedido_id).execute()
         logging.info(f"Resultado del update en Supabase: {result}")
-        
+        # Buscar y eliminar todos los movimientos asociados a este pedido
+        movimientos_resp = supabase.table("movimientos_cuenta").select("id, cuenta_id").eq("referencia_id", pedido_id).eq("referencia_tipo", "pedido").execute()
+        cuentas_afectadas = set()
+        if movimientos_resp.data:
+            for mov in movimientos_resp.data:
+                cuentas_afectadas.add(mov.get("cuenta_id"))
+                supabase.table("movimientos_cuenta").delete().eq("id", mov["id"]).execute()
+        # Actualizar saldo de todas las cuentas afectadas
+        for cuenta_id in cuentas_afectadas:
+            if cuenta_id:
+                actualizar_saldo_cuenta(cuenta_id)
         # Registrar en historial
         supabase.table("pedidos_log").insert({
             "pedido_id": pedido_id,
@@ -539,12 +564,10 @@ def eliminar(pedido_id):
             "cambios": f"Pedido eliminado - Cliente: {pedido['cliente']}, BRS: {pedido['brs']}, Tasa: {pedido['tasa']}, CLP: {pedido['clp']}, Fecha: {pedido['fecha']}",
             "fecha": ahora
         }).execute()
-        
         flash("Pedido eliminado (borrado lógico).")
     except Exception as e:
         logging.error(f"Error al eliminar pedido: {e}")
         flash(f"Error al eliminar el pedido: {str(e)}")
-    
     return redirect(url_for("pedidos.index"))
 
 @pedidos_bp.route('/editar_tasas', methods=['POST'])
@@ -858,6 +881,7 @@ def transferir_brs():
         cuenta_destino = request.form.get('cuenta_destino')
         monto = request.form.get('monto')
         descripcion = request.form.get('descripcion', '')
+        agregar_comision = request.form.get('agregar_comision_transferencia')
         if not cuenta_origen or not cuenta_destino or not monto:
             flash('Todos los campos son obligatorios.', 'danger')
             return redirect(url_for('pedidos.flujo_caja'))
@@ -871,14 +895,20 @@ def transferir_brs():
         except Exception:
             flash('El monto debe ser un número positivo.', 'danger')
             return redirect(url_for('pedidos.flujo_caja'))
-        # Validar saldo suficiente en cuenta origen
+        # Validar saldo suficiente en cuenta origen (incluyendo comisión si aplica)
+        comision = 0
+        if agregar_comision:
+            comision = round(monto * 0.003)
         saldo_origen = obtener_saldo_cuenta(cuenta_origen)
-        if saldo_origen < monto:
+        if saldo_origen < monto + comision:
             flash(f'Saldo insuficiente en la cuenta origen. Saldo actual: {saldo_origen:,} BRS', 'danger')
             return redirect(url_for('pedidos.flujo_caja'))
         # Registrar movimientos
         registrar_movimiento_cuenta(cuenta_origen, 'TRANSFERENCIA_SALIDA', monto, None, 'transferencia', descripcion or 'Transferencia a otra cuenta')
         registrar_movimiento_cuenta(cuenta_destino, 'TRANSFERENCIA_ENTRADA', monto, None, 'transferencia', descripcion or 'Transferencia recibida')
+        if agregar_comision and comision > 0:
+            descripcion_comision = f'Comisión 0.3% asociada a transferencia entre cuentas'
+            registrar_movimiento_cuenta(cuenta_origen, 'COMISION_TRANSFERENCIA', comision, None, 'transferencia', descripcion_comision)
         flash('Transferencia realizada con éxito.', 'success')
     except Exception as e:
         logging.error(f'Error al transferir BRS: {e}')
@@ -966,15 +996,14 @@ def nuevos_multiples():
         for idx, pedido in enumerate(pedidos):
             brs_raw = pedido.get('brs')
             cuenta_id = pedido.get('cuenta_id')
+            agregar_comision = pedido.get('agregar_comision')
             try:
                 brs_num = parse_brs(brs_raw)
             except Exception as e:
                 return jsonify({'success': False, 'error': f'Fila {idx+1}: BRS no válido: {str(e)}'}), 400
-            # Validar datos
             is_valid, error_message = validate_pedido_data(cliente, brs_num, tasa_num, fecha, cuenta_id)
             if not is_valid:
                 return jsonify({'success': False, 'error': f'Fila {idx+1}: {error_message}'}), 400
-            # Insertar pedido
             pedido_data = {
                 'cliente': cliente,
                 'brs': str(brs_num),
@@ -991,6 +1020,12 @@ def nuevos_multiples():
                 descripcion = f"Pedido múltiple para cliente {cliente} - CLP: {clp_calculado:,.0f}"
                 if cuenta_id:
                     registrar_movimiento_cuenta(cuenta_id, 'PEDIDO', brs_num, pedido_id, 'pedido', descripcion)
+                    # --- Lógica de comisión para múltiples ---
+                    if agregar_comision:
+                        comision = round(brs_num * 0.003)
+                        if comision > 0:
+                            descripcion_comision = f"Comisión 0.3% asociada al pedido #{pedido_id}"
+                            registrar_movimiento_cuenta(cuenta_id, 'COMISION_PEDIDO', comision, pedido_id, 'pedido', descripcion_comision)
                 resultados.append({'success': True, 'pedido_id': pedido_id})
             else:
                 return jsonify({'success': False, 'error': f'Fila {idx+1}: No se pudo insertar el pedido.'}), 500
@@ -1057,9 +1092,8 @@ def actualizar_saldo_cuenta(cuenta_id):
         bool: True si se actualizó correctamente
     """
     try:
-        # Calcular saldo sumando compras, restando pedidos y sumando ajustes y ajustes manuales
+        # Calcular saldo sumando compras, restando pedidos y comisiones, sumando ajustes y ajustes manuales
         response = supabase.table("movimientos_cuenta").select("tipo_movimiento, monto_brs").eq("cuenta_id", cuenta_id).execute()
-        
         if not response.data:
             saldo = 0
         else:
@@ -1069,17 +1103,16 @@ def actualizar_saldo_cuenta(cuenta_id):
                     saldo += movimiento["monto_brs"]
                 elif movimiento["tipo_movimiento"] == "PEDIDO":
                     saldo -= movimiento["monto_brs"]
+                elif movimiento["tipo_movimiento"] == "COMISION_PEDIDO":
+                    saldo -= movimiento["monto_brs"]
                 elif movimiento["tipo_movimiento"] == "AJUSTE":
                     saldo += movimiento["monto_brs"]
                 elif movimiento["tipo_movimiento"] == "AJUSTE_MANUAL":
                     saldo += movimiento["monto_brs"]
-        
         # Actualizar saldo en la tabla cuentas_activas
         supabase.table("cuentas_activas").update({"saldo_actual": saldo}).eq("id", cuenta_id).execute()
-        
         logging.info(f"Saldo actualizado para cuenta {cuenta_id}: {saldo} BRS")
         return True
-        
     except Exception as e:
         logging.error(f"Error al actualizar saldo de cuenta {cuenta_id}: {e}")
         return False

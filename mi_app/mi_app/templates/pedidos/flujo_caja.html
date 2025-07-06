@@ -226,7 +226,19 @@
           </div>
           <div class="mb-3">
             <label for="monto" class="form-label">Monto a transferir (BRS)</label>
-            <input type="number" class="form-control" id="monto" name="monto" min="1" required>
+            <input type="number" class="form-control" id="monto_transferencia" name="monto" min="1" required>
+          </div>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="agregar-comision-transferencia" name="agregar_comision_transferencia">
+            <label class="form-check-label" for="agregar-comision-transferencia">
+              Agregar comisión
+            </label>
+          </div>
+          <div id="comision-info-transferencia" class="mb-2" style="display:none;">
+            <div class="alert alert-info py-2 mb-1">
+              Comisión: <span id="comision-monto-transferencia">0</span> BRS<br>
+              <strong>Total a descontar:</strong> <span id="total-descontar-transferencia">0</span> BRS
+            </div>
           </div>
           <div class="mb-3">
             <label for="descripcion" class="form-label">Descripción (opcional)</label>
@@ -304,6 +316,21 @@ document.addEventListener('DOMContentLoaded', function() {
   tooltipTriggerList.forEach(function (tooltipTriggerEl) {
     new bootstrap.Tooltip(tooltipTriggerEl);
   });
+});
+
+// Lógica para mostrar comisión y total a descontar en transferencia
+$(document).ready(function() {
+  function actualizarComisionTransferencia() {
+    const monto = parseFloat(document.getElementById('monto_transferencia').value.replace(/[^\d]/g, '')) || 0;
+    const check = document.getElementById('agregar-comision-transferencia').checked;
+    const comision = check ? Math.round(monto * 0.003) : 0;
+    const total = monto + comision;
+    document.getElementById('comision-monto-transferencia').textContent = comision.toLocaleString('de-DE');
+    document.getElementById('total-descontar-transferencia').textContent = total.toLocaleString('de-DE');
+    document.getElementById('comision-info-transferencia').style.display = check && monto > 0 ? '' : 'none';
+  }
+  $('#agregar-comision-transferencia').on('change', actualizarComisionTransferencia);
+  $('#monto_transferencia').on('input', actualizarComisionTransferencia);
 });
 </script>
 {% endblock %} 
