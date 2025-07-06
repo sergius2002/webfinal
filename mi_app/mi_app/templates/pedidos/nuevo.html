@@ -43,86 +43,105 @@
           <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
           <form id="form-nuevo-pedido" action="{{ url_for('pedidos.nuevo') }}" method="post" novalidate autocomplete="off">
             <div class="mb-3">
-              <label for="cliente" class="form-label">
-                <i class="fas fa-user me-1"></i>Cliente
-              </label>
-              <select name="cliente" id="cliente" class="form-select" required autofocus>
-                <option value="">Seleccione un cliente</option>
-                {% for client in cliente_pagadores %}
-                  <option value="{{ client }}" {% if ultimo_cliente == client or request.form.get('cliente') == client %}selected{% endif %}>{{ client }}</option>
-                {% endfor %}
-              </select>
-              <div class="invalid-feedback">Por favor seleccione un cliente.</div>
-            </div>
-            <div class="mb-3">
-              <label for="brs_display" class="form-label">
-                <i class="fas fa-coins me-1"></i>BRS
-              </label>
-              <input type="text" id="brs_display" class="form-control" autocomplete="off" placeholder="Ingrese BRS" required>
-              <input type="hidden" id="brs" name="brs" required>
-              <div id="brs-warning" class="form-text text-warning" style="display: none;">
-                <i class="fas fa-exclamation-triangle me-1"></i>Advertencia: BRS superior a 50,000
-              </div>
-              <div class="invalid-feedback">Por favor ingrese un valor válido para BRS.</div>
-            </div>
-            <div class="mb-3">
-              <label for="tasa" class="form-label">
-                <i class="fas fa-percentage me-1"></i>Tasa
-              </label>
-              <input type="text" name="tasa" id="tasa" class="form-control" required value="{{ tasa_venezuela }}">
-              <div id="tasa-warning" class="form-text text-warning" style="display: none;">
-                <i class="fas fa-exclamation-triangle me-1"></i>Advertencia: Valor de tasa fuera de rango
-              </div>
-              <div class="invalid-feedback">Por favor ingrese una tasa válida.</div>
-            </div>
-            <!-- Campo de CLP calculado automáticamente -->
-            <div class="mb-3">
-              <label for="clp_calculado" class="form-label">
-                <i class="fas fa-calculator me-1"></i>CLP Calculado
-              </label>
-              <input type="text" id="clp_calculado" class="form-control" readonly placeholder="Se calcula automáticamente">
-              <div id="clp-maximo-info" class="form-text text-info" style="display: none;">
-                <i class="fas fa-info-circle me-1"></i>Límite del cliente: <span id="clp-limite"></span> CLP
-              </div>
-              <div id="clp-exceso-warning" class="form-text text-danger" style="display: none;">
-                <i class="fas fa-exclamation-triangle"></i> ¡ADVERTENCIA! El CLP excede el límite del cliente
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="envios-multiples">
+                <label class="form-check-label" for="envios-multiples">
+                  Envíos múltiples
+                </label>
               </div>
             </div>
-            <div class="mb-3">
-              <label for="fecha" class="form-label">
-                <i class="fas fa-calendar me-1"></i>Fecha
-              </label>
-              <input type="date" name="fecha" id="fecha" class="form-control" value="{{ current_date }}" required>
-              <div class="invalid-feedback">Por favor seleccione una fecha válida.</div>
-            </div>
-            <div class="mb-3">
-              <label for="cuenta_id" class="form-label">
-                <i class="fas fa-university me-1"></i>Cuenta Corriente
-              </label>
-              <select name="cuenta_id" id="cuenta_id" class="form-select" required>
-                <option value="">Seleccionar cuenta corriente</option>
-                {% for cuenta in cuentas_activas %}
-                  <option value="{{ cuenta.id }}" {% if request.form.get('cuenta_id') == cuenta.id|string %}selected{% endif %}>
-                    {{ cuenta.numero_cuenta }} - {{ cuenta.nombre_titular }}
-                  </option>
-                {% endfor %}
-              </select>
-              <div class="invalid-feedback">Por favor seleccione una cuenta corriente.</div>
-              <div id="saldo-info" class="form-text" style="display: none;">
-                <i class="fas fa-info-circle me-1"></i><span id="saldo-text"></span>
+            <div id="formulario-individual">
+              <div class="mb-3">
+                <label for="cliente" class="form-label">
+                  <i class="fas fa-user me-1"></i>Cliente
+                </label>
+                <select name="cliente" id="cliente" class="form-select" required autofocus>
+                  <option value="">Seleccione un cliente</option>
+                  {% for client in cliente_pagadores %}
+                    <option value="{{ client }}" {% if ultimo_cliente == client or request.form.get('cliente') == client %}selected{% endif %}>{{ client }}</option>
+                  {% endfor %}
+                </select>
+                <div class="invalid-feedback">Por favor seleccione un cliente.</div>
               </div>
-              <div id="saldo-warning" class="alert alert-warning mt-2" style="display: none;">
-                <i class="fas fa-exclamation-triangle me-1"></i><span id="saldo-warning-text"></span>
+              <div class="mb-3">
+                <label for="brs_display" class="form-label">
+                  <i class="fas fa-coins me-1"></i>BRS
+                </label>
+                <input type="text" id="brs_display" class="form-control" autocomplete="off" placeholder="Ingrese BRS" required>
+                <input type="hidden" id="brs" name="brs" required>
+                <div id="brs-warning" class="form-text text-warning" style="display: none;">
+                  <i class="fas fa-exclamation-triangle me-1"></i>Advertencia: BRS superior a 50,000
+                </div>
+                <div class="invalid-feedback">Por favor ingrese un valor válido para BRS.</div>
+              </div>
+              <div class="mb-3">
+                <label for="tasa" class="form-label">
+                  <i class="fas fa-percentage me-1"></i>Tasa
+                </label>
+                <input type="text" name="tasa" id="tasa" class="form-control" required value="{{ tasa_venezuela }}">
+                <div id="tasa-warning" class="form-text text-warning" style="display: none;">
+                  <i class="fas fa-exclamation-triangle me-1"></i>Advertencia: Valor de tasa fuera de rango
+                </div>
+                <div class="invalid-feedback">Por favor ingrese una tasa válida.</div>
+              </div>
+              <!-- Campo de CLP calculado automáticamente -->
+              <div class="mb-3">
+                <label for="clp_calculado" class="form-label">
+                  <i class="fas fa-calculator me-1"></i>CLP Calculado
+                </label>
+                <input type="text" id="clp_calculado" class="form-control" readonly placeholder="Se calcula automáticamente">
+                <div id="clp-maximo-info" class="form-text text-info" style="display: none;">
+                  <i class="fas fa-info-circle me-1"></i>Límite del cliente: <span id="clp-limite"></span> CLP
+                </div>
+                <div id="clp-exceso-warning" class="form-text text-danger" style="display: none;">
+                  <i class="fas fa-exclamation-triangle"></i> ¡ADVERTENCIA! El CLP excede el límite del cliente
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="fecha" class="form-label">
+                  <i class="fas fa-calendar me-1"></i>Fecha
+                </label>
+                <input type="date" name="fecha" id="fecha" class="form-control" value="{{ current_date }}" required>
+                <div class="invalid-feedback">Por favor seleccione una fecha válida.</div>
+              </div>
+              <div class="mb-3">
+                <label for="cuenta_id" class="form-label">
+                  <i class="fas fa-university me-1"></i>Cuenta Corriente
+                </label>
+                <select name="cuenta_id" id="cuenta_id" class="form-select" required>
+                  <option value="">Seleccionar cuenta corriente</option>
+                  {% for cuenta in cuentas_activas %}
+                    <option value="{{ cuenta.id }}" {% if request.form.get('cuenta_id') == cuenta.id|string %}selected{% endif %}>
+                      {{ cuenta.numero_cuenta }} - {{ cuenta.nombre_titular }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <div class="invalid-feedback">Por favor seleccione una cuenta corriente.</div>
+                <div id="saldo-info" class="form-text" style="display: none;">
+                  <i class="fas fa-info-circle me-1"></i><span id="saldo-text"></span>
+                </div>
+                <div id="saldo-warning" class="alert alert-warning mt-2" style="display: none;">
+                  <i class="fas fa-exclamation-triangle me-1"></i><span id="saldo-warning-text"></span>
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <button type="submit" class="btn btn-primary w-100" id="btn-guardar">
+                  <span id="spinner-guardar" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                  <i class="fas fa-save me-1"></i>Guardar Pedido
+                </button>
+                <button type="button" class="btn btn-secondary d-none" id="btn-limpiar">
+                  <i class="fas fa-eraser me-1"></i>Limpiar
+                </button>
               </div>
             </div>
-            <div class="d-flex align-items-center gap-2 mb-3">
-              <button type="submit" class="btn btn-primary w-100" id="btn-guardar">
-                <span id="spinner-guardar" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                <i class="fas fa-save me-1"></i>Guardar Pedido
-              </button>
-              <button type="button" class="btn btn-secondary d-none" id="btn-limpiar">
-                <i class="fas fa-eraser me-1"></i>Limpiar
-              </button>
+            <div id="formulario-multiple" style="display:none;">
+              <div class="mb-2">
+                <strong>Pedidos a ingresar</strong>
+                <div id="cliente-multiple-titulo" class="h4 fw-bold text-center text-danger my-3"></div>
+              </div>
+              <div id="multiples-pedidos-rows"></div>
+              <button type="button" class="btn btn-outline-primary btn-sm mb-3" id="agregar-fila-pedido"><i class="fas fa-plus"></i> Agregar otro pedido</button>
+              <button type="button" class="btn btn-success w-100" id="guardar-multiples-pedidos"><i class="fas fa-save me-1"></i>Guardar todos los pedidos</button>
             </div>
           </form>
         </div>
@@ -816,4 +835,174 @@ function copiarResumenPedidos() {
 }
 document.getElementById('btn-copiar-pedidos').addEventListener('click', copiarResumenPedidos);
 </script>
+
+<script>
+// Lógica para mostrar/ocultar formularios
+$('#envios-multiples').on('change', function() {
+  if (this.checked) {
+    $('#formulario-individual').hide();
+    $('#formulario-multiple').show();
+    if ($('#multiples-pedidos-rows').children().length === 0) {
+      agregarFilaPedido();
+    }
+  } else {
+    $('#formulario-individual').show();
+    $('#formulario-multiple').hide();
+  }
+});
+
+// Función para agregar una fila de pedido múltiple
+function agregarFilaPedido() {
+  const idx = $('#multiples-pedidos-rows').children().length;
+  const cuentas = $('#cuenta_id').html(); // reutiliza las opciones del select de cuentas
+  let cuentaSeleccionada = '';
+  // Buscar la cuenta seleccionada en la última fila (si existe)
+  const filas = $('#multiples-pedidos-rows .fila-pedido-multiple');
+  if (filas.length > 0) {
+    cuentaSeleccionada = filas.last().find('.cuenta-multiple').val();
+  }
+  const fila = $(
+    `<div class="row align-items-end mb-2 fila-pedido-multiple">
+      <div class="col-5">
+        <label class="form-label mb-1">Monto BRS</label>
+        <input type="text" min="1" class="form-control monto-brs-multiple" required placeholder="BRS" autocomplete="off" inputmode="numeric" pattern="[0-9,\.]*">
+      </div>
+      <div class="col-6">
+        <label class="form-label mb-1">Cuenta Corriente</label>
+        <select class="form-select cuenta-multiple" required>${cuentas}</select>
+      </div>
+      <div class="col-1 d-flex align-items-center">
+        <button type="button" class="btn btn-outline-danger btn-sm quitar-fila-pedido" title="Quitar"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>`
+  );
+  $('#multiples-pedidos-rows').append(fila);
+  // Inicializar select2 en la nueva fila
+  const selectCuenta = fila.find('select');
+  selectCuenta.select2({width:'100%',placeholder:'Seleccionar cuenta'});
+  // Seleccionar por defecto la cuenta anterior si existe
+  if (cuentaSeleccionada) {
+    selectCuenta.val(cuentaSeleccionada).trigger('change');
+  }
+  // --- Formateo de miles en tiempo real para cada input de BRS ---
+  const inputBRS = fila.find('.monto-brs-multiple');
+  inputBRS.on('input', function() {
+    let value = this.value.replace(/[^\d]/g, '');
+    if (value) {
+      this.value = parseInt(value, 10).toLocaleString('de-DE');
+    } else {
+      this.value = '';
+    }
+  });
+}
+
+// Botón para agregar fila
+$('#agregar-fila-pedido').on('click', agregarFilaPedido);
+
+// Botón para quitar fila
+$('#multiples-pedidos-rows').on('click', '.quitar-fila-pedido', function() {
+  $(this).closest('.fila-pedido-multiple').remove();
+});
+
+// Botón para guardar todos los pedidos
+$('#guardar-multiples-pedidos').on('click', function() {
+  const cliente = $('#cliente').val();
+  const tasa = $('#tasa').val();
+  const fecha = $('#fecha').val();
+  let pedidos = [];
+  let valido = true;
+  $('#multiples-pedidos-rows .fila-pedido-multiple').each(function() {
+    const brs = $(this).find('.monto-brs-multiple').val();
+    const cuenta = $(this).find('.cuenta-multiple').val();
+    if (!brs || !cuenta) {
+      valido = false;
+      $(this).find('input,select').addClass('is-invalid');
+    } else {
+      $(this).find('input,select').removeClass('is-invalid');
+      pedidos.push({cliente, tasa, fecha, brs, cuenta_id: cuenta});
+    }
+  });
+  if (!valido) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Campos incompletos',
+      text: 'Por favor completa todos los campos de cada pedido.',
+      timer: 2000,
+      showConfirmButton: false,
+      toast: true,
+      position: 'top-end'
+    });
+    return;
+  }
+  // Enviar los pedidos por AJAX
+  $.ajax({
+    url: '/pedidos/nuevos_multiples',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({pedidos}),
+    success: function(resp) {
+      if (resp.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Pedidos ingresados correctamente',
+          timer: 2000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
+        setTimeout(() => location.reload(), 2100);
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: resp.error || 'No se pudieron ingresar los pedidos.',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
+      }
+    },
+    error: function() {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Error al enviar los pedidos.',
+        timer: 3000,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end'
+      });
+    }
+  });
+});
+</script>
+
+<script>
+function actualizarTituloClienteMultiple() {
+  const cliente = $('#cliente').find('option:selected').text();
+  if ($('#envios-multiples').is(':checked') && cliente && cliente !== 'Seleccione un cliente') {
+    $('#cliente-multiple-titulo').html(`Envíos múltiples para <span class='text-uppercase'>${cliente}</span>`);
+  } else {
+    $('#cliente-multiple-titulo').text('');
+  }
+}
+$('#cliente').on('change', actualizarTituloClienteMultiple);
+$('#envios-multiples').on('change', actualizarTituloClienteMultiple);
+</script>
+
+<style>
+/* Quitar flechas de los inputs tipo number/text para BRS múltiple (todos los navegadores) */
+.monto-brs-multiple::-webkit-outer-spin-button,
+.monto-brs-multiple::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.monto-brs-multiple[type="number"] {
+  -moz-appearance: textfield;
+}
+</style>
+
+<!-- Agregar SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}

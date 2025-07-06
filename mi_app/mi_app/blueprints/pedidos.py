@@ -931,6 +931,76 @@ def pedidos_cliente():
     except Exception as e:
         return {'success': False, 'error': str(e)}, 500
 
+@pedidos_bp.route('/nuevos_multiples', methods=['POST'])
+@login_required
+def nuevos_multiples():
+    """
+    Endpoint para ingresar varios pedidos a la vez (envíos múltiples).
+    REGLA DE NEGOCIO: Todos los pedidos deben ser para el mismo cliente y la misma tasa.
+    El backend valida y rechaza si no se cumple.
+    """
+    try:
+        data = request.get_json()
+        pedidos = data.get('pedidos', [])
+        if not pedidos or not isinstance(pedidos, list):
+            return jsonify({'success': False, 'error': 'No se recibieron pedidos válidos.'}), 400
+
+        # Validar que todos los pedidos sean para el mismo cliente y tasa
+        clientes = {p.get('cliente') for p in pedidos}
+        tasas = {p.get('tasa') for p in pedidos}
+        if len(clientes) != 1:
+            return jsonify({'success': False, 'error': 'Todos los pedidos deben ser para el mismo cliente.'}), 400
+        if len(tasas) != 1:
+            return jsonify({'success': False, 'error': 'Todos los pedidos deben tener la misma tasa.'}), 400
+
+        cliente = pedidos[0].get('cliente')
+        tasa_raw = pedidos[0].get('tasa')
+        fecha = pedidos[0].get('fecha')
+        usuario = session.get('email')
+        try:
+            tasa_num = round(parse_tasa(tasa_raw), 6)
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'Tasa no válida: {str(e)}'}), 400
+
+        resultados = []
+        for idx, pedido in enumerate(pedidos):
+            brs_raw = pedido.get('brs')
+            cuenta_id = pedido.get('cuenta_id')
+            try:
+                brs_num = parse_brs(brs_raw)
+            except Exception as e:
+                return jsonify({'success': False, 'error': f'Fila {idx+1}: BRS no válido: {str(e)}'}), 400
+            # Validar datos
+            is_valid, error_message = validate_pedido_data(cliente, brs_num, tasa_num, fecha, cuenta_id)
+            if not is_valid:
+                return jsonify({'success': False, 'error': f'Fila {idx+1}: {error_message}'}), 400
+            # Insertar pedido
+            pedido_data = {
+                'cliente': cliente,
+                'brs': str(brs_num),
+                'tasa': str(tasa_num),
+                'fecha': fecha,
+                'usuario': usuario
+            }
+            if cuenta_id:
+                pedido_data['cuenta_id'] = cuenta_id
+            result = supabase.table('pedidos').insert(pedido_data).execute()
+            if result.data:
+                pedido_id = result.data[0]['id']
+                clp_calculado = round(brs_num / tasa_num, 2)
+                descripcion = f"Pedido múltiple para cliente {cliente} - CLP: {clp_calculado:,.0f}"
+                if cuenta_id:
+                    registrar_movimiento_cuenta(cuenta_id, 'PEDIDO', brs_num, pedido_id, 'pedido', descripcion)
+                resultados.append({'success': True, 'pedido_id': pedido_id})
+            else:
+                return jsonify({'success': False, 'error': f'Fila {idx+1}: No se pudo insertar el pedido.'}), 500
+        # Guardar el cliente en la sesión para el próximo ingreso
+        session['ultimo_cliente_pedidos'] = cliente
+        return jsonify({'success': True, 'resultados': resultados})
+    except Exception as e:
+        logging.error(f'Error en nuevos_multiples: {e}')
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
+
 # -----------------------------------------------------------------------------
 # Funciones de Flujo de Caja
 # -----------------------------------------------------------------------------
