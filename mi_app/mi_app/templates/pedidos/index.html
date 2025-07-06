@@ -30,21 +30,25 @@
     <div class="collapse" id="resumenPedidos">
       <div class="p-3 bg-light rounded">
         <div class="row text-center">
-          <div class="col-md-3">
+          <div class="col-md-2">
             <h6 class="text-muted">Total Pedidos</h6>
             <h4 class="text-primary">{{ pedidos|length }}</h4>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-2">
             <h6 class="text-muted">Total BRS</h6>
             <h4 class="text-success">{{ pedidos|sum(attribute='brs')|format_int }}</h4>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-2">
             <h6 class="text-muted">Total CLP</h6>
             <h4 class="text-info">{{ pedidos|sum(attribute='clp')|format_int }}</h4>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-2">
             <h6 class="text-muted">Tasa Ponderada</h6>
             <h4 class="text-warning">{{ tasa_ponderada|format_decimal5 }}</h4>
+          </div>
+          <div class="col-md-2">
+            <h6 class="text-muted">Total Comisión</h6>
+            <h4 class="text-danger">{{ total_comisiones|format_int }}</h4>
           </div>
         </div>
       </div>
@@ -170,14 +174,13 @@
                   <td class="text-end">{{ p.tasa | format_decimal5 | replace('.', ',') }}</td>
                   <td class="text-end fw-bold">{{ p.clp | format_int }}</td>
                   <td>
-                    {% if p.cuentas_activas %}
-                      <small class="text-muted">{{ p.cuentas_activas.numero_cuenta }}</small><br>
-                      <strong>{{ p.cuentas_activas.nombre_titular }}</strong>
+                    {% if p.cuentas_activas and p.cuentas_activas.numero_cuenta %}
+                      ****{{ (p.cuentas_activas.numero_cuenta|string)[-4:] }}
                     {% else %}
                       <span class="text-muted">Sin cuenta</span>
                     {% endif %}
                   </td>
-                  <td class="text-end">{{ p.comision | default(0) | format_int }}</td>
+                  <td class="text-center">{{ p.comision | default(0) | format_int }}</td>
                   <td>
                     <div class="btn-group" role="group">
                       <a href="{{ url_for('pedidos.editar', pedido_id=p.id) }}" class="btn btn-sm btn-primary" title="Editar">

@@ -226,6 +226,8 @@ def index():
         # Añadir la comisión a cada pedido
         for p in pedidos_data:
             p["comision"] = comisiones_dict.get(p["id"], 0)
+        # Calcular el total de comisiones
+        total_comisiones = sum(p["comision"] for p in pedidos_data)
     except Exception as e:
         logging.error("Error al cargar los pedidos: %s", e)
         flash("Error al cargar los pedidos: " + str(e))
@@ -234,11 +236,13 @@ def index():
         tasa_banesco = tasa_venezuela = tasa_otros = "0.000"
         is_admin = False
         tasa_ponderada = 0
+        total_comisiones = 0
     current_date = adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d")
     return render_template("pedidos/index.html", pedidos=pedidos_data, cliente=clientes, cuentas_activas=cuentas_activas, active_page="pedidos",
                            current_date=current_date,
                            tasa_banesco=tasa_banesco, tasa_venezuela=tasa_venezuela, tasa_otros=tasa_otros,
-                           is_admin=is_admin, tasa_ponderada=tasa_ponderada)
+                           is_admin=is_admin, tasa_ponderada=tasa_ponderada,
+                           total_comisiones=total_comisiones)
 
 @pedidos_bp.route("/nuevo", methods=["GET", "POST"])
 @login_required
