@@ -95,16 +95,22 @@ def index():
         elif verificada == "false":
             query = query.eq("verificada", False)
 
-        empresas = request.args.getlist("empresa")
-        logging.info(f"[FILTRO] Empresas seleccionadas en el filtro: {empresas}")
+        empresas_filtro = request.args.getlist("empresa")
+        logging.info(f"[FILTRO] Empresas seleccionadas en el filtro: {empresas_filtro}")
+
+        # Obtener lista única de empresas de las 1000 transferencias más recientes para el select
+        response_empresas = supabase.table("transferencias").select("empresa").order("fecha", desc=True).limit(1000).execute()
+        empresas_select = sorted(set(e["empresa"] for e in response_empresas.data if e["empresa"] is not None)) if response_empresas.data else []
+        empresas_select = ["Todas"] + empresas_select  # Agregar opción "Todas" al inicio
 
         # Obtener lista única de empresas de la tabla transferencias (para log)
         response_empresas_log = supabase.table("transferencias").select("empresa").execute()
         empresas_db = sorted(set(e["empresa"] for e in response_empresas_log.data if e["empresa"] is not None)) if response_empresas_log.data else []
         logging.info(f"[FILTRO] Empresas únicas en la base de datos: {empresas_db}")
 
-        if empresas and not (len(empresas) == 1 and empresas[0] == ""):
-            empresas_filtradas = [emp for emp in empresas if emp.strip()]
+        # Aplicar filtro de empresas a la consulta principal
+        if empresas_filtro and not (len(empresas_filtro) == 1 and empresas_filtro[0] == ""):
+            empresas_filtradas = [emp for emp in empresas_filtro if emp.strip()]
             logging.info(f"[FILTRO] Empresas que se usarán para filtrar: {empresas_filtradas}")
             if empresas_filtradas:
                 query = query.in_("empresa", empresas_filtradas)
@@ -154,8 +160,8 @@ def index():
             count_query = count_query.eq("verificada", False)
         
         # Filtro de empresas para el count_query (igual que arriba)
-        if empresas and not (len(empresas) == 1 and empresas[0] == ""):
-            empresas_filtradas = [emp for emp in empresas if emp.strip()]
+        if empresas_filtro and not (len(empresas_filtro) == 1 and empresas_filtro[0] == ""):
+            empresas_filtradas = [emp for emp in empresas_filtro if emp.strip()]
             if empresas_filtradas:
                 count_query = count_query.in_("empresa", empresas_filtradas)
         
@@ -195,16 +201,11 @@ def index():
         # Ordenar: primero los clientes en transferencias, luego el resto
         clientes_ordenados = sorted(clientes_en_transferencias) + [c for c in clientes_all if c not in clientes_en_transferencias]
         
-        # Obtener lista única de empresas de la tabla transferencias
-        response_empresas = supabase.table("transferencias").select("empresa").execute()
-        empresas = sorted(set(e["empresa"] for e in response_empresas.data if e["empresa"] is not None)) if response_empresas.data else []
-        empresas = ["Todas"] + empresas  # Agregar opción "Todas" al inicio
-
         return render_template(
             "transferencias/index.html",
             transfers=transfers_data,
             cliente=clientes_ordenados,
-            empresas=empresas,
+            empresas=empresas_select,
             active_page="transferencias",
             pagination={
                 'page': page,
