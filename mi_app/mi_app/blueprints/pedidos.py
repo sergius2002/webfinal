@@ -327,6 +327,9 @@ def nuevo():
                                          tasa_venezuela=tasa_venezuela,
                                          ultimo_cliente=ultimo_cliente,
                                          cuentas_activas=cuentas_activas)
+                # Mostrar advertencia si habrá saldo negativo pero permitir continuar
+                elif "NEGATIVO" in mensaje_saldo:
+                    flash(f"⚠️ {mensaje_saldo}", "warning")
             
             # Insertar en base de datos
             pedido_data = {
@@ -816,7 +819,8 @@ def validar_saldo_pedido_ajax():
             "saldo_restante": saldo_restante,
             "mensaje": mensaje,
             "saldo_actual_formateado": f"{saldo_actual:,} BRS",
-            "saldo_restante_formateado": f"{saldo_restante:,} BRS"
+            "saldo_restante_formateado": f"{saldo_restante:,} BRS",
+            "tendencia_saldo": "negativo" if saldo_restante < 0 else "positivo"
         })
         
     except Exception as e:
@@ -1235,7 +1239,8 @@ def validar_saldo_suficiente(cuenta_id, monto_brs):
         if saldo_restante >= 0:
             return True, saldo_actual, f"Saldo suficiente. Saldo actual: {saldo_actual:,} BRS, Saldo restante: {saldo_restante:,} BRS"
         else:
-            return False, saldo_actual, f"Saldo insuficiente. Saldo actual: {saldo_actual:,} BRS, Faltan: {abs(saldo_restante):,} BRS"
+            # Permitir saldo negativo pero informar
+            return True, saldo_actual, f"⚠️ ADVERTENCIA: Saldo insuficiente. Saldo actual: {saldo_actual:,} BRS, Saldo resultante: {saldo_restante:,} BRS (NEGATIVO)"
             
     except Exception as e:
         logging.error(f"Error al validar saldo de cuenta {cuenta_id}: {e}")

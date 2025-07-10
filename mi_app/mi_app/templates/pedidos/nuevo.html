@@ -422,7 +422,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const cuentaId = document.getElementById('cuenta_id').value;
     
     const isValid = cliente && brs && parseInt(brs) > 0 && tasa && fecha && cuentaId;
-    btnGuardar.disabled = !isValid || !saldoSuficiente;
+    // Permitir el envío incluso con saldo negativo (solo bloquear si hay errores reales)
+    btnGuardar.disabled = !isValid;
     
     // Agregar clases de validación visual
     const fields = [
@@ -497,9 +498,18 @@ document.addEventListener('DOMContentLoaded', function() {
         saldoSuficiente = data.saldo_suficiente;
         
         if (data.saldo_suficiente) {
-          document.getElementById('saldo-warning').style.display = 'none';
+          // Siempre permitir el procesamiento, pero mostrar advertencia si es negativo
+          if (data.tendencia_saldo === 'negativo') {
+            document.getElementById('saldo-warning-text').innerHTML = `<i class="fas fa-exclamation-triangle text-warning"></i> ${data.mensaje}`;
+            document.getElementById('saldo-warning').className = 'alert alert-warning mt-2';
+            document.getElementById('saldo-warning').style.display = 'block';
+          } else {
+            document.getElementById('saldo-warning').style.display = 'none';
+          }
         } else {
+          // Solo mostrar error si hay un problema real (no saldo negativo)
           document.getElementById('saldo-warning-text').textContent = data.mensaje;
+          document.getElementById('saldo-warning').className = 'alert alert-danger mt-2';
           document.getElementById('saldo-warning').style.display = 'block';
         }
       } else {
