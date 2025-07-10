@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Margen - Saldo y Datos Actuales</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .header-block {
+            background: #1a3970;
+            color: #fff;
+            font-weight: bold;
+            text-align: center;
+            font-size: 1.15rem;
+            letter-spacing: 1px;
+            padding: 10px 0;
+            border-top: 2px solid #1a3970;
+            border-bottom: 2px solid #1a3970;
+        }
+        .label-cell {
+            font-weight: bold;
+            width: 180px;
+        }
+        .value-cell {
+            text-align: right;
+            min-width: 120px;
+        }
+        .table-custom {
+            max-width: 500px;
+        }
+        .accordion-button:not(.collapsed) {
+            background: #e6f0ff;
+            color: #1a3970;
+        }
+        .accordion-button {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .input-group-sm > .form-control, .input-group-sm > .form-select {
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body class="container mt-5">
+    <form method="get" class="mb-4 text-center">
+        <label for="fecha" class="form-label me-2">Selecciona la fecha base:</label>
+        <input type="date" id="fecha" name="fecha" value="{{ request.args.get('fecha', '') or '' }}" class="form-control d-inline-block w-auto" max="{{ fecha_hoy }}">
+        <button type="submit" class="btn btn-primary ms-2">Ver saldo anterior</button>
+        <button type="button" class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#guardarSobrantesModal">
+            <i class="fas fa-save"></i> Guardar sobrantes
+        </button>
+    </form>
+
+    <!-- Modal para guardar sobrantes -->
+    <div class="modal fade" id="guardarSobrantesModal" tabindex="-1" aria-labelledby="guardarSobrantesModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="guardarSobrantesModalLabel">Guardar Sobrantes - {{ request.args.get('fecha', '') or '' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formGuardarSobrantes">
+                        <div class="mb-3">
+                            <label for="brs_stock" class="form-label">SOBRANTE BRS (brs_stock)</label>
+                            <input type="number" step="any" class="form-control" id="brs_stock" name="brs_stock" value="{{ sobrante_al_mayor }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="usdt_stock" class="form-label">SOBRANTE USDT (usdt_stock)</label>
+                            <input type="number" step="0.01" class="form-control" id="usdt_stock" name="usdt_stock" value="{{ sobrante_usdt }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tasa_ves_clp" class="form-label">Ponderado VES/CLP (tasa_ves_clp)</label>
+                            <input type="number" step="0.00001" class="form-control" id="tasa_ves_clp" name="tasa_ves_clp" value="{{ '%.5f' % ponderado_ves_clp if ponderado_ves_clp is not none else '0.00000' }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="usdt_tasa" class="form-label">TASA USDT/CLP GENERAL (usdt_tasa)</label>
+                            <input type="number" step="0.01" class="form-control" id="usdt_tasa" name="usdt_tasa" value="{{ '%.2f' % tasa_usdt_clp_general if tasa_usdt_clp_general is not none else '0.00' }}" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="guardarSobrantes()">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast de éxito -->
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1100">
+        <div id="toastSobrantes" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastSobrantesMsg">
+                    <!-- Mensaje dinámico -->
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container my-3">
+        <div class="row">
+            <!-- Botón para mostrar/ocultar detalles -->
+            <button class="btn btn-outline-secondary mb-2 mx-auto d-block" type="button" onclick="toggleAccordion()">Mostrar/Ocultar detalles</button>
+            <div class="row" id="mainRow">
+                <!-- Columna izquierda: Accordion -->
+                <div class="col-md-5 col-lg-4" id="accordionCol">
+                    <div id="accordionContainer" class="mx-auto" style="max-width: 400px;">
+                        <div class="accordion" id="margenAccordion">
+                            <!-- Gastos (entrada) -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingGastos">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGastos" aria-expanded="true" aria-controls="collapseGastos">
+                                        Gastos
+                                    </button>
+                                </h2>
+                                <div id="collapseGastos" class="accordion-collapse collapse show" aria-labelledby="headingGastos" data-bs-parent="#margenAccordion">
+                                    <div class="accordion-body">
+                                        <form method="post" class="mb-2">
+                                            <div class="row g-2 align-items-center justify-content-center">
+                                                <div class="col-auto label-cell">GASTOS</div>
+                                                <div class="col-auto"><input type="number" step="1" min="0" name="gastos" value="{{ gastos|int }}" class="form-control form-control-sm"></div>
+                                                <div class="col-auto label-cell">PAGO MOVIL</div>
+                                                <div class="col-auto"><input type="number" step="1" min="0" name="pago_movil" value="{{ pago_movil|int }}" class="form-control form-control-sm"></div>
+                                                <div class="col-auto label-cell">ENVIOS AL DETAL</div>
+                                                <div class="col-auto"><input type="number" step="1" min="0" name="envios_al_detal" value="{{ envios_al_detal|int }}" class="form-control form-control-sm"></div>
+                                                <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm">Guardar</button></div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Saldo Anterior -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingSaldoAnterior">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSaldoAnterior" aria-expanded="false" aria-controls="collapseSaldoAnterior">
+                                        Saldo Anterior
+                                    </button>
+                                </h2>
+                                <div id="collapseSaldoAnterior" class="accordion-collapse collapse" aria-labelledby="headingSaldoAnterior" data-bs-parent="#margenAccordion">
+                                    <div class="accordion-body">
+                                        <table class="table table-bordered table-custom mx-auto mb-0">
+                                            <tr>
+                                                <td class="label-cell">BRS</td>
+                                                <td class="value-cell">{{ saldo_anterior.brs_stock | format_miles if saldo_anterior else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">USDT</td>
+                                                <td class="value-cell">{{ saldo_anterior.usdt_stock | format_miles if saldo_anterior else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">Tasa VES/CLP</td>
+                                                <td class="value-cell">{{ saldo_anterior.tasa_ves_clp | float | round(5) if saldo_anterior else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">Tasa USDT/CLP</td>
+                                                <td class="value-cell">{{ saldo_anterior.usdt_tasa | format_miles if saldo_anterior else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">CLP ANTERIOR</td>
+                                                <td class="value-cell">{{ clp_anterior | format_miles }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Datos actuales -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingDatosActuales">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatosActuales" aria-expanded="true" aria-controls="collapseDatosActuales">
+                                        Datos actuales
+                                    </button>
+                                </h2>
+                                <div id="collapseDatosActuales" class="accordion-collapse collapse" aria-labelledby="headingDatosActuales" data-bs-parent="#margenAccordion">
+                                    <div class="accordion-body">
+                                        <table class="table table-bordered table-custom mx-auto mb-0">
+                                            <tr>
+                                                <td class="label-cell">BRS VENDIDOS</td>
+                                                <td class="value-cell">{{ brs_vendidos_hoy | format_miles if brs_vendidos_hoy is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">BRS VENDIDOS MAYOR</td>
+                                                <td class="value-cell">{{ brs_vendidos_mayor | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">BRS VENDIDOS DETAL</td>
+                                                <td class="value-cell">{{ brs_vendidos_detal | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">CLP RECIBIDOS</td>
+                                                <td class="value-cell">{{ clp_recibidos | format_miles if clp_recibidos is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">CLP RECIBIDOS MAYOR</td>
+                                                <td class="value-cell">{{ clp_recibidos_mayor | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">CLP RECIBIDOS DETAL</td>
+                                                <td class="value-cell">{{ clp_recibidos_detal | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">BRS COMPRADOS</td>
+                                                <td class="value-cell">{{ brs_comprados | format_miles if brs_comprados is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">USDT VENDIDOS</td>
+                                                <td class="value-cell">{{ usdt_vendidos | format_miles if usdt_vendidos is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">TASA USDT/VES</td>
+                                                <td class="value-cell">{{ tasa_usdt_ves_actual | format_miles if tasa_usdt_ves_actual is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">USDT COMPRADOS</td>
+                                                <td class="value-cell">{{ usdt_comprados | format_miles if usdt_comprados is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">CLP INVERTIDOS</td>
+                                                <td class="value-cell">{{ clp_invertidos | format_miles if clp_invertidos is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">TASA USDT/CLP</td>
+                                                <td class="value-cell">{{ tasa_usdt_clp_actual | format_miles if tasa_usdt_clp_actual is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">CLP POR USDT VENDIDO</td>
+                                                <td class="value-cell">{{ clp_por_usdt_vendido | format_miles if clp_por_usdt_vendido is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">TASA VES/CLP (ACTUAL)</td>
+                                                <td class="value-cell">{{ tasa_ves_clp_actual | float | round(5) if tasa_ves_clp_actual is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">TASA USDT/CLP GENERAL</td>
+                                                <td class="value-cell">{{ tasa_usdt_clp_general | float | round(2) if tasa_usdt_clp_general is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- SOBRANTES -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingSobrantes">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSobrantes" aria-expanded="false" aria-controls="collapseSobrantes">
+                                        SOBRANTES
+                                    </button>
+                                </h2>
+                                <div id="collapseSobrantes" class="accordion-collapse collapse" aria-labelledby="headingSobrantes" data-bs-parent="#margenAccordion">
+                                    <div class="accordion-body">
+                                        <table class="table table-bordered table-custom mx-auto mb-0">
+                                            <tr>
+                                                <td class="label-cell">GASTOS</td>
+                                                <td class="value-cell">{{ gastos | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">PAGO MOVIL</td>
+                                                <td class="value-cell">{{ pago_movil | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">ENVIOS AL DETAL</td>
+                                                <td class="value-cell">{{ envios_al_detal | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">SOBRANTE USDT</td>
+                                                <td class="value-cell">{{ sobrante_usdt | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">SOBRANTE BRS</td>
+                                                <td class="value-cell">{{ sobrante_brs | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">SOBRANTE AL MAYOR</td>
+                                                <td class="value-cell">{{ sobrante_al_mayor | format_miles }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- TOTALES -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingTotales">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTotales" aria-expanded="false" aria-controls="collapseTotales">
+                                        TOTALES
+                                    </button>
+                                </h2>
+                                <div id="collapseTotales" class="accordion-collapse collapse" aria-labelledby="headingTotales" data-bs-parent="#margenAccordion">
+                                    <div class="accordion-body">
+                                        <table class="table table-bordered table-custom mx-auto mb-0">
+                                            <tr>
+                                                <td class="label-cell">Total BRS</td>
+                                                <td class="value-cell">{{ total_brs | format_miles if total_brs is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">TOTAL BRS VENDIDOS MAYOR</td>
+                                                <td class="value-cell">{{ brs_vendidos_mayor | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">TOTAL BRS VENDIDOS DETAL</td>
+                                                <td class="value-cell">{{ brs_vendidos_detal | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">Total USDT</td>
+                                                <td class="value-cell">{{ total_usdt | format_miles if total_usdt is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">Total CLP</td>
+                                                <td class="value-cell">{{ total_clp | format_miles if total_clp is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Ponderaciones -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingPonderaciones">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePonderaciones" aria-expanded="false" aria-controls="collapsePonderaciones">
+                                        Ponderaciones
+                                    </button>
+                                </h2>
+                                <div id="collapsePonderaciones" class="accordion-collapse collapse" aria-labelledby="headingPonderaciones" data-bs-parent="#margenAccordion">
+                                    <div class="accordion-body">
+                                        <table class="table table-bordered table-custom mx-auto mb-0">
+                                            <tr>
+                                                <td class="label-cell">Ponderado VES/CLP</td>
+                                                <td class="value-cell">{{ '%.5f' % ponderado_ves_clp if ponderado_ves_clp is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Márgenes -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingMargenes">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMargenes" aria-expanded="false" aria-controls="collapseMargenes">
+                                        Márgenes
+                                    </button>
+                                </h2>
+                                <div id="collapseMargenes" class="accordion-collapse collapse" aria-labelledby="headingMargenes" data-bs-parent="#margenAccordion">
+                                    <div class="accordion-body">
+                                        <table class="table table-bordered table-custom mx-auto mb-0">
+                                            <tr>
+                                                <td class="label-cell">Margen Mayor</td>
+                                                <td class="value-cell">{{ margen_mayor | round(2) | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">Margen Detal</td>
+                                                <td class="value-cell">{{ margen_detal | round(2) | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">Margen Total</td>
+                                                <td class="value-cell">{{ margen_total | round(2) | format_miles }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Columna derecha: Resúmenes -->
+                <div class="col-md-7 col-lg-8 d-flex flex-column align-items-end" id="resumenCol">
+                    <div class="my-3 text-center bg-light border rounded shadow-sm py-3" style="width: 100%; min-width: 350px; max-width: 100%; margin-left: auto; margin-right: auto;">
+                        <h5 class="text-secondary mb-1">Datos Mayor</h5>
+                        <div style="font-size: 1.2rem;">
+                            <span class="text-secondary">Margen mayor:</span>
+                            <span class="fw-bold text-success">$ {{ margen_mayor | format_number(0) }}</span>
+                            <span class="mx-2 text-muted">|</span>
+                            <span class="text-secondary">CLP recibidos mayor:</span>
+                            <span class="fw-bold text-primary">$ {{ clp_recibidos_mayor | format_number(0) }}</span>
+                            <span class="mx-2 text-muted">|</span>
+                            <span class="text-secondary">Margen %:</span>
+                            <span class="fw-bold text-dark">{{ (margen_mayor / clp_recibidos_mayor * 100) | round(2) if clp_recibidos_mayor else 0.00 }} %</span>
+                        </div>
+                    </div>
+                    <div class="my-3 text-center bg-light border rounded shadow-sm py-3" style="width: 100%; min-width: 350px; max-width: 100%; margin-left: auto; margin-right: auto;">
+                        <h5 class="text-secondary mb-1">Datos Detal</h5>
+                        <div style="font-size: 1.2rem;">
+                            <span class="text-secondary">Margen detal:</span>
+                            <span class="fw-bold text-success">$ {{ margen_detal | format_number(0) }}</span>
+                            <span class="mx-2 text-muted">|</span>
+                            <span class="text-secondary">CLP recibidos detal:</span>
+                            <span class="fw-bold text-primary">$ {{ clp_recibidos_detal | format_number(0) }}</span>
+                            <span class="mx-2 text-muted">|</span>
+                            <span class="text-secondary">Margen %:</span>
+                            <span class="fw-bold text-dark">{{ (margen_detal / clp_recibidos_detal * 100) | round(2) if clp_recibidos_detal else 0.00 }} %</span>
+                        </div>
+                    </div>
+                    <div class="my-3 text-center bg-light border rounded shadow-sm py-3" style="width: 100%; min-width: 350px; max-width: 100%; margin-left: auto; margin-right: auto;">
+                        <h5 class="text-secondary mb-1">Datos Total</h5>
+                        <div style="font-size: 1.2rem;">
+                            <span class="text-secondary">Margen total:</span>
+                            <span class="fw-bold text-success">$ {{ margen_total | format_number(0) }}</span>
+                            <span class="mx-2 text-muted">|</span>
+                            <span class="text-secondary">CLP recibidos total:</span>
+                            <span class="fw-bold text-primary">$ {{ (clp_recibidos_mayor + clp_recibidos_detal) | format_number(0) }}</span>
+                            <span class="mx-2 text-muted">|</span>
+                            <span class="text-secondary">Margen %:</span>
+                            <span class="fw-bold text-dark">{{ (margen_total / (clp_recibidos_mayor + clp_recibidos_detal) * 100) | round(2) if (clp_recibidos_mayor + clp_recibidos_detal) else 0.00 }} %</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function guardarSobrantes() {
+    const form = document.getElementById('formGuardarSobrantes');
+    const formData = new FormData(form);
+    // Agregar la fecha actual
+    const fecha = document.getElementById('fecha').value;
+    formData.append('fecha', fecha);
+    // Mostrar indicador de carga
+    const btnGuardar = document.querySelector('#guardarSobrantesModal .btn-success');
+    const originalText = btnGuardar.innerHTML;
+    btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    btnGuardar.disabled = true;
+    fetch('/margen/guardar_sobrantes', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(Object.fromEntries(formData)),
+    })
+    .then(response => response.json())
+    .then(data => {
+        btnGuardar.innerHTML = originalText;
+        btnGuardar.disabled = false;
+        if (data.success) {
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('guardarSobrantesModal'));
+            if (modal) modal.hide();
+            // Mostrar toast de éxito
+            const toastMsg = data.message || "Sobrantes guardados exitosamente";
+            document.getElementById('toastSobrantesMsg').innerText = toastMsg;
+            const toast = new bootstrap.Toast(document.getElementById('toastSobrantes'));
+            toast.show();
+        } else {
+            alert(data.message || "Error al guardar sobrantes");
+        }
+    })
+    .catch(error => {
+        btnGuardar.innerHTML = originalText;
+        btnGuardar.disabled = false;
+        alert("Error de red: " + error);
+    });
+}
+
+function toggleAccordion() {
+    const accCol = document.getElementById('accordionCol');
+    const resumenCol = document.getElementById('resumenCol');
+    if (accCol.style.display === 'none') {
+        accCol.style.display = '';
+        resumenCol.classList.remove('w-100', 'align-items-center', 'justify-content-center');
+        resumenCol.classList.add('align-items-end');
+    } else {
+        accCol.style.display = 'none';
+        resumenCol.classList.add('w-100', 'align-items-center', 'justify-content-center');
+        resumenCol.classList.remove('align-items-end');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Ocultar el accordion por defecto
+  const accCol = document.getElementById('accordionCol');
+  const resumenCol = document.getElementById('resumenCol');
+  if (accCol && resumenCol) {
+    accCol.style.display = 'none';
+    resumenCol.classList.add('w-100', 'align-items-center', 'justify-content-center');
+    resumenCol.classList.remove('align-items-end');
+  }
+});
+</script>
+</body>
+</html> 
