@@ -56,7 +56,24 @@
                     {{ pago.fecha_registro[:10] if pago.fecha_registro else '' }}
                   {% endif %}
                 </td>
-                <td>{{ pago.monto_total | format_int }}</td>
+                <td>
+                  {% if pago.monto_total < 0 %}
+                    <span class="text-danger fw-bold">
+                      <i class="fas fa-minus-circle me-1"></i>
+                      {{ pago.monto_total | format_int }}
+                    </span>
+                    <br>
+                    <small class="text-danger">
+                      <i class="fas fa-exclamation-triangle me-1"></i>
+                      Pago Negativo
+                    </small>
+                  {% else %}
+                    <span class="text-success fw-bold">
+                      <i class="fas fa-plus-circle me-1"></i>
+                      {{ pago.monto_total | format_int }}
+                    </span>
+                  {% endif %}
+                </td>
                 <td>
                   <a href="{{ url_for('pagos.editar', pago_id=pago.id) }}" class="btn btn-sm btn-primary">Editar</a>
                 </td>

@@ -17,8 +17,15 @@
     </div>
     <div class="mb-3">
       <label for="monto_display" class="form-label">Monto</label>
-      <input type="text" id="monto_display" class="form-control" autocomplete="off" placeholder="Ingrese el monto" value="{{ pago.monto_total | format_int }}">
+      <input type="text" id="monto_display" class="form-control" autocomplete="off" placeholder="Ingrese el monto (puede ser negativo)" value="{{ pago.monto_total | format_int }}">
       <input type="hidden" id="monto" name="monto" value="{{ pago.monto_total }}">
+      <div class="form-text">
+        <i class="fas fa-info-circle me-1"></i>
+        Para puesta en marcha, puede ingresar montos negativos para compensar saldos negativos iniciales.
+      </div>
+      <div id="monto-indicator" class="mt-2" style="display: none;">
+        <span id="monto-badge" class="badge fs-6"></span>
+      </div>
     </div>
     <div class="mb-4 d-flex justify-content-between align-items-center">
       <button type="submit" class="btn btn-success">Guardar Cambios</button>
@@ -122,16 +129,60 @@
 document.addEventListener('DOMContentLoaded', function() {
   const displayInput = document.getElementById('monto_display');
   const hiddenInput = document.getElementById('monto');
+  const montoIndicator = document.getElementById('monto-indicator');
+  const montoBadge = document.getElementById('monto-badge');
+  
   if (displayInput) {
     displayInput.addEventListener('input', function(e) {
-      let value = this.value.replace(/[^\d]/g, '');
+      let value = this.value.replace(/[^\d-]/g, ''); // Permitir dígitos y signo negativo
+      
+      // Manejar el signo negativo
+      let isNegative = false;
+      if (value.startsWith('-')) {
+        isNegative = true;
+        value = value.substring(1);
+      }
+      
       if (value) {
-        this.value = parseInt(value, 10).toLocaleString('de-DE');
-        hiddenInput.value = value;
+        const numericValue = parseInt(value, 10);
+        if (isNegative) {
+          this.value = `-${numericValue.toLocaleString('de-DE')}`;
+          hiddenInput.value = `-${numericValue}`;
+        } else {
+          this.value = numericValue.toLocaleString('de-DE');
+          hiddenInput.value = numericValue;
+        }
+        
+        // Mostrar indicador visual
+        const finalValue = isNegative ? -numericValue : numericValue;
+        if (finalValue < 0) {
+          montoBadge.textContent = `⚠️ Pago Negativo: ${finalValue.toLocaleString('de-DE')} CLP`;
+          montoBadge.className = 'badge bg-warning text-dark fs-6';
+          montoIndicator.style.display = 'block';
+        } else if (finalValue > 0) {
+          montoBadge.textContent = `✅ Pago Positivo: ${finalValue.toLocaleString('de-DE')} CLP`;
+          montoBadge.className = 'badge bg-success text-white fs-6';
+          montoIndicator.style.display = 'block';
+        } else {
+          montoIndicator.style.display = 'none';
+        }
       } else {
         hiddenInput.value = '';
+        montoIndicator.style.display = 'none';
       }
     });
+    
+    // Mostrar indicador inicial si el monto es negativo
+    const initialValue = parseFloat(hiddenInput.value);
+    if (initialValue < 0) {
+      montoBadge.textContent = `⚠️ Pago Negativo: ${initialValue.toLocaleString('de-DE')} CLP`;
+      montoBadge.className = 'badge bg-warning text-dark fs-6';
+      montoIndicator.style.display = 'block';
+    } else if (initialValue > 0) {
+      montoBadge.textContent = `✅ Pago Positivo: ${initialValue.toLocaleString('de-DE')} CLP`;
+      montoBadge.className = 'badge bg-success text-white fs-6';
+      montoIndicator.style.display = 'block';
+    }
   }
 });
 </script>

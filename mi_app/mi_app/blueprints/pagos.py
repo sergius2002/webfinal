@@ -122,6 +122,10 @@ def nuevo():
             
             try:
                 monto_float = float(monto)
+                # Permitir montos negativos para puesta en marcha
+                if monto_float == 0:
+                    flash("El monto no puede ser cero.")
+                    return render_template("pagos/nuevo.html", active_page="pagos", clientes=clientes)
             except ValueError:
                 flash("El monto debe ser un número válido.")
                 return render_template("pagos/nuevo.html", active_page="pagos", clientes=clientes)
@@ -134,8 +138,8 @@ def nuevo():
                 # Si no se especifica fecha, usar fecha y hora actual de Chile
                 fecha_hora = datetime.now(chile_tz).strftime("%Y-%m-%dT%H:%M:%S")
             
-            # Validación de duplicados antes de guardar
-            if not request.form.get("forzar_guardado"):  # Solo validar si no viene de la confirmación
+            # Validación de duplicados antes de guardar (solo para montos positivos)
+            if not request.form.get("forzar_guardado") and monto_float > 0:  # Solo validar si no viene de la confirmación y es positivo
                 advertir, cliente_duplicado, mensaje_advertencia = validar_pago_duplicado(cliente, monto_float, fecha_hora)
                 if advertir:
                     return render_template("pagos/nuevo.html", active_page="pagos", clientes=clientes, advertencia_duplicado=True, cliente_duplicado=cliente_duplicado, mensaje_advertencia=mensaje_advertencia, cliente=cliente, monto=monto, fecha=fecha)
@@ -150,7 +154,13 @@ def nuevo():
             if result.data:
                 # Guardar el cliente en la sesión para el próximo ingreso
                 session['ultimo_cliente_pagos'] = cliente
-                flash("Pago registrado correctamente.")
+                
+                # Mensaje diferenciado para pagos negativos
+                if monto_float < 0:
+                    flash(f"Pago negativo registrado correctamente: {monto_float:,.0f} CLP", "warning")
+                else:
+                    flash("Pago registrado correctamente.")
+                    
                 return redirect(url_for("pagos.nuevo"))
             else:
                 flash("Error al guardar el pago.")
@@ -198,21 +208,28 @@ def editar(pago_id):
             ahora = datetime.now(chile_tz).isoformat()
             cambios = []
 
-            # Validación de duplicados antes de guardar (igual que en nuevo)
+            # Validación de duplicados antes de guardar (solo para montos positivos)
             if not request.form.get("forzar_guardado"):  # Solo validar si no viene de la confirmación
                 try:
-                    monto_float = float(nuevo_monto)
+                    nuevo_monto_float = float(nuevo_monto)
+                    # Permitir montos negativos para puesta en marcha
+                    if nuevo_monto_float == 0:
+                        flash("El monto no puede ser cero.")
+                        return render_template("pagos/editar.html", pago=pago, clientes=clientes, historial=historial, fecha_form=nueva_fecha)
                 except ValueError:
                     flash("El monto debe ser un número válido.")
                     return render_template("pagos/editar.html", pago=pago, clientes=clientes, historial=historial, fecha_form=nueva_fecha)
-                # Determinar la fecha a usar
-                if nueva_fecha:
-                    fecha_hora = f"{nueva_fecha}T{datetime.now(chile_tz).strftime('%H:%M:%S')}"
-                else:
-                    fecha_hora = datetime.now(chile_tz).strftime("%Y-%m-%dT%H:%M:%S")
-                advertir, cliente_duplicado, mensaje_advertencia = validar_pago_duplicado(nuevo_cliente, monto_float, fecha_hora, pago_id=pago_id)
-                if advertir:
-                    return render_template("pagos/editar.html", pago=pago, clientes=clientes, historial=historial, fecha_form=nueva_fecha, advertencia_duplicado=True, cliente_duplicado=cliente_duplicado, mensaje_advertencia=mensaje_advertencia, cliente=nuevo_cliente, monto=nuevo_monto, fecha=nueva_fecha)
+                
+                # Solo validar duplicados para montos positivos
+                if nuevo_monto_float > 0:
+                    # Determinar la fecha a usar
+                    if nueva_fecha:
+                        fecha_hora = f"{nueva_fecha}T{datetime.now(chile_tz).strftime('%H:%M:%S')}"
+                    else:
+                        fecha_hora = datetime.now(chile_tz).strftime("%Y-%m-%dT%H:%M:%S")
+                    advertir, cliente_duplicado, mensaje_advertencia = validar_pago_duplicado(nuevo_cliente, nuevo_monto_float, fecha_hora, pago_id=pago_id)
+                    if advertir:
+                        return render_template("pagos/editar.html", pago=pago, clientes=clientes, historial=historial, fecha_form=nueva_fecha, advertencia_duplicado=True, cliente_duplicado=cliente_duplicado, mensaje_advertencia=mensaje_advertencia, cliente=nuevo_cliente, monto=nuevo_monto, fecha=nueva_fecha)
 
             # Comparar y registrar cambios
             if nuevo_cliente != pago["cliente"]:

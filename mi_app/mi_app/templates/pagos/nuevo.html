@@ -87,9 +87,32 @@
           </div>
           <div class="mb-3">
             <label for="monto_display" class="form-label"><i class="fas fa-dollar-sign me-1"></i>Monto</label>
-            <input type="text" id="monto_display" class="form-control" autocomplete="off" placeholder="Ingrese el monto">
+            <input type="text" id="monto_display" class="form-control" autocomplete="off" placeholder="Ingrese el monto (puede ser negativo)">
             <input type="hidden" id="monto" name="monto" required>
             <div class="invalid-feedback">Por favor ingrese un monto válido.</div>
+            <div id="monto-indicator" class="mt-2" style="display: none;">
+              <span id="monto-badge" class="badge fs-6"></span>
+            </div>
+          </div>
+
+          <!-- Modal advertencia pago negativo -->
+          <div class="modal fade" id="modalPagoNegativo" tabindex="-1" aria-labelledby="modalPagoNegativoLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                  <h5 class="modal-title" id="modalPagoNegativoLabel">Advertencia</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body text-center">
+                  <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i><br>
+                  Está ingresando un <b>pago negativo</b>.<br>¿Desea continuar?
+                </div>
+                <div class="modal-footer d-flex justify-content-center gap-3">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="btn-cancelar-negativo">Cancelar</button>
+                  <button type="button" class="btn btn-warning" id="btn-confirmar-negativo">Continuar</button>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="d-flex align-items-center gap-2 mb-3">
             <button type="submit" class="btn btn-success w-100" id="btn-guardar">
@@ -122,14 +145,46 @@ document.addEventListener('DOMContentLoaded', function() {
   // Formateo en tiempo real para el monto
   const displayInput = document.getElementById('monto_display');
   const hiddenInput = document.getElementById('monto');
+  const montoIndicator = document.getElementById('monto-indicator');
+  const montoBadge = document.getElementById('monto-badge');
+  
   if (displayInput) {
     displayInput.addEventListener('input', function(e) {
-      let value = this.value.replace(/[^\d]/g, '');
+      let value = this.value.replace(/[^\d-]/g, ''); // Permitir dígitos y signo negativo
+      
+      // Manejar el signo negativo
+      let isNegative = false;
+      if (value.startsWith('-')) {
+        isNegative = true;
+        value = value.substring(1);
+      }
+      
       if (value) {
-        this.value = parseInt(value, 10).toLocaleString('de-DE');
-        hiddenInput.value = value;
+        const numericValue = parseInt(value, 10);
+        if (isNegative) {
+          this.value = `-${numericValue.toLocaleString('de-DE')}`;
+          hiddenInput.value = `-${numericValue}`;
+        } else {
+          this.value = numericValue.toLocaleString('de-DE');
+          hiddenInput.value = numericValue;
+        }
+        
+        // Mostrar indicador visual
+        const finalValue = isNegative ? -numericValue : numericValue;
+        if (finalValue < 0) {
+          montoBadge.textContent = `⚠️ Pago Negativo: ${finalValue.toLocaleString('de-DE')} CLP`;
+          montoBadge.className = 'badge bg-warning text-dark fs-6';
+          montoIndicator.style.display = 'block';
+        } else if (finalValue > 0) {
+          montoBadge.textContent = `✅ Pago Positivo: ${finalValue.toLocaleString('de-DE')} CLP`;
+          montoBadge.className = 'badge bg-success text-white fs-6';
+          montoIndicator.style.display = 'block';
+        } else {
+          montoIndicator.style.display = 'none';
+        }
       } else {
         hiddenInput.value = '';
+        montoIndicator.style.display = 'none';
       }
     });
   }
@@ -140,14 +195,34 @@ document.addEventListener('DOMContentLoaded', function() {
   function validarFormulario() {
     const cliente = document.getElementById('cliente').value;
     const monto = hiddenInput.value;
-    btnGuardar.disabled = !(cliente && monto && parseInt(monto) > 0);
+    const montoNum = parseFloat(monto);
+    btnGuardar.disabled = !(cliente && monto && montoNum !== 0); // Permitir montos negativos, solo bloquear si es cero
   }
   document.getElementById('cliente').addEventListener('change', validarFormulario);
   displayInput.addEventListener('input', validarFormulario);
   validarFormulario();
 
-  // Feedback visual en el botón
+  // Manejo del envío del formulario con advertencia para pagos negativos
   form.addEventListener('submit', function(e) {
+    const monto = parseFloat(hiddenInput.value);
+    if (monto < 0 && !window.confirmarPagoNegativo) {
+      e.preventDefault();
+      const modal = new bootstrap.Modal(document.getElementById('modalPagoNegativo'));
+      modal.show();
+      // Al confirmar, setear flag y reenviar
+      document.getElementById('btn-confirmar-negativo').onclick = function() {
+        window.confirmarPagoNegativo = true;
+        modal.hide();
+        setTimeout(() => form.requestSubmit(), 200);
+      };
+      // Al cancelar, no hacer nada
+      document.getElementById('btn-cancelar-negativo').onclick = function() {
+        window.confirmarPagoNegativo = false;
+        modal.hide();
+      };
+      return false;
+    }
+    window.confirmarPagoNegativo = false;
     btnGuardar.disabled = true;
     document.getElementById('spinner-guardar').classList.remove('d-none');
   });
