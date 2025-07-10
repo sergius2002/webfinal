@@ -99,6 +99,16 @@
             <i class="fas fa-archive"></i> Cierre
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_page=='utilidades' %}active{% endif %}" href="{{ url_for('utilidades.index') }}">
+            <i class="fas fa-cogs"></i> Utilidades
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_page=='margen' %}active{% endif %}" href="{{ url_for('margen.index') }}">
+            <i class="fas fa-chart-line"></i> Márgenes
+          </a>
+        </li>
         {% if is_superuser %}
           <li class="nav-item">
             <a class="nav-link {% if active_page=='admin' %}active{% endif %}" href="{{ url_for('admin.index') }}">
@@ -106,11 +116,6 @@
             </a>
           </li>
         {% endif %}
-        <li class="nav-item">
-          <a class="nav-link {% if active_page=='utilidades' %}active{% endif %}" href="{{ url_for('utilidades.index') }}">
-            <i class="fas fa-cogs"></i> Utilidades
-          </a>
-        </li>
       </ul>
       <ul class="navbar-nav ms-auto">
         <li class="nav-item">

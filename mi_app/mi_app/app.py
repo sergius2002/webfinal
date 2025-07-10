@@ -45,6 +45,7 @@ from mi_app.mi_app.blueprints.pagos import pagos_bp
 from mi_app.mi_app.blueprints.clientes import clientes_bp
 from mi_app.mi_app.blueprints.cierre import cierre_bp
 from mi_app.mi_app.blueprints.cuentas_activas import cuentas_activas_bp
+from mi_app.mi_app.blueprints.margen import margen_bp
 
 from mi_app.mi_app.extensions import cache
 
@@ -113,6 +114,7 @@ app.register_blueprint(pagos_bp, url_prefix="/pagos")
 app.register_blueprint(clientes_bp, url_prefix="/clientes")
 app.register_blueprint(cierre_bp, url_prefix="/cierre")
 app.register_blueprint(cuentas_activas_bp, url_prefix="/cuentas-activas")
+app.register_blueprint(margen_bp, url_prefix="/margen")
 
 # -----------------------------------------------------------------------------
 # Decorador login_required
@@ -265,6 +267,20 @@ app.jinja_env.filters['format_decimal'] = format_decimal
 app.jinja_env.filters['format_decimal5'] = format_decimal5
 app.jinja_env.filters['format_clp_decimal'] = format_clp_decimal
 app.jinja_env.filters['format_datetime_short'] = format_datetime_short
+
+@app.template_filter('format_miles')
+def format_miles(value):
+    try:
+        return '{:,.2f}'.format(float(value)).replace(',', 'X').replace('.', ',').replace('X', '.')
+    except (ValueError, TypeError):
+        return value
+
+@app.template_filter('format_number')
+def format_number(value, decimales=2):
+    try:
+        return f"{float(value):,.{decimales}f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except (ValueError, TypeError):
+        return value
 
 # -----------------------------------------------------------------------------
 # Funciones helper para filtrar y ordenar consultas

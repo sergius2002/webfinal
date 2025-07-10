@@ -4,10 +4,6 @@
 ```
 mi_app/mi_app/
 ├── app.py (1113 líneas - TODOS los blueprints mezclados)
-├── blueprints/
-│   ├── __init__.py
-│   ├── utilidades.py
-│   └── margen.py
 └── templates/
     ├── transferencias.html
     ├── pedidos.html
@@ -20,14 +16,6 @@ mi_app/mi_app/
 ```
 mi_app/mi_app/
 ├── app.py (solo configuración y registro de blueprints)
-├── blueprints/
-│   ├── __init__.py
-│   ├── utilidades.py
-│   ├── margen.py
-│   ├── transferencias.py      ← NUEVO
-│   ├── pedidos.py            ← NUEVO
-│   ├── dashboard.py          ← NUEVO
-│   └── admin.py              ← NUEVO
 └── templates/
     ├── transferencias/
     │   ├── index.html
