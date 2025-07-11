@@ -1,3 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -42,14 +44,17 @@
     </style>
 </head>
 <body class="container mt-5">
-    <form method="get" class="mb-4 text-center">
-        <label for="fecha" class="form-label me-2">Selecciona la fecha base:</label>
-        <input type="date" id="fecha" name="fecha" value="{{ request.args.get('fecha', '') or '' }}" class="form-control d-inline-block w-auto" max="{{ fecha_hoy }}">
-        <button type="submit" class="btn btn-primary ms-2">Ver saldo anterior</button>
-        <button type="button" class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#guardarSobrantesModal">
-            <i class="fas fa-save"></i> Guardar sobrantes
+    <div class="d-flex justify-content-center align-items-center gap-3 my-4 flex-wrap">
+        <form method="get" class="d-flex align-items-center gap-2 mb-0" style="flex-wrap:nowrap;">
+            <label for="fecha" class="form-label mb-0">Selecciona la fecha base:</label>
+            <input type="date" id="fecha" name="fecha" value="{{ request.args.get('fecha', '') or '' }}" class="form-control" max="{{ fecha_hoy }}" style="width:170px;">
+        </form>
+        <button class="btn btn-primary" type="button" onclick="window.location.href='?saldo_anterior=1'">Ver saldo anterior</button>
+        <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#guardarSobrantesModal">Guardar sobrantes</button>
+        <button id="toggleAccordionBtn" class="btn btn-outline-secondary d-flex align-items-center justify-content-center" style="height: 38px; width: 38px; padding: 0;" type="button" onclick="toggleAccordion()" title="Mostrar/Ocultar detalles">
+            <i id="toggleAccordionIcon" class="fa-solid fa-eye" style="font-size:1.2rem;"></i>
         </button>
-    </form>
+    </div>
 
     <!-- Modal para guardar sobrantes -->
     <div class="modal fade" id="guardarSobrantesModal" tabindex="-1" aria-labelledby="guardarSobrantesModalLabel" aria-hidden="true">
@@ -104,7 +109,6 @@
     <div class="container my-3">
         <div class="row">
             <!-- Botón para mostrar/ocultar detalles -->
-            <button class="btn btn-outline-secondary mb-2 mx-auto d-block" type="button" onclick="toggleAccordion()">Mostrar/Ocultar detalles</button>
             <div class="row" id="mainRow">
                 <!-- Columna izquierda: Accordion -->
                 <div class="col-md-5 col-lg-4" id="accordionCol">
@@ -113,11 +117,11 @@
                             <!-- Gastos (entrada) -->
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="headingGastos">
-                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGastos" aria-expanded="true" aria-controls="collapseGastos">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGastos" aria-expanded="false" aria-controls="collapseGastos">
                                         Gastos
                                     </button>
                                 </h2>
-                                <div id="collapseGastos" class="accordion-collapse collapse show" aria-labelledby="headingGastos" data-bs-parent="#margenAccordion">
+                                <div id="collapseGastos" class="accordion-collapse collapse" aria-labelledby="headingGastos" data-bs-parent="#margenAccordion">
                                     <div class="accordion-body">
                                         <form method="post" class="mb-2">
                                             <div class="row g-2 align-items-center justify-content-center">
@@ -170,7 +174,7 @@
                             <!-- Datos actuales -->
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="headingDatosActuales">
-                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatosActuales" aria-expanded="true" aria-controls="collapseDatosActuales">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatosActuales" aria-expanded="false" aria-controls="collapseDatosActuales">
                                         Datos actuales
                                     </button>
                                 </h2>
@@ -454,27 +458,34 @@ function guardarSobrantes() {
 function toggleAccordion() {
     const accCol = document.getElementById('accordionCol');
     const resumenCol = document.getElementById('resumenCol');
-    if (accCol.style.display === 'none') {
-        accCol.style.display = '';
+    const icon = document.getElementById('toggleAccordionIcon');
+    if (accCol.classList.contains('d-none')) {
+        accCol.classList.remove('d-none');
         resumenCol.classList.remove('w-100', 'align-items-center', 'justify-content-center');
         resumenCol.classList.add('align-items-end');
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
     } else {
-        accCol.style.display = 'none';
+        accCol.classList.add('d-none');
         resumenCol.classList.add('w-100', 'align-items-center', 'justify-content-center');
         resumenCol.classList.remove('align-items-end');
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
     }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Ocultar el accordion por defecto
-  const accCol = document.getElementById('accordionCol');
-  const resumenCol = document.getElementById('resumenCol');
-  if (accCol && resumenCol) {
-    accCol.style.display = 'none';
-    resumenCol.classList.add('w-100', 'align-items-center', 'justify-content-center');
-    resumenCol.classList.remove('align-items-end');
-  }
+    // Por defecto el accordion está visible
+    const accCol = document.getElementById('accordionCol');
+    const resumenCol = document.getElementById('resumenCol');
+    const icon = document.getElementById('toggleAccordionIcon');
+    if (accCol && resumenCol && icon) {
+        accCol.classList.remove('d-none');
+        resumenCol.classList.remove('w-100', 'align-items-center', 'justify-content-center');
+        resumenCol.classList.add('align-items-end');
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
 });
 </script>
-</body>
-</html> 
+{% endblock %} 
