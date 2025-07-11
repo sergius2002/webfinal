@@ -47,7 +47,7 @@
     <div class="d-flex justify-content-center align-items-center gap-3 my-4 flex-wrap">
         <form method="get" class="d-flex align-items-center gap-2 mb-0" style="flex-wrap:nowrap;">
             <label for="fecha" class="form-label mb-0">Selecciona la fecha base:</label>
-            <input type="date" id="fecha" name="fecha" value="{{ request.args.get('fecha', '') or '' }}" class="form-control" max="{{ fecha_hoy }}" style="width:170px;">
+            <input type="date" id="fecha" name="fecha" value="{{ request.args.get('fecha', fecha_hoy) }}" class="form-control" max="{{ fecha_hoy }}" style="width:170px;">
         </form>
         <button class="btn btn-primary" type="button" onclick="window.location.href='?saldo_anterior=1'">Ver saldo anterior</button>
         <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#guardarSobrantesModal">Guardar sobrantes</button>
@@ -114,7 +114,7 @@
                 <div class="col-md-5 col-lg-4" id="accordionCol">
                     <div id="accordionContainer" class="mx-auto" style="max-width: 400px;">
                         <div class="accordion" id="margenAccordion">
-                            <!-- Gastos (entrada) -->
+                            <!-- Gastos (visualización en accordion, solo lectura) -->
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="headingGastos">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGastos" aria-expanded="false" aria-controls="collapseGastos">
@@ -123,17 +123,20 @@
                                 </h2>
                                 <div id="collapseGastos" class="accordion-collapse collapse" aria-labelledby="headingGastos" data-bs-parent="#margenAccordion">
                                     <div class="accordion-body">
-                                        <form method="post" class="mb-2">
-                                            <div class="row g-2 align-items-center justify-content-center">
-                                                <div class="col-auto label-cell">GASTOS</div>
-                                                <div class="col-auto"><input type="number" step="1" min="0" name="gastos" value="{{ gastos|int }}" class="form-control form-control-sm"></div>
-                                                <div class="col-auto label-cell">PAGO MOVIL</div>
-                                                <div class="col-auto"><input type="number" step="1" min="0" name="pago_movil" value="{{ pago_movil|int }}" class="form-control form-control-sm"></div>
-                                                <div class="col-auto label-cell">ENVIOS AL DETAL</div>
-                                                <div class="col-auto"><input type="number" step="1" min="0" name="envios_al_detal" value="{{ envios_al_detal|int }}" class="form-control form-control-sm"></div>
-                                                <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm">Guardar</button></div>
-                                            </div>
-                                        </form>
+                                        <table class="table table-bordered table-custom mx-auto mb-0">
+                                            <tr>
+                                                <td class="label-cell">GASTOS</td>
+                                                <td class="value-cell">{{ gastos | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">PAGO MOVIL</td>
+                                                <td class="value-cell">{{ pago_movil | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">ENVIOS AL DETAL</td>
+                                                <td class="value-cell">{{ envios_al_detal | format_miles }}</td>
+                                            </tr>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
@@ -409,6 +412,28 @@
             </div>
         </div>
     </div>
+
+    <!-- Formulario independiente para gastos -->
+    <div class="container mb-3">
+        <form id="formGuardarGastos" class="row g-2 align-items-center justify-content-center">
+            <div class="col-auto label-cell">GASTOS</div>
+            <div class="col-auto"><input type="number" step="1" min="0" id="gastos" name="gastos" value="{{ gastos|int }}" class="form-control form-control-sm"></div>
+            <div class="col-auto label-cell">PAGO MOVIL</div>
+            <div class="col-auto"><input type="number" step="1" min="0" id="pago_movil" name="pago_movil" value="{{ pago_movil|int }}" class="form-control form-control-sm"></div>
+            <div class="col-auto label-cell">ENVIOS AL DETAL</div>
+            <div class="col-auto"><input type="number" step="1" min="0" id="envios_al_detal" name="envios_al_detal" value="{{ envios_al_detal|int }}" class="form-control form-control-sm"></div>
+            <div class="col-auto"><button type="button" class="btn btn-primary btn-sm" onclick="guardarGastos()">Guardar gastos</button></div>
+        </form>
+    </div>
+    <!-- Toast para gastos -->
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1100">
+        <div id="toastGastos" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastGastosMsg"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -439,6 +464,12 @@ function guardarSobrantes() {
             // Cerrar modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('guardarSobrantesModal'));
             if (modal) modal.hide();
+            // Eliminar backdrop si queda atascado
+            setTimeout(() => {
+              document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+              document.body.classList.remove('modal-open');
+              document.body.style = '';
+            }, 300);
             // Mostrar toast de éxito
             const toastMsg = data.message || "Sobrantes guardados exitosamente";
             document.getElementById('toastSobrantesMsg').innerText = toastMsg;
@@ -474,6 +505,40 @@ function toggleAccordion() {
     }
 }
 
+function guardarGastos() {
+    const fecha = document.getElementById('fecha').value;
+    const gastos = document.getElementById('gastos').value;
+    const pago_movil = document.getElementById('pago_movil').value;
+    const envios_al_detal = document.getElementById('envios_al_detal').value;
+    const btn = document.querySelector('#formGuardarGastos button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    btn.disabled = true;
+    fetch('/margen/guardar_gastos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fecha, gastos, pago_movil, envios_al_detal })
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        if (data.success) {
+            document.getElementById('toastGastosMsg').innerText = data.message || 'Gastos guardados correctamente';
+            const toast = new bootstrap.Toast(document.getElementById('toastGastos'));
+            toast.show();
+            setTimeout(() => { window.location.reload(); }, 1000);
+        } else {
+            alert(data.message || 'Error al guardar gastos');
+        }
+    })
+    .catch(error => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        alert('Error de red: ' + error);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Por defecto el accordion está visible
     const accCol = document.getElementById('accordionCol');
@@ -485,6 +550,17 @@ document.addEventListener('DOMContentLoaded', function() {
         resumenCol.classList.add('align-items-end');
         icon.classList.remove('fa-eye-slash');
         icon.classList.add('fa-eye');
+    }
+    
+    // Event listener para el cambio de fecha
+    const fechaInput = document.getElementById('fecha');
+    if (fechaInput) {
+        fechaInput.addEventListener('change', function() {
+            const fecha = this.value;
+            if (fecha) {
+                window.location.href = '?fecha=' + fecha;
+            }
+        });
     }
 });
 </script>
