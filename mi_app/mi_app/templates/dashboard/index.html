@@ -43,78 +43,74 @@
   </div>
   <div class="card shadow-lg">
     <div class="card-body">
-      <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
-        <table class="table table-striped align-middle" id="tabla-dashboard" style="min-width:900px;">
-          <thead style="position: sticky; top: 0; z-index: 2; background: #083366; color: white;">
-            <tr>
-              <th class="sortable" data-col="0">Cliente <span class="sort-arrow"></span></th>
-              <th class="sortable" data-col="1">Deuda anterior <span class="sort-arrow"></span></th>
-              <th class="sortable" data-col="2">BRS <span class="sort-arrow"></span></th>
-              <th class="sortable" data-col="3">Deuda de hoy <span class="sort-arrow"></span></th>
-              <th class="sortable" data-col="4">Pagos <span class="sort-arrow"></span></th>
-              <th class="sortable" data-col="5">Saldo Final <span class="sort-arrow"></span></th>
-              <th class="sortable" data-col="6">Estado <span class="sort-arrow"></span></th>
-              <th>Copiar</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in resumen %}
-            <tr data-cliente="{{ r.cliente|lower }}" data-estado="{% if r.diferencia > 0 %}deuda{% elif r.diferencia < 0 %}favor{% else %}cero{% endif %}">
-              <td class="td-cliente">{{ r.cliente }}</td>
-              <td>{{ r.deuda_anterior | format_int }}</td>
-              <td>{{ r.brs | format_int }}</td>
-              <td>{{ r.clp | format_int }}</td>
-              <td class="td-pagos">{{ r.pagos | format_int }}</td>
-              <td class="td-saldo-final">
-                {% if r.diferencia > 0 %}
-                  <span class="text-danger fw-bold px-2 py-1 rounded border border-danger shadow-sm" style="background:#ffe5e5;" title="¡Este cliente tiene deuda pendiente!">
-                    <i class="fas fa-exclamation-triangle me-1"></i>{{ r.diferencia | format_int }}
-                  </span>
-                {% else %}
-                  {{ r.diferencia | format_int }}
-                {% endif %}
-              </td>
-              <td>
-                {% if r.diferencia > 0 %}
-                  <span id="estado-msg-{{ loop.index }}">Saldo pendiente {{ r.diferencia | format_int }} Clp</span>
-                {% elif r.diferencia < 0 %}
-                  <span id="estado-msg-{{ loop.index }}">Saldo a Favor de {{ (r.diferencia * -1) | format_int }} Clp</span>
-                {% else %}
-                  <span id="estado-msg-{{ loop.index }}">Sin saldo pendiente</span>
-                {% endif %}
-              </td>
-              <td>
-                <button class="btn btn-outline-secondary btn-sm" onclick="copiarEstado('estado-msg-{{ loop.index }}')" title="Copiar mensaje"><i class="fas fa-copy"></i></button>
-              </td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="8" class="text-center">No hay pedidos para la fecha seleccionada.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-          <tfoot>
-            <tr class="table-info fw-bold">
-              <td colspan="4" class="text-end">Totales:</td>
-              <td id="total-pagos"></td>
-              <td id="total-saldo-final"></td>
-              <td colspan="2"></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+      <table class="table table-striped align-middle" id="tabla-dashboard" style="min-width:900px;">
+        <thead style="position: sticky; top: 0; z-index: 2; background: #083366; color: white;">
+          <tr>
+            <th class="sortable" data-col="0">Cliente <span class="sort-arrow"></span></th>
+            <th class="sortable" data-col="1">Deuda anterior <span class="sort-arrow"></span></th>
+            <th class="sortable" data-col="2">BRS <span class="sort-arrow"></span></th>
+            <th class="sortable" data-col="3">Deuda de hoy <span class="sort-arrow"></span></th>
+            <th class="sortable" data-col="4">Pagos <span class="sort-arrow"></span></th>
+            <th class="sortable" data-col="5">Saldo Final <span class="sort-arrow"></span></th>
+            <th class="sortable" data-col="6">Estado <span class="sort-arrow"></span></th>
+            <th>Copiar</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in resumen %}
+          <tr data-cliente="{{ r.cliente|lower }}" data-estado="{% if r.diferencia > 0 %}deuda{% elif r.diferencia < 0 %}favor{% else %}cero{% endif %}">
+            <td class="td-cliente">{{ r.cliente }}</td>
+            <td>{{ r.deuda_anterior | format_int }}</td>
+            <td>{{ r.brs | format_int }}</td>
+            <td>{{ r.clp | format_int }}</td>
+            <td class="td-pagos">{{ r.pagos | format_int }}</td>
+            <td class="td-saldo-final">
+              {% if r.diferencia > 0 %}
+                <span class="text-danger fw-bold px-2 py-1 rounded border border-danger shadow-sm" style="background:#ffe5e5;" title="¡Este cliente tiene deuda pendiente!">
+                  <i class="fas fa-exclamation-triangle me-1"></i>{{ r.diferencia | format_int }}
+                </span>
+              {% else %}
+                {{ r.diferencia | format_int }}
+              {% endif %}
+            </td>
+            <td>
+              {% if r.diferencia > 0 %}
+                <span id="estado-msg-{{ loop.index }}">Saldo pendiente {{ r.diferencia | format_int }} Clp</span>
+              {% elif r.diferencia < 0 %}
+                <span id="estado-msg-{{ loop.index }}">Saldo a Favor de {{ (r.diferencia * -1) | format_int }} Clp</span>
+              {% else %}
+                <span id="estado-msg-{{ loop.index }}">Sin saldo pendiente</span>
+              {% endif %}
+            </td>
+            <td>
+              <button class="btn btn-outline-secondary btn-sm" onclick="copiarEstado('estado-msg-{{ loop.index }}')" title="Copiar mensaje"><i class="fas fa-copy"></i></button>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center">No hay pedidos para la fecha seleccionada.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr class="table-info fw-bold">
+            <td colspan="4" class="text-end">Totales:</td>
+            <td id="total-pagos"></td>
+            <td id="total-saldo-final"></td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   </div>
   <style>
     @media (max-width: 768px) {
-      .table-responsive { max-height: 60vh; }
       #tabla-dashboard { font-size: 0.95rem; }
       .input-group, .form-select { width: 100%; }
       .card-body { padding: 0.5rem; }
     }
     @media (max-width: 576px) {
       #tabla-dashboard { min-width: 700px; }
-      .table-responsive { max-height: 50vh; }
     }
     th.sortable { cursor: pointer; user-select: none; }
     th.sortable .sort-arrow { font-size: 0.9em; margin-left: 2px; }
@@ -215,11 +211,33 @@
     let csv = '';
     const headers = Array.from(document.querySelectorAll('#tabla-dashboard thead th')).map(th => th.innerText.trim()).slice(0, -1); // sin columna copiar
     csv += headers.join(';') + '\n';
+    
+    // Función para formatear valor para CSV
+    function formatearValorCSV(texto, indiceColumna) {
+      // Limpiar el texto de cualquier formato HTML
+      let valor = texto.replace(/<[^>]*>/g, '').trim();
+      
+      // Columnas numéricas (1=Deuda anterior, 2=BRS, 3=Deuda de hoy, 4=Pagos, 5=Saldo Final)
+      if ([1, 2, 3, 4, 5].includes(indiceColumna)) {
+        // Convertir formato chileno (1.234.567) a número
+        const numero = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
+        if (!isNaN(numero)) {
+          // Devolver como número sin comillas para que Excel lo reconozca
+          return numero.toString();
+        }
+      }
+      
+      // Para texto, escapar comillas y envolver en comillas
+      return '"' + valor.replace(/"/g, '""') + '"';
+    }
+    
     Array.from(tabla.rows).forEach(fila => {
       if (fila.style.display === 'none') return;
       const celdas = Array.from(fila.cells).slice(0, -1); // sin columna copiar
-      csv += celdas.map(td => '"' + td.innerText.replace(/"/g, '""') + '"').join(';') + '\n';
+      const filaCSV = celdas.map((td, index) => formatearValorCSV(td.innerText, index)).join(';');
+      csv += filaCSV + '\n';
     });
+    
     // Agregar BOM UTF-8
     const blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8;'});
     const url = URL.createObjectURL(blob);
