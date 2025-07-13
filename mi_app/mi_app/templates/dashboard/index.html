@@ -60,7 +60,15 @@
             <td>{{ r.brs | format_int }}</td>
             <td>{{ r.clp | format_int }}</td>
             <td>{{ r.pagos | format_int }}</td>
-            <td>{{ r.diferencia | format_int }}</td>
+            <td>
+              {% if r.diferencia > 0 %}
+                <span class="text-danger fw-bold px-2 py-1 rounded border border-danger shadow-sm" style="background:#ffe5e5;" title="¡Este cliente tiene deuda pendiente!">
+                  <i class="fas fa-exclamation-triangle me-1"></i>{{ r.diferencia | format_int }}
+                </span>
+              {% else %}
+                {{ r.diferencia | format_int }}
+              {% endif %}
+            </td>
           </tr>
           {% else %}
           <tr>
