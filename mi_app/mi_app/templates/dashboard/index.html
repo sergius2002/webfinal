@@ -50,6 +50,8 @@
             <th>Deuda de hoy</th>
             <th>Pagos</th>
             <th>Saldo Final</th>
+            <th>Estado</th>
+            <th>Copiar</th>
           </tr>
         </thead>
         <tbody>
@@ -69,10 +71,22 @@
                 {{ r.diferencia | format_int }}
               {% endif %}
             </td>
+            <td>
+              {% if r.diferencia > 0 %}
+                <span id="estado-msg-{{ loop.index }}">Saldo pendiente {{ r.diferencia | format_int }} Clp</span>
+              {% elif r.diferencia < 0 %}
+                <span id="estado-msg-{{ loop.index }}">Saldo a Favor de {{ (r.diferencia * -1) | format_int }} Clp</span>
+              {% else %}
+                <span id="estado-msg-{{ loop.index }}">Sin saldo pendiente</span>
+              {% endif %}
+            </td>
+            <td>
+              <button class="btn btn-outline-secondary btn-sm" onclick="copiarEstado('estado-msg-{{ loop.index }}')" title="Copiar mensaje"><i class="fas fa-copy"></i></button>
+            </td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="6" class="text-center">No hay pedidos para la fecha seleccionada.</td>
+            <td colspan="8" class="text-center">No hay pedidos para la fecha seleccionada.</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -173,5 +187,15 @@ document.getElementById('fecha').addEventListener('focus', pauseAutoRefreshTempo
 document.getElementById('fecha').addEventListener('input', pauseAutoRefreshTemporal);
 document.getElementById('cliente').addEventListener('focus', pauseAutoRefreshTemporal);
 document.getElementById('cliente').addEventListener('input', pauseAutoRefreshTemporal);
+
+function copiarEstado(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const texto = el.innerText;
+  navigator.clipboard.writeText(texto).then(function() {
+    el.classList.add('bg-success','text-white');
+    setTimeout(() => el.classList.remove('bg-success','text-white'), 800);
+  });
+}
 </script>
 {% endblock %}
