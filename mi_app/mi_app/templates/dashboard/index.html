@@ -24,7 +24,10 @@
   </div>
   <div class="row mb-3">
     <div class="col-md-6 mb-2">
-      <input type="text" id="filtro-cliente" class="form-control" placeholder="Buscar cliente...">
+      <div class="input-group">
+        <input type="text" id="filtro-cliente" class="form-control" placeholder="Buscar cliente...">
+        <button class="btn btn-outline-secondary" id="btn-limpiar-filtros" type="button" title="Limpiar filtros"><i class="fas fa-eraser"></i></button>
+      </div>
     </div>
     <div class="col-md-4 mb-2">
       <select id="filtro-estado" class="form-select">
@@ -37,56 +40,58 @@
   </div>
   <div class="card shadow-lg">
     <div class="card-body">
-      <table class="table table-striped" id="tabla-dashboard">
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th>Deuda anterior</th>
-            <th>BRS</th>
-            <th>Deuda de hoy</th>
-            <th>Pagos</th>
-            <th>Saldo Final</th>
-            <th>Estado</th>
-            <th>Copiar</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in resumen %}
-          <tr data-cliente="{{ r.cliente|lower }}" data-estado="{% if r.diferencia > 0 %}deuda{% elif r.diferencia < 0 %}favor{% else %}cero{% endif %}">
-            <td>{{ r.cliente }}</td>
-            <td>{{ r.deuda_anterior | format_int }}</td>
-            <td>{{ r.brs | format_int }}</td>
-            <td>{{ r.clp | format_int }}</td>
-            <td>{{ r.pagos | format_int }}</td>
-            <td>
-              {% if r.diferencia > 0 %}
-                <span class="text-danger fw-bold px-2 py-1 rounded border border-danger shadow-sm" style="background:#ffe5e5;" title="¡Este cliente tiene deuda pendiente!">
-                  <i class="fas fa-exclamation-triangle me-1"></i>{{ r.diferencia | format_int }}
-                </span>
-              {% else %}
-                {{ r.diferencia | format_int }}
-              {% endif %}
-            </td>
-            <td>
-              {% if r.diferencia > 0 %}
-                <span id="estado-msg-{{ loop.index }}">Saldo pendiente {{ r.diferencia | format_int }} Clp</span>
-              {% elif r.diferencia < 0 %}
-                <span id="estado-msg-{{ loop.index }}">Saldo a Favor de {{ (r.diferencia * -1) | format_int }} Clp</span>
-              {% else %}
-                <span id="estado-msg-{{ loop.index }}">Sin saldo pendiente</span>
-              {% endif %}
-            </td>
-            <td>
-              <button class="btn btn-outline-secondary btn-sm" onclick="copiarEstado('estado-msg-{{ loop.index }}')" title="Copiar mensaje"><i class="fas fa-copy"></i></button>
-            </td>
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="8" class="text-center">No hay pedidos para la fecha seleccionada.</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+        <table class="table table-striped" id="tabla-dashboard">
+          <thead>
+            <tr>
+              <th style="position: sticky; top: 0; z-index: 2; background: #083366; color: white;">Cliente</th>
+              <th style="position: sticky; top: 0; z-index: 2; background: #083366; color: white;">Deuda anterior</th>
+              <th style="position: sticky; top: 0; z-index: 2; background: #083366; color: white;">BRS</th>
+              <th style="position: sticky; top: 0; z-index: 2; background: #083366; color: white;">Deuda de hoy</th>
+              <th style="position: sticky; top: 0; z-index: 2; background: #083366; color: white;">Pagos</th>
+              <th style="position: sticky; top: 0; z-index: 2; background: #083366; color: white;">Saldo Final</th>
+              <th style="position: sticky; top: 0; z-index: 2; background: #083366; color: white;">Estado</th>
+              <th style="position: sticky; top: 0; z-index: 2; background: #083366; color: white;">Copiar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in resumen %}
+            <tr data-cliente="{{ r.cliente|lower }}" data-estado="{% if r.diferencia > 0 %}deuda{% elif r.diferencia < 0 %}favor{% else %}cero{% endif %}">
+              <td class="td-cliente">{{ r.cliente }}</td>
+              <td>{{ r.deuda_anterior | format_int }}</td>
+              <td>{{ r.brs | format_int }}</td>
+              <td>{{ r.clp | format_int }}</td>
+              <td>{{ r.pagos | format_int }}</td>
+              <td>
+                {% if r.diferencia > 0 %}
+                  <span class="text-danger fw-bold px-2 py-1 rounded border border-danger shadow-sm" style="background:#ffe5e5;" title="¡Este cliente tiene deuda pendiente!">
+                    <i class="fas fa-exclamation-triangle me-1"></i>{{ r.diferencia | format_int }}
+                  </span>
+                {% else %}
+                  {{ r.diferencia | format_int }}
+                {% endif %}
+              </td>
+              <td>
+                {% if r.diferencia > 0 %}
+                  <span id="estado-msg-{{ loop.index }}">Saldo pendiente {{ r.diferencia | format_int }} Clp</span>
+                {% elif r.diferencia < 0 %}
+                  <span id="estado-msg-{{ loop.index }}">Saldo a Favor de {{ (r.diferencia * -1) | format_int }} Clp</span>
+                {% else %}
+                  <span id="estado-msg-{{ loop.index }}">Sin saldo pendiente</span>
+                {% endif %}
+              </td>
+              <td>
+                <button class="btn btn-outline-secondary btn-sm" onclick="copiarEstado('estado-msg-{{ loop.index }}')" title="Copiar mensaje"><i class="fas fa-copy"></i></button>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="text-center">No hay pedidos para la fecha seleccionada.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
   <script>
@@ -99,12 +104,26 @@
       setTimeout(() => el.classList.remove('bg-success','text-white'), 800);
     });
   }
-  // Filtro en vivo por cliente y estado
+  // Filtro en vivo por cliente y estado + resaltado y limpiar filtros
   const inputCliente = document.getElementById('filtro-cliente');
   const selectEstado = document.getElementById('filtro-estado');
+  const btnLimpiar = document.getElementById('btn-limpiar-filtros');
   const tabla = document.getElementById('tabla-dashboard').getElementsByTagName('tbody')[0];
   const filas = Array.from(tabla.rows);
   const mensajeNoCoincidenciasId = 'mensaje-no-coincidencias';
+  function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  function resaltarTexto(element, texto) {
+    if (!texto) {
+      element.innerHTML = element.getAttribute('data-original') || element.textContent;
+      return;
+    }
+    const original = element.getAttribute('data-original') || element.textContent;
+    const regex = new RegExp('(' + escapeRegExp(texto) + ')', 'gi');
+    element.innerHTML = original.replace(regex, '<mark>$1</mark>');
+    element.setAttribute('data-original', original);
+  }
   function filtrarTabla() {
     const texto = inputCliente.value.toLowerCase();
     const estado = selectEstado.value;
@@ -116,6 +135,9 @@
       const coincideEstado = !estado || estadoFila === estado;
       const mostrar = coincideCliente && coincideEstado;
       fila.style.display = mostrar ? '' : 'none';
+      // Resaltar búsqueda
+      const tdCliente = fila.querySelector('.td-cliente');
+      if (tdCliente) resaltarTexto(tdCliente, texto);
       if (mostrar) visibles++;
     });
     // Mostrar mensaje si no hay coincidencias
@@ -146,6 +168,11 @@
     }
   });
   selectEstado.addEventListener('change', filtrarTabla);
+  btnLimpiar.addEventListener('click', function() {
+    inputCliente.value = '';
+    selectEstado.value = '';
+    filtrarTabla();
+  });
   filtrarTabla();
   </script>
 </div>
