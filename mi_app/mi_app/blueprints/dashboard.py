@@ -485,7 +485,7 @@ def api_datos():
 @dashboard_bp.route("/exportar-csv")
 @login_required
 def exportar_csv():
-    """Exportar datos del dashboard en formato CSV compatible con Excel (UTF-16LE, punto y coma)"""
+    """Exportar datos del dashboard en formato CSV compatible con Excel (UTF-16LE, punto y coma, números como números)"""
     try:
         fecha = request.args.get("fecha", adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d"))
         cliente_filtro = request.args.get("cliente", "")
@@ -594,19 +594,19 @@ def exportar_csv():
         output.write(separador.join(encabezado) + "\n")
         for r in resumen_list:
             if r["diferencia"] > 0:
-                estado = f"Saldo pendiente {r['diferencia']:,.0f} Clp"
+                estado = f"Saldo pendiente {int(r['diferencia'])} Clp"
             elif r["diferencia"] < 0:
-                estado = f"Saldo a Favor de {abs(r['diferencia']):,.0f} Clp"
+                estado = f"Saldo a Favor de {abs(int(r['diferencia']))} Clp"
             else:
                 estado = "Sin saldo pendiente"
             cliente = r["cliente"].replace('"', '""')
             fila = [
                 f'"{cliente}"',
-                f'{r["deuda_anterior"]:,.0f}'.replace(",", "."),
-                f'{r["brs"]:,.0f}'.replace(",", "."),
-                f'{r["clp"]:,.0f}'.replace(",", "."),
-                f'{r["pagos"]:,.0f}'.replace(",", "."),
-                f'{r["diferencia"]:,.0f}'.replace(",", "."),
+                str(int(r["deuda_anterior"])),
+                str(int(r["brs"])),
+                str(int(r["clp"])),
+                str(int(r["pagos"])),
+                str(int(r["diferencia"])),
                 f'"{estado}"'
             ]
             output.write(separador.join(fila) + "\n")
