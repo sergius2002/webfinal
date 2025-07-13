@@ -457,11 +457,9 @@ $(document).ready(function(){
           toastr.success(response.message || 'Pago asignado correctamente.');
           var modal = bootstrap.Modal.getInstance(document.getElementById('modalAsignarPago'));
           modal.hide();
-          // Cambiar el botón a rojo y deshabilitarlo sin recargar
+          // Eliminar la fila de la transferencia asignada con animación
           var row = $('#row-' + transferId);
-          var btn = row.find('.asignar-pago-confirmar[data-transfer-id="' + transferId + '"]');
-          btn.removeClass('btn-primary').addClass('btn-danger').prop('disabled', true).text('Asignado');
-          row.find('.js-example-basic-single').prop('disabled', true);
+          row.fadeOut(400, function() { $(this).remove(); });
         } else {
           toastr.error(response.message || 'Error al asignar el pago.');
         }
