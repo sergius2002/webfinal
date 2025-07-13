@@ -296,12 +296,10 @@
       
       if (mostrar) {
         visibles++;
-        // Resaltar búsqueda
-        const tdCliente = fila.querySelector('.td-cliente');
-        if (tdCliente && texto) {
-          const original = tdCliente.textContent;
-          const regex = new RegExp(`(${texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-          tdCliente.innerHTML = original.replace(regex, '<mark>$1</mark>');
+        // Quitar resaltado: solo mostrar el texto plano del enlace
+        const linkCliente = fila.querySelector('.cliente-link');
+        if (linkCliente) {
+          linkCliente.textContent = linkCliente.getAttribute('data-cliente');
         }
       }
     });
@@ -318,6 +316,15 @@
     } else {
       if (mensaje) mensaje.remove();
     }
+
+    // Volver a asignar el evento a los enlaces de cliente después de filtrar
+    document.querySelectorAll('.cliente-link').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const cliente = this.getAttribute('data-cliente');
+        abrirModalCliente(cliente);
+      });
+    });
   }
 
   // Función para mostrar error
