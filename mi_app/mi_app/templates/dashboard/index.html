@@ -47,13 +47,13 @@
         <table class="table table-striped align-middle" id="tabla-dashboard" style="min-width:900px;">
           <thead style="position: sticky; top: 0; z-index: 2; background: #083366; color: white;">
             <tr>
-              <th>Cliente</th>
-              <th>Deuda anterior</th>
-              <th>BRS</th>
-              <th>Deuda de hoy</th>
-              <th>Pagos</th>
-              <th>Saldo Final</th>
-              <th>Estado</th>
+              <th class="sortable" data-col="0">Cliente <span class="sort-arrow"></span></th>
+              <th class="sortable" data-col="1">Deuda anterior <span class="sort-arrow"></span></th>
+              <th class="sortable" data-col="2">BRS <span class="sort-arrow"></span></th>
+              <th class="sortable" data-col="3">Deuda de hoy <span class="sort-arrow"></span></th>
+              <th class="sortable" data-col="4">Pagos <span class="sort-arrow"></span></th>
+              <th class="sortable" data-col="5">Saldo Final <span class="sort-arrow"></span></th>
+              <th class="sortable" data-col="6">Estado <span class="sort-arrow"></span></th>
               <th>Copiar</th>
             </tr>
           </thead>
@@ -116,6 +116,8 @@
       #tabla-dashboard { min-width: 700px; }
       .table-responsive { max-height: 50vh; }
     }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable .sort-arrow { font-size: 0.9em; margin-left: 2px; }
   </style>
   <script>
   function copiarEstado(id) {
@@ -230,6 +232,53 @@
     URL.revokeObjectURL(url);
   });
   filtrarTabla();
+  // Ordenar columnas
+  const ths = document.querySelectorAll('#tabla-dashboard thead th.sortable');
+  let ordenCol = null;
+  let ordenAsc = true;
+  ths.forEach(th => {
+    th.addEventListener('click', function() {
+      const col = parseInt(th.getAttribute('data-col'));
+      if (ordenCol === col) {
+        ordenAsc = !ordenAsc;
+      } else {
+        ordenCol = col;
+        ordenAsc = true;
+      }
+      ordenarTabla(col, ordenAsc);
+      actualizarFlechas();
+    });
+  });
+  function ordenarTabla(col, asc) {
+    const tbody = document.querySelector('#tabla-dashboard tbody');
+    const filas = Array.from(tbody.querySelectorAll('tr')).filter(f => f.style.display !== 'none');
+    filas.sort((a, b) => {
+      let va = a.cells[col].innerText.replace(/\./g, '').replace(',', '.');
+      let vb = b.cells[col].innerText.replace(/\./g, '').replace(',', '.');
+      // Si es número, comparar como número
+      if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(vb))) {
+        va = parseFloat(va);
+        vb = parseFloat(vb);
+      } else {
+        va = va.toLowerCase();
+        vb = vb.toLowerCase();
+      }
+      if (va < vb) return asc ? -1 : 1;
+      if (va > vb) return asc ? 1 : -1;
+      return 0;
+    });
+    filas.forEach(fila => tbody.appendChild(fila));
+  }
+  function actualizarFlechas() {
+    ths.forEach((th, i) => {
+      const arrow = th.querySelector('.sort-arrow');
+      if (i === ordenCol) {
+        arrow.textContent = ordenAsc ? '▲' : '▼';
+      } else {
+        arrow.textContent = '';
+      }
+    });
+  }
   </script>
 </div>
 {% endblock %}
