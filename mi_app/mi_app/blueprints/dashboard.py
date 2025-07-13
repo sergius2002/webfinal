@@ -80,74 +80,104 @@ def get_ultimo_saldo_anterior(cliente, fecha, supabase):
 
 @dashboard_bp.route("/", methods=["GET"])
 @login_required
-@cache.cached(timeout=60, query_string=True)
+@cache.cached(timeout=300, query_string=True)  # Aumentar cache a 5 minutos
 def index():
     try:
         current_date = adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d")
         fecha = request.args.get("fecha", current_date)
         cliente_filtro = request.args.get("cliente", "")
-        # Filtrar y limpiar pedidos y pagos históricos
-        pedidos_hist = [p for p in supabase.table("pedidos").select("cliente, fecha, clp, brs, eliminado").eq("eliminado", False).execute().data or []
-                        if p.get("cliente") and p.get("fecha") and p.get("clp") is not None and p.get("brs") is not None]
-        pagos_hist = [p for p in supabase.table("pagos_realizados").select("cliente, monto_total, fecha_registro, eliminado").eq("eliminado", False).execute().data or []
-                      if p.get("cliente") and p.get("fecha_registro") and p.get("monto_total") is not None]
-        # Construir set de fechas relevantes
-        fechas_pedidos = set(p["fecha"] for p in pedidos_hist)
-        fechas_pagos = set(p["fecha_registro"][:10] for p in pagos_hist if p.get("fecha_registro"))
-        fechas_todas = sorted(set(list(fechas_pedidos) + list(fechas_pagos) + [fecha]))
-        # Construir historial de saldos por cliente y fecha
-        clientes_todos = set(p["cliente"] for p in pedidos_hist) | set(p["cliente"] for p in pagos_hist)
-        saldo_por_cliente_fecha = {c: {} for c in clientes_todos}
-        for cliente in clientes_todos:
-            saldo = 0
-            for f in fechas_todas:
-                try:
-                    pedidos_dia = [float(p["clp"]) for p in pedidos_hist if p["cliente"] == cliente and p["fecha"] == f]
-                except Exception:
-                    pedidos_dia = []
-                try:
-                    pagos_dia = [float(p["monto_total"]) for p in pagos_hist if p["cliente"] == cliente and p.get("fecha_registro", "")[:10] == f]
-                except Exception:
-                    pagos_dia = []
-                saldo = saldo + sum(pedidos_dia) - sum(pagos_dia)
-                saldo_por_cliente_fecha[cliente][f] = saldo
-        # Ahora, para la fecha seleccionada, usar el saldo anterior correcto
+        
+        # Optimización: Solo cargar datos de los últimos 30 días para cálculos
+        fecha_inicio = (datetime.strptime(fecha, "%Y-%m-%d") - timedelta(days=30)).strftime("%Y-%m-%d")
+        
+        # Consulta optimizada: Solo pedidos y pagos relevantes
+        pedidos_query = supabase.table("pedidos").select("cliente, fecha, clp, brs").eq("eliminado", False).gte("fecha", fecha_inicio).lte("fecha", fecha)
+        pagos_query = supabase.table("pagos_realizados").select("cliente, monto_total, fecha_registro").eq("eliminado", False).gte("fecha_registro", fecha_inicio + "T00:00:00").lte("fecha_registro", fecha + "T23:59:59")
+        
+        # Ejecutar consultas en paralelo (simulado)
+        pedidos_hist = pedidos_query.execute().data or []
+        pagos_hist = pagos_query.execute().data or []
+        
+        # Procesar datos de manera más eficiente
+        clientes_activos = set()
         resumen = {}
-        for cliente in clientes_todos:
-            # Deuda anterior: saldo del día anterior
-            idx_fecha = fechas_todas.index(fecha)
-            if idx_fecha > 0:
-                fecha_ant = fechas_todas[idx_fecha-1]
-                deuda_anterior = saldo_por_cliente_fecha[cliente][fecha_ant]
-            else:
-                deuda_anterior = 0
-            # Pedidos y pagos del día actual (solo del día seleccionado)
-            try:
-                brs = sum(float(p["brs"]) for p in pedidos_hist if p["cliente"] == cliente and p["fecha"] == fecha)
-            except Exception:
-                brs = 0
-            try:
-                clp = sum(float(p["clp"]) for p in pedidos_hist if p["cliente"] == cliente and p["fecha"] == fecha)
-            except Exception:
-                clp = 0
-            try:
-                pagos_dia = sum(float(p["monto_total"]) for p in pagos_hist if p["cliente"] == cliente and p.get("fecha_registro", "")[:10] == fecha)
-            except Exception:
-                pagos_dia = 0
-            saldo_final = saldo_por_cliente_fecha[cliente][fecha]
-            resumen[cliente] = {
-                "cliente": cliente,
-                "brs": brs,
-                "clp": clp,
-                "pagos": pagos_dia,
-                "deuda_anterior": deuda_anterior,
-                "diferencia": saldo_final
-            }
+        
+        # Procesar pedidos
+        for p in pedidos_hist:
+            if p.get("cliente") and p.get("fecha") and p.get("clp") is not None:
+                cliente = p["cliente"]
+                clientes_activos.add(cliente)
+                
+                if cliente not in resumen:
+                    resumen[cliente] = {
+                        "cliente": cliente,
+                        "brs": 0,
+                        "clp": 0,
+                        "pagos": 0,
+                        "deuda_anterior": 0,
+                        "diferencia": 0
+                    }
+                
+                if p["fecha"] == fecha:
+                    resumen[cliente]["brs"] += float(p.get("brs", 0))
+                    resumen[cliente]["clp"] += float(p["clp"])
+        
+        # Procesar pagos
+        for p in pagos_hist:
+            if p.get("cliente") and p.get("monto_total") is not None:
+                cliente = p["cliente"]
+                fecha_pago = p.get("fecha_registro", "")[:10]
+                
+                if cliente not in resumen:
+                    resumen[cliente] = {
+                        "cliente": cliente,
+                        "brs": 0,
+                        "clp": 0,
+                        "pagos": 0,
+                        "deuda_anterior": 0,
+                        "diferencia": 0
+                    }
+                
+                if fecha_pago == fecha:
+                    resumen[cliente]["pagos"] += float(p["monto_total"])
+        
+        # Calcular deuda anterior (todos los pedidos hasta el día anterior)
+        fecha_anterior = (datetime.strptime(fecha, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        # Consulta para TODOS los pedidos hasta el día anterior
+        pedidos_anterior = supabase.table("pedidos").select("cliente, clp").eq("eliminado", False).lte("fecha", fecha_anterior).execute().data or []
+        # Consulta para TODOS los pagos hasta el día anterior
+        pagos_anterior = supabase.table("pagos_realizados").select("cliente, monto_total").eq("eliminado", False).lte("fecha_registro", fecha_anterior + "T23:59:59").execute().data or []
+        
+        # Calcular deuda anterior por cliente (acumulada)
+        deuda_anterior_por_cliente = {}
+        for p in pedidos_anterior:
+            cliente = p["cliente"]
+            if cliente not in deuda_anterior_por_cliente:
+                deuda_anterior_por_cliente[cliente] = 0
+            deuda_anterior_por_cliente[cliente] += float(p["clp"])
+        
+        for p in pagos_anterior:
+            cliente = p["cliente"]
+            if cliente not in deuda_anterior_por_cliente:
+                deuda_anterior_por_cliente[cliente] = 0
+            deuda_anterior_por_cliente[cliente] -= float(p["monto_total"])
+        
+        # Aplicar deuda anterior al resumen
+        for cliente in resumen:
+            resumen[cliente]["deuda_anterior"] = deuda_anterior_por_cliente.get(cliente, 0)
+            resumen[cliente]["diferencia"] = (
+                resumen[cliente]["deuda_anterior"] + 
+                resumen[cliente]["clp"] - 
+                resumen[cliente]["pagos"]
+            )
+        
         # Filtrar clientes con algún valor relevante
         clientes_filtrados = sorted([
             r["cliente"] for r in resumen.values()
             if r["brs"] != 0 or r["clp"] != 0 or r["pagos"] != 0 or r["diferencia"] != 0 or r["deuda_anterior"] != 0
         ])
+        
         # Si hay filtro de cliente, mostrar solo ese cliente
         if cliente_filtro:
             if cliente_filtro in resumen:
@@ -156,16 +186,25 @@ def index():
                 resumen_list = []
         else:
             resumen_list = [r for r in resumen.values() if r["cliente"] in clientes_filtrados]
+        
         # Si no hay datos, mostrar mensaje amigable
         if not resumen_list:
             flash("No hay movimientos para la fecha y cliente seleccionados.")
+            
     except Exception as e:
         logging.error(f"Error al cargar resumen de pedidos en dashboard: {e}")
         resumen_list = []
         clientes_filtrados = []
         fecha = current_date
         cliente_filtro = ""
-    return render_template("dashboard/index.html", resumen=resumen_list, fecha=fecha, current_date=current_date, active_page="dashboard", clientes=clientes_filtrados, cliente_filtro=cliente_filtro)
+        
+    return render_template("dashboard/index.html", 
+                         resumen=resumen_list, 
+                         fecha=fecha, 
+                         current_date=current_date, 
+                         active_page="dashboard", 
+                         clientes=clientes_filtrados, 
+                         cliente_filtro=cliente_filtro)
 
 @dashboard_bp.route("/detalle/<cliente>")
 @login_required
@@ -248,4 +287,128 @@ def limpiar_cache():
         cache.clear()
         return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500 
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@dashboard_bp.route("/api/datos")
+@login_required
+# Sin caché para datos siempre frescos
+def api_datos():
+    """API para obtener datos del dashboard de manera eficiente"""
+    try:
+        fecha = request.args.get("fecha", adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d"))
+        cliente_filtro = request.args.get("cliente", "")
+        
+        # Optimización: Solo cargar datos de los últimos 30 días
+        fecha_inicio = (datetime.strptime(fecha, "%Y-%m-%d") - timedelta(days=30)).strftime("%Y-%m-%d")
+        
+        # Consultas optimizadas
+        pedidos_query = supabase.table("pedidos").select("cliente, fecha, clp, brs").eq("eliminado", False).gte("fecha", fecha_inicio).lte("fecha", fecha)
+        pagos_query = supabase.table("pagos_realizados").select("cliente, monto_total, fecha_registro").eq("eliminado", False).gte("fecha_registro", fecha_inicio + "T00:00:00").lte("fecha_registro", fecha + "T23:59:59")
+        
+        pedidos_hist = pedidos_query.execute().data or []
+        pagos_hist = pagos_query.execute().data or []
+        
+        # Procesar datos
+        resumen = {}
+        
+        # Procesar pedidos
+        for p in pedidos_hist:
+            if p.get("cliente") and p.get("fecha") and p.get("clp") is not None:
+                cliente = p["cliente"]
+                
+                if cliente not in resumen:
+                    resumen[cliente] = {
+                        "cliente": cliente,
+                        "brs": 0,
+                        "clp": 0,
+                        "pagos": 0,
+                        "deuda_anterior": 0,
+                        "diferencia": 0
+                    }
+                
+                if p["fecha"] == fecha:
+                    resumen[cliente]["brs"] += float(p.get("brs", 0))
+                    resumen[cliente]["clp"] += float(p["clp"])
+        
+        # Procesar pagos
+        for p in pagos_hist:
+            if p.get("cliente") and p.get("monto_total") is not None:
+                cliente = p["cliente"]
+                fecha_pago = p.get("fecha_registro", "")[:10]
+                
+                if cliente not in resumen:
+                    resumen[cliente] = {
+                        "cliente": cliente,
+                        "brs": 0,
+                        "clp": 0,
+                        "pagos": 0,
+                        "deuda_anterior": 0,
+                        "diferencia": 0
+                    }
+                
+                if fecha_pago == fecha:
+                    resumen[cliente]["pagos"] += float(p["monto_total"])
+        
+        # Calcular deuda anterior (todos los pedidos hasta el día anterior)
+        fecha_anterior = (datetime.strptime(fecha, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        # Consulta para TODOS los pedidos hasta el día anterior
+        pedidos_anterior = supabase.table("pedidos").select("cliente, clp").eq("eliminado", False).lte("fecha", fecha_anterior).execute().data or []
+        # Consulta para TODOS los pagos hasta el día anterior
+        pagos_anterior = supabase.table("pagos_realizados").select("cliente, monto_total").eq("eliminado", False).lte("fecha_registro", fecha_anterior + "T23:59:59").execute().data or []
+        
+        deuda_anterior_por_cliente = {}
+        for p in pedidos_anterior:
+            cliente = p["cliente"]
+            if cliente not in deuda_anterior_por_cliente:
+                deuda_anterior_por_cliente[cliente] = 0
+            deuda_anterior_por_cliente[cliente] += float(p["clp"])
+        
+        for p in pagos_anterior:
+            cliente = p["cliente"]
+            if cliente not in deuda_anterior_por_cliente:
+                deuda_anterior_por_cliente[cliente] = 0
+            deuda_anterior_por_cliente[cliente] -= float(p["monto_total"])
+        
+        # Aplicar deuda anterior
+        for cliente in resumen:
+            resumen[cliente]["deuda_anterior"] = deuda_anterior_por_cliente.get(cliente, 0)
+            resumen[cliente]["diferencia"] = (
+                resumen[cliente]["deuda_anterior"] + 
+                resumen[cliente]["clp"] - 
+                resumen[cliente]["pagos"]
+            )
+        
+        # Filtrar clientes con algún valor relevante
+        clientes_filtrados = sorted([
+            r["cliente"] for r in resumen.values()
+            if r["brs"] != 0 or r["clp"] != 0 or r["pagos"] != 0 or r["diferencia"] != 0 or r["deuda_anterior"] != 0
+        ])
+        
+        # Aplicar filtro de cliente si existe
+        if cliente_filtro:
+            if cliente_filtro in resumen:
+                resumen_list = [resumen[cliente_filtro]]
+            else:
+                resumen_list = []
+        else:
+            resumen_list = [r for r in resumen.values() if r["cliente"] in clientes_filtrados]
+        
+        return jsonify({
+            "success": True,
+            "data": resumen_list,
+            "clientes": clientes_filtrados,
+            "fecha": fecha,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logging.error(f"Error en API dashboard: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "data": [],
+            "clientes": [],
+            "fecha": fecha,
+            "timestamp": datetime.now().isoformat()
+        }), 500 

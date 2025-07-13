@@ -20,7 +20,45 @@
       </div>
     </div>
     <button type="submit" class="btn btn-success">Guardar Cambios</button>
+    <button type="button" id="cambiar-nombre-btn" class="btn btn-warning">Solo Cambiar Nombre</button>
     <a href="{{ url_for('clientes.index') }}" class="btn btn-secondary">Cancelar</a>
   </form>
 </div>
+
+<script>
+document.getElementById('cambiar-nombre-btn').addEventListener('click', function() {
+    const nuevoNombre = document.getElementById('cliente').value;
+    const clpMaximo = document.getElementById('clp_maximo').value;
+    
+    if (!nuevoNombre) {
+        alert('El nombre del cliente es obligatorio');
+        return;
+    }
+    
+    if (confirm('¿Estás seguro de que quieres cambiar solo el nombre del cliente? Esto no actualizará el CLP máximo.')) {
+        fetch(`/clientes/cambiar_nombre/{{ cliente.id }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                nuevo_nombre: nuevoNombre
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Nombre del cliente actualizado correctamente');
+                window.location.href = '/clientes/';
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al actualizar el nombre del cliente');
+        });
+    }
+});
+</script>
 {% endblock %} 

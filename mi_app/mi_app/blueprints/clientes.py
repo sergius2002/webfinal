@@ -281,16 +281,37 @@ def editar(cliente_id):
         except ValueError:
             clp_maximo_float = 0.0
         
-        supabase.table("clientes").update({
-            "cliente": cliente_nuevo,
-            "clp_maximo": clp_maximo_float
-        }).eq("id", cliente_id).execute()
-        
-        # Limpiar caché después de editar cliente
-        clear_clientes_cache()
-        
-        flash("Cliente actualizado.")
-        return redirect(url_for("clientes.index"))
+        try:
+            supabase.table("clientes").update({
+                "cliente": cliente_nuevo,
+                "clp_maximo": clp_maximo_float
+            }).eq("id", cliente_id).execute()
+            
+            # Limpiar caché después de editar cliente
+            clear_clientes_cache()
+            
+            flash("Cliente actualizado.")
+            return redirect(url_for("clientes.index"))
+            
+        except Exception as e:
+            error_msg = str(e)
+            if "pagador" in error_msg.lower() and "duplicar" in error_msg.lower():
+                # Extraer el RUT del mensaje de error
+                import re
+                rut_match = re.search(r'(\d{1,2}\.\d{3}\.\d{3}-[\dkK])', error_msg)
+                if rut_match:
+                    rut_problema = rut_match.group(1)
+                    flash(f"Error: El RUT {rut_problema} ya está asociado a otro cliente. No se puede duplicar entre clientes.")
+                else:
+                    flash("Error: Hay un RUT duplicado entre clientes. No se puede completar la operación.")
+                
+                # Agregar información adicional para ayudar al usuario
+                flash("Sugerencia: Este error ocurre porque hay un trigger en la base de datos que previene RUTs duplicados entre clientes.")
+                flash("Para resolver esto, necesitas contactar al administrador de la base de datos para ajustar la validación.")
+            else:
+                flash(f"Error al actualizar cliente: {error_msg}")
+            
+            return render_template("clientes/editar.html", cliente=cliente)
     return render_template("clientes/editar.html", cliente=cliente)
 
 @clientes_bp.route("/detalle/<int:cliente_id>")
@@ -679,4 +700,77 @@ def buscar_por_rut():
 def limpiar_cache():
     """Limpia el caché de clientes manualmente"""
     clear_clientes_cache()
-    return jsonify({"success": True, "message": "Caché limpiado correctamente"}) 
+    return jsonify({"success": True, "message": "Caché limpiado correctamente"})
+
+@clientes_bp.route("/buscar_cliente_por_rut/<rut>")
+@login_required
+def buscar_cliente_por_rut(rut):
+    """Busca qué cliente tiene asociado un RUT específico"""
+    try:
+        # Buscar en la tabla pagadores
+        pagador_fields = [f"pagador{i}" for i in range(1, 201)]
+        select_fields = ["cliente"] + pagador_fields
+        select_str = ", ".join(select_fields)
+        
+        # Buscar en todas las columnas de pagadores
+        for field in pagador_fields:
+            pagadores_resp = supabase.table("pagadores").select(select_str).eq(field, rut).execute()
+            if pagadores_resp.data:
+                cliente = pagadores_resp.data[0]["cliente"]
+                return jsonify({
+                    "success": True, 
+                    "cliente": cliente,
+                    "rut": rut,
+                    "campo": field
+                })
+        
+        return jsonify({
+            "success": False, 
+            "message": f"No se encontró ningún cliente con el RUT {rut}"
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False, 
+            "error": str(e)
+        })
+
+@clientes_bp.route("/cambiar_nombre/<int:cliente_id>", methods=["POST"])
+@login_required
+def cambiar_nombre_cliente(cliente_id):
+    """Función alternativa para cambiar solo el nombre del cliente"""
+    try:
+        data = request.get_json()
+        nuevo_nombre = data.get("nuevo_nombre")
+        
+        if not nuevo_nombre:
+            return jsonify({"success": False, "error": "El nuevo nombre es obligatorio"})
+        
+        # Obtener el cliente actual
+        cliente_resp = supabase.table("clientes").select("cliente").eq("id", cliente_id).single().execute()
+        if not cliente_resp.data:
+            return jsonify({"success": False, "error": "Cliente no encontrado"})
+        
+        nombre_actual = cliente_resp.data["cliente"]
+        
+        # Actualizar solo el nombre en la tabla clientes
+        supabase.table("clientes").update({
+            "cliente": nuevo_nombre
+        }).eq("id", cliente_id).execute()
+        
+        # Actualizar también en la tabla pagadores si existe
+        try:
+            supabase.table("pagadores").update({
+                "cliente": nuevo_nombre
+            }).eq("cliente", nombre_actual).execute()
+        except Exception as e:
+            # Si falla la actualización en pagadores, no es crítico
+            print(f"Advertencia: No se pudo actualizar pagadores: {e}")
+        
+        # Limpiar caché
+        clear_clientes_cache()
+        
+        return jsonify({"success": True, "message": "Nombre del cliente actualizado correctamente"})
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}) 

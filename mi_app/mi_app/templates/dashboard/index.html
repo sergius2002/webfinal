@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+{% endblock %}
 {% block breadcrumbs %}
 <nav aria-label="breadcrumb">
   <ol class="breadcrumb">
@@ -43,6 +46,12 @@
   </div>
   <div class="card shadow-lg">
     <div class="card-body">
+      <div id="loading-indicator" class="text-center py-3" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-2">Actualizando datos...</p>
+      </div>
       <table class="table table-striped align-middle" id="tabla-dashboard" style="min-width:900px;">
         <thead style="position: sticky; top: 0; z-index: 2; background: #083366; color: white;">
           <tr>
@@ -116,6 +125,20 @@
     th.sortable .sort-arrow { font-size: 0.9em; margin-left: 2px; }
   </style>
   <script>
+  // Variables globales
+  let dashboardData = [];
+  let currentFecha = '{{ fecha }}';
+  let currentCliente = '{{ cliente_filtro }}';
+  let autoRefresh = true;
+  let refreshTimer = null;
+  let isLoading = false;
+
+  // Función para formatear números
+  function formatNumber(num) {
+    return new Intl.NumberFormat('es-CL', {maximumFractionDigits: 0}).format(num);
+  }
+
+  // Función para copiar estado
   function copiarEstado(id) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -125,178 +148,256 @@
       setTimeout(() => el.classList.remove('bg-success','text-white'), 800);
     });
   }
-  // Filtro en vivo por cliente y estado + resaltado y limpiar filtros
-  const inputCliente = document.getElementById('filtro-cliente');
-  const selectEstado = document.getElementById('filtro-estado');
-  const btnLimpiar = document.getElementById('btn-limpiar-filtros');
-  const btnExportar = document.getElementById('btn-exportar');
-  const tabla = document.getElementById('tabla-dashboard').getElementsByTagName('tbody')[0];
-  const filas = Array.from(tabla.rows);
-  const mensajeNoCoincidenciasId = 'mensaje-no-coincidencias';
-  function escapeRegExp(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // Función para cargar datos del dashboard
+  async function cargarDashboard() {
+    if (isLoading) return;
+    isLoading = true;
+    
+    // Mostrar indicador de carga
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const table = document.getElementById('tabla-dashboard');
+    if (loadingIndicator && table) {
+      loadingIndicator.style.display = 'block';
+      table.style.opacity = '0.5';
+    }
+    
+    try {
+      const url = `/dashboard/api/datos?fecha=${currentFecha}&cliente=${currentCliente}`;
+      const response = await fetch(url);
+      const result = await response.json();
+      
+      if (result.success) {
+        dashboardData = result.data;
+        actualizarTabla();
+        actualizarTimestamp(result.timestamp);
+      } else {
+        console.error('Error al cargar datos:', result.error);
+        mostrarError('Error al cargar datos del dashboard');
+      }
+    } catch (error) {
+      console.error('Error en la petición:', error);
+      mostrarError('Error de conexión');
+    } finally {
+      isLoading = false;
+      
+      // Ocultar indicador de carga
+      const loadingIndicator = document.getElementById('loading-indicator');
+      const table = document.getElementById('tabla-dashboard');
+      if (loadingIndicator && table) {
+        loadingIndicator.style.display = 'none';
+        table.style.opacity = '1';
+      }
+    }
   }
-  function resaltarTexto(element, texto) {
-    if (!texto) {
-      element.innerHTML = element.getAttribute('data-original') || element.textContent;
+
+  // Función para actualizar la tabla
+  function actualizarTabla() {
+    const tbody = document.getElementById('tabla-dashboard').getElementsByTagName('tbody')[0];
+    const tfoot = document.getElementById('tabla-dashboard').getElementsByTagName('tfoot')[0];
+    
+    if (dashboardData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center">No hay movimientos para la fecha seleccionada.</td></tr>';
+      tfoot.style.display = 'none';
       return;
     }
-    const original = element.getAttribute('data-original') || element.textContent;
-    const regex = new RegExp('(' + escapeRegExp(texto) + ')', 'gi');
-    element.innerHTML = original.replace(regex, '<mark>$1</mark>');
-    element.setAttribute('data-original', original);
-  }
-  function filtrarTabla() {
-    const texto = inputCliente.value.toLowerCase();
-    const estado = selectEstado.value;
+    
+    tfoot.style.display = '';
     let totalPagos = 0;
     let totalSaldoFinal = 0;
+    
+    const rows = dashboardData.map((r, index) => {
+      const estado = r.diferencia > 0 ? 'deuda' : r.diferencia < 0 ? 'favor' : 'cero';
+      const saldoClass = r.diferencia > 0 ? 'text-danger fw-bold px-2 py-1 rounded border border-danger shadow-sm' : '';
+      const saldoStyle = r.diferencia > 0 ? 'background:#ffe5e5;' : '';
+      const saldoIcon = r.diferencia > 0 ? '<i class="fas fa-exclamation-triangle me-1"></i>' : '';
+      
+      totalPagos += r.pagos;
+      totalSaldoFinal += r.diferencia;
+      
+      return `
+        <tr data-cliente="${r.cliente.toLowerCase()}" data-estado="${estado}">
+          <td class="td-cliente">${r.cliente}</td>
+          <td>${formatNumber(r.deuda_anterior)}</td>
+          <td>${formatNumber(r.brs)}</td>
+          <td>${formatNumber(r.clp)}</td>
+          <td class="td-pagos">${formatNumber(r.pagos)}</td>
+          <td class="td-saldo-final">
+            ${r.diferencia > 0 ? 
+              `<span class="${saldoClass}" style="${saldoStyle}" title="¡Este cliente tiene deuda pendiente!">${saldoIcon}${formatNumber(r.diferencia)}</span>` : 
+              formatNumber(r.diferencia)
+            }
+          </td>
+          <td>
+            <span id="estado-msg-${index + 1}">
+              ${r.diferencia > 0 ? 
+                `Saldo pendiente ${formatNumber(r.diferencia)} Clp` : 
+                r.diferencia < 0 ? 
+                `Saldo a Favor de ${formatNumber(Math.abs(r.diferencia))} Clp` : 
+                'Sin saldo pendiente'
+              }
+            </span>
+          </td>
+          <td>
+            <button class="btn btn-outline-secondary btn-sm" onclick="copiarEstado('estado-msg-${index + 1}')" title="Copiar mensaje">
+              <i class="fas fa-copy"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+    tbody.innerHTML = rows;
+    
+    // Actualizar totales
+    document.getElementById('total-pagos').textContent = formatNumber(totalPagos);
+    document.getElementById('total-saldo-final').textContent = formatNumber(totalSaldoFinal);
+    
+    // Aplicar filtros si existen
+    aplicarFiltros();
+  }
+
+  // Función para aplicar filtros
+  function aplicarFiltros() {
+    const inputCliente = document.getElementById('filtro-cliente');
+    const selectEstado = document.getElementById('filtro-estado');
+    const texto = inputCliente.value.toLowerCase();
+    const estado = selectEstado.value;
+    
+    const filas = document.querySelectorAll('#tabla-dashboard tbody tr');
     let visibles = 0;
+    
     filas.forEach(fila => {
       const cliente = fila.getAttribute('data-cliente') || '';
       const estadoFila = fila.getAttribute('data-estado') || '';
       const coincideCliente = cliente.includes(texto);
       const coincideEstado = !estado || estadoFila === estado;
       const mostrar = coincideCliente && coincideEstado;
+      
       fila.style.display = mostrar ? '' : 'none';
-      // Resaltar búsqueda
-      const tdCliente = fila.querySelector('.td-cliente');
-      if (tdCliente) resaltarTexto(tdCliente, texto);
+      
       if (mostrar) {
         visibles++;
-        // Sumar totales
-        const pagos = parseFloat(fila.querySelector('.td-pagos')?.textContent.replace(/\./g, '').replace(',', '.') || 0);
-        const saldo = parseFloat(fila.querySelector('.td-saldo-final')?.textContent.replace(/\./g, '').replace(',', '.') || 0);
-        totalPagos += isNaN(pagos) ? 0 : pagos;
-        totalSaldoFinal += isNaN(saldo) ? 0 : saldo;
+        // Resaltar búsqueda
+        const tdCliente = fila.querySelector('.td-cliente');
+        if (tdCliente && texto) {
+          const original = tdCliente.textContent;
+          const regex = new RegExp(`(${texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+          tdCliente.innerHTML = original.replace(regex, '<mark>$1</mark>');
+        }
       }
     });
-    // Mostrar totales
-    document.getElementById('total-pagos').textContent = totalPagos.toLocaleString('es-CL', {maximumFractionDigits:0});
-    document.getElementById('total-saldo-final').textContent = totalSaldoFinal.toLocaleString('es-CL', {maximumFractionDigits:0});
+    
     // Mostrar mensaje si no hay coincidencias
-    let mensaje = document.getElementById(mensajeNoCoincidenciasId);
-    if (visibles === 0) {
+    let mensaje = document.getElementById('mensaje-no-coincidencias');
+    if (visibles === 0 && (texto || estado)) {
       if (!mensaje) {
         mensaje = document.createElement('tr');
-        mensaje.id = mensajeNoCoincidenciasId;
-        mensaje.innerHTML = `<td colspan="8" class="text-center text-danger">No hay coincidencias para el filtro actual.</td>`;
-        tabla.appendChild(mensaje);
+        mensaje.id = 'mensaje-no-coincidencias';
+        mensaje.innerHTML = '<td colspan="8" class="text-center text-danger">No hay coincidencias para el filtro actual.</td>';
+        document.querySelector('#tabla-dashboard tbody').appendChild(mensaje);
       }
     } else {
       if (mensaje) mensaje.remove();
     }
   }
-  inputCliente.addEventListener('input', function() {
-    filtrarTabla();
-    if (typeof autoRefresh !== 'undefined' && autoRefresh) {
-      autoRefresh = false;
+
+  // Función para mostrar error
+  function mostrarError(mensaje) {
+    const tbody = document.getElementById('tabla-dashboard').getElementsByTagName('tbody')[0];
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">${mensaje}</td></tr>`;
+  }
+
+  // Función para actualizar timestamp
+  function actualizarTimestamp(timestamp) {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('es-CL');
+    document.title = `Dashboard - Actualizado: ${timeStr}`;
+  }
+
+  // Event listeners
+  document.addEventListener('DOMContentLoaded', function() {
+    const inputCliente = document.getElementById('filtro-cliente');
+    const selectEstado = document.getElementById('filtro-estado');
+    const btnLimpiar = document.getElementById('btn-limpiar-filtros');
+    const btnExportar = document.getElementById('btn-exportar');
+    const refreshInterval = document.getElementById('refresh-interval');
+    const refreshManual = document.getElementById('refresh-manual');
+    const toggleAuto = document.getElementById('toggle-auto');
+
+    // Filtros
+    inputCliente.addEventListener('input', aplicarFiltros);
+    selectEstado.addEventListener('change', aplicarFiltros);
+    
+    btnLimpiar.addEventListener('click', function() {
+      inputCliente.value = '';
+      selectEstado.value = '';
+      aplicarFiltros();
+    });
+
+    // Exportar
+    btnExportar.addEventListener('click', function() {
+      const data = dashboardData.map(r => ({
+        Cliente: r.cliente,
+        'Deuda Anterior': r.deuda_anterior,
+        'BRS': r.brs,
+        'CLP': r.clp,
+        'Pagos': r.pagos,
+        'Saldo Final': r.diferencia
+      }));
+      
+      const csv = Papa.unparse(data);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `dashboard_${currentFecha}.csv`;
+      link.click();
+    });
+
+    // Actualización automática
+    refreshManual.addEventListener('click', async function() {
+      // Limpiar caché antes de recargar
+      try {
+        await fetch('/dashboard/limpiar_cache', { method: 'POST' });
+      } catch (e) { /* ignorar error */ }
+      cargarDashboard();
+    });
+    
+    toggleAuto.addEventListener('click', function() {
+      autoRefresh = !autoRefresh;
       localStorage.setItem('dashboard_auto_refresh', autoRefresh);
-      const btn = document.getElementById('toggle-auto');
-      if (btn) {
-        btn.innerHTML = '<i class=\'fas fa-play\'></i>';
-        btn.title = 'Activar actualización automática';
-      }
-      if (typeof refreshTimer !== 'undefined' && refreshTimer) clearInterval(refreshTimer);
-    }
-  });
-  selectEstado.addEventListener('change', filtrarTabla);
-  btnLimpiar.addEventListener('click', function() {
-    inputCliente.value = '';
-    selectEstado.value = '';
-    filtrarTabla();
-  });
-  // Exportar a CSV
-  btnExportar.addEventListener('click', function() {
-    let csv = '';
-    const headers = Array.from(document.querySelectorAll('#tabla-dashboard thead th')).map(th => th.innerText.trim()).slice(0, -1); // sin columna copiar
-    csv += headers.join(';') + '\n';
-    
-    // Función para formatear valor para CSV
-    function formatearValorCSV(texto, indiceColumna) {
-      // Limpiar el texto de cualquier formato HTML
-      let valor = texto.replace(/<[^>]*>/g, '').trim();
       
-      // Columnas numéricas (1=Deuda anterior, 2=BRS, 3=Deuda de hoy, 4=Pagos, 5=Saldo Final)
-      if ([1, 2, 3, 4, 5].includes(indiceColumna)) {
-        // Convertir formato chileno (1.234.567) a número
-        const numero = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
-        if (!isNaN(numero)) {
-          // Devolver como número sin comillas para que Excel lo reconozca
-          return numero.toString();
-        }
+      if (autoRefresh) {
+        this.innerHTML = '<i class="fas fa-pause"></i>';
+        this.title = 'Desactivar actualización automática';
+        iniciarAutoRefresh();
+      } else {
+        this.innerHTML = '<i class="fas fa-play"></i>';
+        this.title = 'Activar actualización automática';
+        if (refreshTimer) clearInterval(refreshTimer);
       }
-      
-      // Para texto, escapar comillas y envolver en comillas
-      return '"' + valor.replace(/"/g, '""') + '"';
+    });
+
+    refreshInterval.addEventListener('change', function() {
+      if (autoRefresh) {
+        if (refreshTimer) clearInterval(refreshTimer);
+        iniciarAutoRefresh();
+      }
+    });
+
+    function iniciarAutoRefresh() {
+      const interval = parseInt(refreshInterval.value) * 1000;
+      refreshTimer = setInterval(cargarDashboard, interval);
     }
-    
-    Array.from(tabla.rows).forEach(fila => {
-      if (fila.style.display === 'none') return;
-      const celdas = Array.from(fila.cells).slice(0, -1); // sin columna copiar
-      const filaCSV = celdas.map((td, index) => formatearValorCSV(td.innerText, index)).join(';');
-      csv += filaCSV + '\n';
-    });
-    
-    // Agregar BOM UTF-8
-    const blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8;'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'dashboard_clientes.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  });
-  filtrarTabla();
-  // Ordenar columnas
-  const ths = document.querySelectorAll('#tabla-dashboard thead th.sortable');
-  let ordenCol = null;
-  let ordenAsc = true;
-  ths.forEach(th => {
-    th.addEventListener('click', function() {
-      const col = parseInt(th.getAttribute('data-col'));
-      if (ordenCol === col) {
-        ordenAsc = !ordenAsc;
-      } else {
-        ordenCol = col;
-        ordenAsc = true;
-      }
-      ordenarTabla(col, ordenAsc);
-      actualizarFlechas();
-    });
-  });
-  function ordenarTabla(col, asc) {
-    const tbody = document.querySelector('#tabla-dashboard tbody');
-    const filas = Array.from(tbody.querySelectorAll('tr')).filter(f => f.style.display !== 'none');
-    filas.sort((a, b) => {
-      let va = a.cells[col].innerText.replace(/\./g, '').replace(',', '.');
-      let vb = b.cells[col].innerText.replace(/\./g, '').replace(',', '.');
-      // Si es número, comparar como número
-      if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(vb))) {
-        va = parseFloat(va);
-        vb = parseFloat(vb);
-      } else {
-        va = va.toLowerCase();
-        vb = vb.toLowerCase();
-      }
-      if (va < vb) return asc ? -1 : 1;
-      if (va > vb) return asc ? 1 : -1;
-      return 0;
-    });
-    filas.forEach(fila => tbody.appendChild(fila));
-  }
-  function actualizarFlechas() {
-    ths.forEach((th, i) => {
-      const arrow = th.querySelector('.sort-arrow');
-      if (i === ordenCol) {
-        arrow.textContent = ordenAsc ? '▲' : '▼';
-      } else {
-        arrow.textContent = '';
-      }
-    });
-  }
+
+         // Cargar datos iniciales
+     cargarDashboard();
+     
+     // Iniciar auto-refresh si está habilitado
+     if (autoRefresh) {
+       iniciarAutoRefresh();
+     }
+   });
   </script>
 </div>
 {% endblock %}

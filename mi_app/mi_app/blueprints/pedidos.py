@@ -6,6 +6,7 @@ from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from supabase import create_client, Client
 import pytz
+from mi_app.mi_app.blueprints.dashboard import cache
 
 # Configuración de zona horaria
 chile_tz = pytz.timezone('America/Santiago')
@@ -343,6 +344,8 @@ def nuevo():
                 pedido_data["cuenta_id"] = cuenta_id
             result = supabase.table("pedidos").insert(pedido_data).execute()
             if result.data:
+                # Limpiar caché del dashboard
+                cache.clear()
                 if cuenta_id:
                     pedido_id = result.data[0]["id"]
                     descripcion = f"Pedido para cliente {cliente} - CLP: {clp_calculado:,.0f}"
@@ -503,6 +506,8 @@ def editar(pedido_id):
             else:
                 pedido_update["cuenta_id"] = None
             supabase.table("pedidos").update(pedido_update).eq("id", pedido_id).execute()
+            # Limpiar caché del dashboard
+            cache.clear()
             # Registrar cambios en el log
             if cambios:
                 cambios_str = "; ".join(cambios)
@@ -588,6 +593,8 @@ def eliminar(pedido_id):
         pedido = pedido_response.data[0]
         # Marcar como eliminado (borrado lógico)
         result = supabase.table("pedidos").update({"eliminado": True}).eq("id", pedido_id).execute()
+        # Limpiar caché del dashboard
+        cache.clear()
         logging.info(f"Resultado del update en Supabase: {result}")
         # Buscar y eliminar todos los movimientos asociados a este pedido
         movimientos_resp = supabase.table("movimientos_cuenta").select("id, cuenta_id").eq("referencia_id", pedido_id).eq("referencia_tipo", "pedido").execute()
@@ -1087,6 +1094,8 @@ def nuevos_multiples():
                 pedido_data['cuenta_id'] = cuenta_id
             result = supabase.table('pedidos').insert(pedido_data).execute()
             if result.data:
+                # Limpiar caché del dashboard
+                cache.clear()
                 pedido_id = result.data[0]['id']
                 clp_calculado = round(brs_num / tasa_num, 2)
                 descripcion = f"Pedido múltiple para cliente {cliente} - CLP: {clp_calculado:,.0f}"

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import logging
 import pytz
 from functools import wraps
+from mi_app.mi_app.blueprints.dashboard import cache
 
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
@@ -152,6 +153,8 @@ def nuevo():
             }).execute()
             
             if result.data:
+                # Limpiar caché del dashboard
+                cache.clear()
                 # Guardar el cliente en la sesión para el próximo ingreso
                 session['ultimo_cliente_pagos'] = cliente
                 
@@ -264,7 +267,8 @@ def editar(pago_id):
                 "monto_total": float(nuevo_monto),
                 "fecha_registro": nueva_fecha_registro
             }).eq("id", pago_id).execute()
-
+            # Limpiar caché del dashboard
+            cache.clear()
             # Guardar en historial (siempre, aunque no haya cambios)
             if not cambios:
                 cambios.append({
@@ -303,6 +307,8 @@ def eliminar(pago_id):
         ahora = datetime.now(chile_tz).isoformat()
         # Solo marcar como eliminado, sin tocar fecha_registro ni otros campos
         result = supabase.table("pagos_realizados").update({"eliminado": True}).eq("id", pago_id).execute()
+        # Limpiar caché del dashboard
+        cache.clear()
         print(f"[DEBUG] Resultado del update en Supabase: {result}")
         # Eliminar también la relación en transferencias_pagos
         supabase.table("transferencias_pagos").delete().eq("pago_id", pago_id).execute()
