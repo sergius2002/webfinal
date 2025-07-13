@@ -105,21 +105,35 @@ def guardar_gastos():
             envios_al_detal = float(envios_al_detal)
         except (ValueError, TypeError):
             return jsonify({'success': False, 'message': 'Los valores deben ser números válidos'}), 400
-        # Preparar datos para insertar/actualizar
-        gastos_data = {
-            'fecha': fecha,
-            'gastos': gastos,
-            'pago_movil': pago_movil,
-            'envios_al_detal': envios_al_detal
-        }
+        
         # Verificar si ya existe un registro para esta fecha
         existing_response = supabase.table("stock_diario").select("fecha").eq("fecha", fecha).execute()
+        
         if existing_response.data:
+            # Actualizar solo los campos de gastos en el registro existente
+            gastos_data = {
+                'gastos': gastos,
+                'pago_movil': pago_movil,
+                'envios_al_detal': envios_al_detal
+            }
             response = supabase.table("stock_diario").update(gastos_data).eq("fecha", fecha).execute()
             message = f"Gastos actualizados exitosamente para {fecha}"
         else:
-            response = supabase.table("stock_diario").insert(gastos_data).execute()
+            # Crear un nuevo registro con valores por defecto para los campos NOT NULL
+            # y los gastos proporcionados
+            nuevo_registro = {
+                'fecha': fecha,
+                'brs_stock': 0.0,  # Valor por defecto
+                'usdt_stock': 0.0,  # Valor por defecto
+                'tasa_ves_clp': 0.0,  # Valor por defecto
+                'usdt_tasa': 0.0,  # Valor por defecto
+                'gastos': gastos,
+                'pago_movil': pago_movil,
+                'envios_al_detal': envios_al_detal
+            }
+            response = supabase.table("stock_diario").insert(nuevo_registro).execute()
             message = f"Gastos guardados exitosamente para {fecha}"
+        
         if response.data:
             return jsonify({'success': True, 'message': message})
         else:
