@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block head %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
 <style>
 .cliente-link:hover {
   color: #007bff !important;
@@ -36,18 +35,18 @@
       <div class="input-group">
         <input type="text" id="filtro-cliente" class="form-control" placeholder="Buscar cliente...">
         <button class="btn btn-outline-secondary" id="btn-limpiar-filtros" type="button" title="Limpiar filtros"><i class="fas fa-eraser"></i></button>
+        <button id="btn-exportar-csv" class="btn btn-outline-success" type="button" title="Exportar a Excel">
+          <i class="fas fa-file-excel"></i>
+        </button>
       </div>
     </div>
-    <div class="col-12 col-md-4 mb-2 mb-md-0">
+    <div class="col-12 col-md-6 mb-2 mb-md-0">
       <select id="filtro-estado" class="form-select">
         <option value="">Todos los estados</option>
         <option value="deuda">Con deuda</option>
         <option value="favor">Saldo a favor</option>
         <option value="cero">Sin saldo</option>
       </select>
-    </div>
-    <div class="col-12 col-md-2 d-flex align-items-center justify-content-md-end mt-2 mt-md-0">
-      <button class="btn btn-success w-100" id="btn-exportar" type="button"><i class="fas fa-file-excel me-1"></i>Exportar</button>
     </div>
   </div>
   <div class="card shadow-lg">
@@ -419,10 +418,10 @@
     const inputCliente = document.getElementById('filtro-cliente');
     const selectEstado = document.getElementById('filtro-estado');
     const btnLimpiar = document.getElementById('btn-limpiar-filtros');
-    const btnExportar = document.getElementById('btn-exportar');
     const refreshInterval = document.getElementById('refresh-interval');
     const refreshManual = document.getElementById('refresh-manual');
     const toggleAuto = document.getElementById('toggle-auto');
+    const btnExportarCsv = document.getElementById('btn-exportar-csv');
 
     // Filtros
     inputCliente.addEventListener('input', aplicarFiltros);
@@ -432,25 +431,6 @@
       inputCliente.value = '';
       selectEstado.value = '';
       aplicarFiltros();
-    });
-
-    // Exportar
-    btnExportar.addEventListener('click', function() {
-      const data = dashboardData.map(r => ({
-        Cliente: r.cliente,
-        'Deuda Anterior': r.deuda_anterior,
-        'BRS': r.brs,
-        'CLP': r.clp,
-        'Pagos': r.pagos,
-        'Saldo Final': r.diferencia
-      }));
-      
-      const csv = Papa.unparse(data);
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `dashboard_${currentFecha}.csv`;
-      link.click();
     });
 
     // Actualización automática
@@ -482,6 +462,31 @@
         if (refreshTimer) clearInterval(refreshTimer);
         iniciarAutoRefresh();
       }
+    });
+
+    // Exportar CSV
+    btnExportarCsv.addEventListener('click', function() {
+      const url = `/dashboard/exportar-csv?fecha=${currentFecha}&cliente=${currentCliente}`;
+      
+      // Efecto visual de feedback
+      this.classList.add('btn-success');
+      this.classList.remove('btn-outline-success');
+      this.innerHTML = '<i class="fas fa-check"></i>';
+      
+      // Crear un enlace temporal para descargar el archivo
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `dashboard_${currentFecha}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Restaurar el botón después de 1 segundo
+      setTimeout(() => {
+        this.classList.remove('btn-success');
+        this.classList.add('btn-outline-success');
+        this.innerHTML = '<i class="fas fa-file-excel"></i>';
+      }, 1000);
     });
 
     function iniciarAutoRefresh() {

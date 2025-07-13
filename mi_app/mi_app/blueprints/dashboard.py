@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from functools import wraps
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, Response
 from supabase import create_client, Client
 from flask_caching import Cache
 import pytz
@@ -481,6 +481,150 @@ def api_datos():
             "fecha": fecha,
             "timestamp": datetime.now().isoformat()
         }), 500 
+
+@dashboard_bp.route("/exportar-csv")
+@login_required
+def exportar_csv():
+    """Exportar datos del dashboard en formato CSV compatible con Excel (UTF-16LE, punto y coma)"""
+    try:
+        fecha = request.args.get("fecha", adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d"))
+        cliente_filtro = request.args.get("cliente", "")
+        
+        # Optimización: Solo cargar datos de los últimos 30 días
+        fecha_inicio = (datetime.strptime(fecha, "%Y-%m-%d") - timedelta(days=30)).strftime("%Y-%m-%d")
+        
+        # Consultas optimizadas
+        pedidos_query = supabase.table("pedidos").select("cliente, fecha, clp, brs").eq("eliminado", False).gte("fecha", fecha_inicio).lte("fecha", fecha)
+        pagos_query = supabase.table("pagos_realizados").select("cliente, monto_total, fecha_registro").eq("eliminado", False).gte("fecha_registro", fecha_inicio + "T00:00:00").lte("fecha_registro", fecha + "T23:59:59")
+        
+        pedidos_hist = pedidos_query.execute().data or []
+        pagos_hist = pagos_query.execute().data or []
+        
+        # Procesar datos
+        resumen = {}
+        
+        # Procesar pedidos
+        for p in pedidos_hist:
+            if p.get("cliente") and p.get("fecha") and p.get("clp") is not None:
+                cliente = p["cliente"]
+                
+                if cliente not in resumen:
+                    resumen[cliente] = {
+                        "cliente": cliente,
+                        "brs": 0,
+                        "clp": 0,
+                        "pagos": 0,
+                        "deuda_anterior": 0,
+                        "diferencia": 0
+                    }
+                
+                if p["fecha"] == fecha:
+                    resumen[cliente]["brs"] += float(p.get("brs", 0))
+                    resumen[cliente]["clp"] += float(p["clp"])
+        
+        # Procesar pagos
+        for p in pagos_hist:
+            if p.get("cliente") and p.get("monto_total") is not None:
+                cliente = p["cliente"]
+                fecha_pago = p.get("fecha_registro", "")[:10]
+                
+                if cliente not in resumen:
+                    resumen[cliente] = {
+                        "cliente": cliente,
+                        "brs": 0,
+                        "clp": 0,
+                        "pagos": 0,
+                        "deuda_anterior": 0,
+                        "diferencia": 0
+                    }
+                
+                if fecha_pago == fecha:
+                    resumen[cliente]["pagos"] += float(p["monto_total"])
+        
+        # Calcular deuda anterior (todos los pedidos hasta el día anterior)
+        fecha_anterior = (datetime.strptime(fecha, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        # Consulta para TODOS los pedidos hasta el día anterior
+        pedidos_anterior = supabase.table("pedidos").select("cliente, clp").eq("eliminado", False).lte("fecha", fecha_anterior).execute().data or []
+        # Consulta para TODOS los pagos hasta el día anterior
+        pagos_anterior = supabase.table("pagos_realizados").select("cliente, monto_total").eq("eliminado", False).lte("fecha_registro", fecha_anterior + "T23:59:59").execute().data or []
+        
+        deuda_anterior_por_cliente = {}
+        for p in pedidos_anterior:
+            cliente = p["cliente"]
+            if cliente not in deuda_anterior_por_cliente:
+                deuda_anterior_por_cliente[cliente] = 0
+            deuda_anterior_por_cliente[cliente] += float(p["clp"])
+        
+        for p in pagos_anterior:
+            cliente = p["cliente"]
+            if cliente not in deuda_anterior_por_cliente:
+                deuda_anterior_por_cliente[cliente] = 0
+            deuda_anterior_por_cliente[cliente] -= float(p["monto_total"])
+        
+        # Aplicar deuda anterior
+        for cliente in resumen:
+            resumen[cliente]["deuda_anterior"] = deuda_anterior_por_cliente.get(cliente, 0)
+            resumen[cliente]["diferencia"] = (
+                resumen[cliente]["deuda_anterior"] + 
+                resumen[cliente]["clp"] - 
+                resumen[cliente]["pagos"]
+            )
+        
+        # Filtrar clientes con algún valor relevante
+        clientes_filtrados = sorted([
+            r["cliente"] for r in resumen.values()
+            if r["brs"] != 0 or r["clp"] != 0 or r["pagos"] != 0 or r["diferencia"] != 0 or r["deuda_anterior"] != 0
+        ])
+        
+        # Aplicar filtro de cliente si existe
+        if cliente_filtro:
+            if cliente_filtro in resumen:
+                resumen_list = [resumen[cliente_filtro]]
+            else:
+                resumen_list = []
+        else:
+            resumen_list = [r for r in resumen.values() if r["cliente"] in clientes_filtrados]
+        
+        # Generar CSV en memoria (UTF-16LE)
+        import io
+        output = io.StringIO()
+        separador = ';'
+        encabezado = ["Cliente", "Deuda Anterior", "BRS", "Deuda de Hoy", "Pagos", "Saldo Final", "Estado"]
+        output.write(separador.join(encabezado) + "\n")
+        for r in resumen_list:
+            if r["diferencia"] > 0:
+                estado = f"Saldo pendiente {r['diferencia']:,.0f} Clp"
+            elif r["diferencia"] < 0:
+                estado = f"Saldo a Favor de {abs(r['diferencia']):,.0f} Clp"
+            else:
+                estado = "Sin saldo pendiente"
+            cliente = r["cliente"].replace('"', '""')
+            fila = [
+                f'"{cliente}"',
+                f'{r["deuda_anterior"]:,.0f}'.replace(",", "."),
+                f'{r["brs"]:,.0f}'.replace(",", "."),
+                f'{r["clp"]:,.0f}'.replace(",", "."),
+                f'{r["pagos"]:,.0f}'.replace(",", "."),
+                f'{r["diferencia"]:,.0f}'.replace(",", "."),
+                f'"{estado}"'
+            ]
+            output.write(separador.join(fila) + "\n")
+        csv_text = output.getvalue()
+        output.close()
+        # Codificar a UTF-16LE con BOM
+        bom = b'\xff\xfe'
+        csv_bytes = bom + csv_text.encode('utf-16le')
+        from flask import Response
+        response = Response(csv_bytes, mimetype='text/csv; charset=utf-16')
+        response.headers['Content-Disposition'] = f'attachment; filename=dashboard_{fecha}.csv'
+        return response
+    except Exception as e:
+        logging.error(f"Error al exportar CSV del dashboard: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 @dashboard_bp.route("/api/cliente/<cliente>")
 @login_required
