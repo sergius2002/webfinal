@@ -230,21 +230,87 @@ def detalle(cliente):
             except ValueError:
                 page = 1
             per_page = 10
-            query = supabase.table("pedidos").select("id, cliente, fecha, brs, tasa, clp") \
+            
+            # Obtener pedidos
+            query_pedidos = supabase.table("pedidos").select("id, cliente, fecha, brs, tasa, clp") \
                 .eq("cliente", cliente) \
+                .eq("eliminado", False) \
                 .gte("fecha", fecha_inicio) \
-                .lte("fecha", fecha_fin)
-            query = query.range((page - 1) * per_page, page * per_page - 1)
-            response = query.execute()
-            pedidos_data = response.data if response.data is not None else []
+                .lte("fecha", fecha_fin) \
+                .order("fecha", desc=True)
+            query_pedidos = query_pedidos.range((page - 1) * per_page, page * per_page - 1)
+            response_pedidos = query_pedidos.execute()
+            pedidos_data = response_pedidos.data if response_pedidos.data is not None else []
+            
+            # Contar total de pedidos para paginación
             count_response = supabase.table("pedidos").select("id", count="exact") \
                 .eq("cliente", cliente) \
+                .eq("eliminado", False) \
                 .gte("fecha", fecha_inicio) \
                 .lte("fecha", fecha_fin).execute()
             total_count = count_response.count if count_response.count is not None else 0
             total_pages = (total_count + per_page - 1) // per_page
+            
+            # Obtener pagos (sin paginación, todos en el rango de fechas)
+            query_pagos = supabase.table("pagos_realizados").select("id, monto_total, fecha_registro") \
+                .eq("cliente", cliente) \
+                .eq("eliminado", False) \
+                .gte("fecha_registro", fecha_inicio + "T00:00:00") \
+                .lte("fecha_registro", fecha_fin + "T23:59:59") \
+                .order("fecha_registro", desc=True)
+            response_pagos = query_pagos.execute()
+            pagos_data = response_pagos.data if response_pagos.data is not None else []
+            
+            # Calcular flujo de caja
+            flujo_caja = []
+            saldo_acumulado = 0
+            
+            # Combinar pedidos y pagos en una sola lista con tipo
+            movimientos = []
+            
+            # Agregar pedidos
+            for pedido in pedidos_data:
+                movimientos.append({
+                    'fecha': pedido['fecha'],
+                    'tipo': 'pedido',
+                    'monto': float(pedido['clp']),
+                    'descripcion': f"Pedido #{pedido['id']} - {pedido['fecha']}",
+                    'brs': float(pedido.get('brs', 0)),
+                    'tasa': float(pedido.get('tasa', 0))
+                })
+            
+            # Agregar pagos
+            for pago in pagos_data:
+                fecha_pago = pago['fecha_registro'][:10] if pago['fecha_registro'] else ""
+                movimientos.append({
+                    'fecha': fecha_pago,
+                    'tipo': 'pago',
+                    'monto': -float(pago['monto_total']),  # Negativo para pagos
+                    'descripcion': f"Pago #{pago['id']} - {fecha_pago}",
+                    'brs': 0,
+                    'tasa': 0
+                })
+            
+            # Ordenar por fecha (más antiguos primero)
+            movimientos.sort(key=lambda x: x['fecha'])
+            
+            # Calcular saldo acumulado
+            for movimiento in movimientos:
+                saldo_acumulado += movimiento['monto']
+                flujo_caja.append({
+                    'fecha': movimiento['fecha'],
+                    'tipo': movimiento['tipo'],
+                    'monto': movimiento['monto'],
+                    'descripcion': movimiento['descripcion'],
+                    'saldo_acumulado': saldo_acumulado,
+                    'brs': movimiento['brs'],
+                    'tasa': movimiento['tasa']
+                })
+            
             return {
                 'pedidos_data': pedidos_data,
+                'pagos_data': pagos_data,
+                'flujo_caja': flujo_caja,
                 'total_pages': total_pages,
                 'page': page,
                 'fecha_inicio': fecha_inicio,
@@ -255,6 +321,7 @@ def detalle(cliente):
             flash("Error al obtener el detalle: " + str(e))
             return {
                 'pedidos_data': [],
+                'pagos_data': [],
                 'total_pages': 0,
                 'page': 1,
                 'fecha_inicio': current_date,
@@ -264,6 +331,8 @@ def detalle(cliente):
     data = get_detalle_data(cliente)
     return render_template("dashboard/detalle.html", 
                            pedidos=data['pedidos_data'], 
+                           pagos=data['pagos_data'],
+                           flujo_caja=data['flujo_caja'],
                            cliente=cliente, 
                            fecha_inicio=data['fecha_inicio'],
                            fecha_fin=data['fecha_fin'], 
@@ -411,4 +480,86 @@ def api_datos():
             "clientes": [],
             "fecha": fecha,
             "timestamp": datetime.now().isoformat()
+        }), 500 
+
+@dashboard_bp.route("/api/cliente/<cliente>")
+@login_required
+def api_cliente_detalle(cliente):
+    """API para obtener detalles del cliente para el modal"""
+    try:
+        # Obtener pedidos recientes (últimos 8)
+        pedidos_resp = supabase.table("pedidos").select(
+            "id, fecha, brs, clp, tasa"
+        ).eq("cliente", cliente).eq("eliminado", False).order(
+            "fecha", desc=True
+        ).limit(8).execute()
+        
+        pedidos = pedidos_resp.data or []
+        
+        # Obtener pagos recientes (últimos 8)
+        pagos_resp = supabase.table("pagos_realizados").select(
+            "id, monto_total, fecha_registro"
+        ).eq("cliente", cliente).eq("eliminado", False).order(
+            "fecha_registro", desc=True
+        ).limit(8).execute()
+        
+        pagos = pagos_resp.data or []
+        
+        # Calcular resumen de deuda
+        fecha_actual = adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d")
+        fecha_anterior = (datetime.strptime(fecha_actual, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        # Deuda anterior (todos los pedidos hasta ayer)
+        pedidos_hist = supabase.table("pedidos").select("clp").eq("cliente", cliente).eq("eliminado", False).lte("fecha", fecha_anterior).execute().data or []
+        pagos_hist = supabase.table("pagos_realizados").select("monto_total").eq("cliente", cliente).eq("eliminado", False).lte("fecha_registro", fecha_anterior + "T23:59:59").execute().data or []
+        
+        deuda_anterior = sum(float(p["clp"]) for p in pedidos_hist) - sum(float(p["monto_total"]) for p in pagos_hist)
+        
+        # Pedidos de hoy
+        pedidos_hoy = supabase.table("pedidos").select("clp").eq("cliente", cliente).eq("eliminado", False).eq("fecha", fecha_actual).execute().data or []
+        clp_hoy = sum(float(p["clp"]) for p in pedidos_hoy)
+        
+        # Pagos de hoy
+        pagos_hoy = supabase.table("pagos_realizados").select("monto_total").eq("cliente", cliente).eq("eliminado", False).gte("fecha_registro", fecha_actual + "T00:00:00").lte("fecha_registro", fecha_actual + "T23:59:59").execute().data or []
+        pagos_hoy_total = sum(float(p["monto_total"]) for p in pagos_hoy)
+        
+        # Saldo final
+        saldo_final = deuda_anterior + clp_hoy - pagos_hoy_total
+        
+        # Formatear datos para el frontend
+        pedidos_formateados = []
+        for p in pedidos:
+            pedidos_formateados.append({
+                "fecha": p["fecha"],
+                "brs": float(p.get("brs", 0)),
+                "clp": float(p["clp"]),
+                "tasa": float(p.get("tasa", 0))
+            })
+        
+        pagos_formateados = []
+        for p in pagos:
+            fecha_pago = p["fecha_registro"][:10] if p["fecha_registro"] else ""
+            pagos_formateados.append({
+                "fecha": fecha_pago,
+                "monto": float(p["monto_total"])
+            })
+        
+        return jsonify({
+            "success": True,
+            "cliente": cliente,
+            "pedidos": pedidos_formateados,
+            "pagos": pagos_formateados,
+            "resumen": {
+                "deuda_anterior": deuda_anterior,
+                "pedidos_hoy": clp_hoy,
+                "pagos_hoy": pagos_hoy_total,
+                "saldo_final": saldo_final
+            }
+        })
+        
+    except Exception as e:
+        logging.error(f"Error al obtener detalles del cliente {cliente}: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
         }), 500 

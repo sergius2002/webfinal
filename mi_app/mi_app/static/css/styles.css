@@ -482,3 +482,60 @@ h1.text-azul-oscuro {
   font-weight: bold;
   content: '\2022'; /* punto grande */
 }
+
+.custom-tooltip {
+  position: relative;
+  cursor: pointer;
+  color: #1976d2;
+  font-weight: bold;
+  transition: color 0.2s;
+}
+.custom-tooltip:hover {
+  color: #0d47a1;
+}
+.custom-tooltip .tooltip-text {
+  visibility: hidden;
+  width: 220px;
+  background-color: #1976d2;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 8px;
+  position: absolute;
+  z-index: 10;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -110px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  pointer-events: none;
+}
+.custom-tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.saldo-final-row {
+  background: #e3f2fd !important;
+  font-size: 1.1em;
+  font-weight: bold;
+  border-top: 1.5px solid #90caf9;
+}
+.saldo-final-celda {
+  color: #0d47a1 !important;
+}
+.saldo-final-dashboard {
+  font-size: 1.2em;
+}
+.saldo-animado {
+  animation: saldoFlash 1s linear 1;
+}
+@keyframes saldoFlash {
+  0% { background-color: #fff; }
+  20% { background-color: #ffe5e5; }
+  40% { background-color: #fff; }
+  60% { background-color: #ffe5e5; }
+  100% { background-color: #fff; }
+}

@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Dashboard</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Detalle de {{ cliente }}</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Detalle del Cliente: {{ cliente }}</h2>
+        <div>
+          <a href="{{ url_for('pedidos.nuevo') }}?cliente={{ cliente }}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Nuevo Pedido
+          </a>
+          <a href="{{ url_for('pagos.nuevo') }}?cliente={{ cliente }}" class="btn btn-warning">
+            <i class="fas fa-money-bill"></i> Nuevo Pago
+          </a>
+          <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+          </a>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <form method="GET" class="row g-3">
+            <div class="col-md-3">
+              <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+              <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" value="{{ fecha_inicio }}">
+            </div>
+            <div class="col-md-3">
+              <label for="fecha_fin" class="form-label">Fecha Fin</label>
+              <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" value="{{ fecha_fin }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">&nbsp;</label>
+              <button type="submit" class="btn btn-primary d-block">
+                <i class="fas fa-search"></i> Filtrar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Flujo de Caja -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-chart-line text-primary"></i> Flujo de Caja
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if flujo_caja %}
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead class="table-dark">
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Monto</th>
+                    <th>Saldo Acumulado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for movimiento in flujo_caja %}
+                  <tr>
+                    <td>{{ movimiento.fecha }}</td>
+                    <td>
+                      {% if movimiento.tipo == 'pedido' %}
+                        <span class="badge bg-danger">
+                          <i class="fas fa-shopping-cart"></i> Pedido
+                        </span>
+                      {% else %}
+                        <span class="badge bg-success">
+                          <i class="fas fa-money-bill-wave"></i> Pago
+                        </span>
+                      {% endif %}
+                    </td>
+                    <td>{{ movimiento.descripcion }}</td>
+                    <td class="fw-bold {% if movimiento.monto > 0 %}text-danger{% else %}text-success{% endif %}">
+                      {{ "{:,.0f}".format(movimiento.monto) }}
+                    </td>
+                    <td>
+                      <span class="custom-tooltip">
+                        {{ "{:,.0f}".format(movimiento.saldo_acumulado) }}
+                        <span class="tooltip-text">
+                          {% if movimiento.saldo_acumulado > 0 %}
+                            Deuda del cliente (nos debe)
+                          {% elif movimiento.saldo_acumulado < 0 %}
+                            Saldo a favor del cliente (le debemos)
+                          {% else %}
+                            Sin saldo pendiente
+                          {% endif %}
+                        </span>
+                      </span>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                  {% if flujo_caja %}
+                  <tr class="saldo-final-row">
+                    <td><strong>{{ flujo_caja[-1].fecha }}</strong></td>
+                    <td><span class="badge bg-primary"><i class="fas fa-balance-scale"></i> Saldo</span></td>
+                    <td><strong>Saldo actual</strong></td>
+                    <td class="fw-bold">-</td>
+                    <td>
+                      <span class="custom-tooltip saldo-final-celda">
+                        {{ "{:,.0f}".format(flujo_caja[-1].saldo_acumulado) }}
+                        <span class="tooltip-text">
+                          {% if flujo_caja[-1].saldo_acumulado > 0 %}
+                            Deuda del cliente (nos debe)
+                          {% elif flujo_caja[-1].saldo_acumulado < 0 %}
+                            Saldo a favor del cliente (le debemos)
+                          {% else %}
+                            Sin saldo pendiente
+                          {% endif %}
+                        </span>
+                      </span>
+                      <span class="badge ms-2 {% if flujo_caja[-1].saldo_acumulado > 0 %}bg-danger{% elif flujo_caja[-1].saldo_acumulado < 0 %}bg-primary{% else %}bg-secondary{% endif %}">Saldo final</span>
+                    </td>
+                  </tr>
+                  {% endif %}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="4" class="text-end fw-bold" style="font-size:1.1em;">Saldo final actual:</td>
+                    <td class="fw-bold" style="font-size:1.2em;">
+                      {% if flujo_caja and flujo_caja[-1].saldo_acumulado > 0 %}
+                        <span class="custom-tooltip text-danger saldo-final-dashboard saldo-animado">
+                          {{ "{:,.0f}".format(flujo_caja[-1].saldo_acumulado) }}
+                          <span class="tooltip-text">Deuda del cliente (nos debe)</span>
+                        </span>
+                      {% elif flujo_caja and flujo_caja[-1].saldo_acumulado < 0 %}
+                        <span class="custom-tooltip text-primary saldo-final-dashboard saldo-animado">
+                          {{ "{:,.0f}".format(flujo_caja[-1].saldo_acumulado) }}
+                          <span class="tooltip-text">Saldo a favor del cliente (le debemos)</span>
+                        </span>
+                      {% elif flujo_caja %}
+                        <span class="custom-tooltip text-secondary saldo-final-dashboard saldo-animado">0
+                          <span class="tooltip-text">Sin saldo pendiente</span>
+                        </span>
+                      {% else %}
+                        <span class="custom-tooltip text-secondary saldo-final-dashboard saldo-animado">0
+                          <span class="tooltip-text">Sin saldo pendiente</span>
+                        </span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-center py-4">
+              <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+              <p class="text-muted">No hay movimientos para este cliente en el período seleccionado.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Tabla de pedidos -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Pedidos del Cliente</h5>
+        </div>
+        <div class="card-body">
+          {% if pedidos %}
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Fecha</th>
+                    <th>BRS</th>
+                    <th>Tasa</th>
+                    <th>CLP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for pedido in pedidos %}
+                  <tr>
+                    <td>{{ pedido.id }}</td>
+                    <td>{{ pedido.fecha }}</td>
+                    <td>{{ "{:,.2f}".format(pedido.brs) if pedido.brs else "0.00" }}</td>
+                    <td>{{ "{:,.2f}".format(pedido.tasa) if pedido.tasa else "0.00" }}</td>
+                    <td>{{ "{:,.0f}".format(pedido.clp) if pedido.clp else "0" }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if total_pages > 1 %}
+            <nav aria-label="Paginación de pedidos">
+              <ul class="pagination justify-content-center">
+                {% if page > 1 %}
+                <li class="page-item">
+                  <a class="page-link" href="{{ url_for('dashboard.detalle', cliente=cliente, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin, page=page-1) }}">Anterior</a>
+                </li>
+                {% endif %}
+                
+                {% for p in range(1, total_pages + 1) %}
+                <li class="page-item {% if p == page %}active{% endif %}">
+                  <a class="page-link" href="{{ url_for('dashboard.detalle', cliente=cliente, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin, page=p) }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+                
+                {% if page < total_pages %}
+                <li class="page-item">
+                  <a class="page-link" href="{{ url_for('dashboard.detalle', cliente=cliente, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin, page=page+1) }}">Siguiente</a>
+                </li>
+                {% endif %}
+              </ul>
+            </nav>
+            {% endif %}
+          {% else %}
+            <div class="text-center py-4">
+              <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+              <p class="text-muted">No hay pedidos para este cliente en el período seleccionado.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Tabla de pagos -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Pagos del Cliente</h5>
+        </div>
+        <div class="card-body">
+          {% if pagos %}
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Fecha</th>
+                    <th>Monto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for pago in pagos %}
+                  <tr>
+                    <td>{{ pago.id }}</td>
+                    <td>{{ pago.fecha_registro[:10] if pago.fecha_registro else "" }}</td>
+                    <td class="text-success fw-bold">{{ "{:,.0f}".format(pago.monto_total) if pago.monto_total else "0" }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-center py-4">
+              <i class="fas fa-money-bill-wave fa-3x text-muted mb-3"></i>
+              <p class="text-muted">No hay pagos para este cliente en el período seleccionado.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+    new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
+</script>
+{% endblock %} 
