@@ -29,13 +29,16 @@
         <button class="btn btn-outline-secondary" id="btn-limpiar-filtros" type="button" title="Limpiar filtros"><i class="fas fa-eraser"></i></button>
       </div>
     </div>
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-md-4 mb-2 mb-md-0">
       <select id="filtro-estado" class="form-select">
         <option value="">Todos los estados</option>
         <option value="deuda">Con deuda</option>
         <option value="favor">Saldo a favor</option>
         <option value="cero">Sin saldo</option>
       </select>
+    </div>
+    <div class="col-12 col-md-2 d-flex align-items-center justify-content-md-end mt-2 mt-md-0">
+      <button class="btn btn-success w-100" id="btn-exportar" type="button"><i class="fas fa-file-excel me-1"></i>Exportar</button>
     </div>
   </div>
   <div class="card shadow-lg">
@@ -61,8 +64,8 @@
               <td>{{ r.deuda_anterior | format_int }}</td>
               <td>{{ r.brs | format_int }}</td>
               <td>{{ r.clp | format_int }}</td>
-              <td>{{ r.pagos | format_int }}</td>
-              <td>
+              <td class="td-pagos">{{ r.pagos | format_int }}</td>
+              <td class="td-saldo-final">
                 {% if r.diferencia > 0 %}
                   <span class="text-danger fw-bold px-2 py-1 rounded border border-danger shadow-sm" style="background:#ffe5e5;" title="¡Este cliente tiene deuda pendiente!">
                     <i class="fas fa-exclamation-triangle me-1"></i>{{ r.diferencia | format_int }}
@@ -90,6 +93,14 @@
             </tr>
             {% endfor %}
           </tbody>
+          <tfoot>
+            <tr class="table-info fw-bold">
+              <td colspan="4" class="text-end">Totales:</td>
+              <td id="total-pagos"></td>
+              <td id="total-saldo-final"></td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
@@ -120,6 +131,7 @@
   const inputCliente = document.getElementById('filtro-cliente');
   const selectEstado = document.getElementById('filtro-estado');
   const btnLimpiar = document.getElementById('btn-limpiar-filtros');
+  const btnExportar = document.getElementById('btn-exportar');
   const tabla = document.getElementById('tabla-dashboard').getElementsByTagName('tbody')[0];
   const filas = Array.from(tabla.rows);
   const mensajeNoCoincidenciasId = 'mensaje-no-coincidencias';
@@ -139,6 +151,8 @@
   function filtrarTabla() {
     const texto = inputCliente.value.toLowerCase();
     const estado = selectEstado.value;
+    let totalPagos = 0;
+    let totalSaldoFinal = 0;
     let visibles = 0;
     filas.forEach(fila => {
       const cliente = fila.getAttribute('data-cliente') || '';
@@ -150,8 +164,18 @@
       // Resaltar búsqueda
       const tdCliente = fila.querySelector('.td-cliente');
       if (tdCliente) resaltarTexto(tdCliente, texto);
-      if (mostrar) visibles++;
+      if (mostrar) {
+        visibles++;
+        // Sumar totales
+        const pagos = parseFloat(fila.querySelector('.td-pagos')?.textContent.replace(/\./g, '').replace(',', '.') || 0);
+        const saldo = parseFloat(fila.querySelector('.td-saldo-final')?.textContent.replace(/\./g, '').replace(',', '.') || 0);
+        totalPagos += isNaN(pagos) ? 0 : pagos;
+        totalSaldoFinal += isNaN(saldo) ? 0 : saldo;
+      }
     });
+    // Mostrar totales
+    document.getElementById('total-pagos').textContent = totalPagos.toLocaleString('es-CL', {maximumFractionDigits:0});
+    document.getElementById('total-saldo-final').textContent = totalSaldoFinal.toLocaleString('es-CL', {maximumFractionDigits:0});
     // Mostrar mensaje si no hay coincidencias
     let mensaje = document.getElementById(mensajeNoCoincidenciasId);
     if (visibles === 0) {
@@ -167,13 +191,12 @@
   }
   inputCliente.addEventListener('input', function() {
     filtrarTabla();
-    // Pausar autorefresh si está activo
     if (typeof autoRefresh !== 'undefined' && autoRefresh) {
       autoRefresh = false;
       localStorage.setItem('dashboard_auto_refresh', autoRefresh);
       const btn = document.getElementById('toggle-auto');
       if (btn) {
-        btn.innerHTML = '<i class="fas fa-play"></i>';
+        btn.innerHTML = '<i class=\'fas fa-play\'></i>';
         btn.title = 'Activar actualización automática';
       }
       if (typeof refreshTimer !== 'undefined' && refreshTimer) clearInterval(refreshTimer);
@@ -184,6 +207,27 @@
     inputCliente.value = '';
     selectEstado.value = '';
     filtrarTabla();
+  });
+  // Exportar a CSV
+  btnExportar.addEventListener('click', function() {
+    let csv = '';
+    const headers = Array.from(document.querySelectorAll('#tabla-dashboard thead th')).map(th => th.innerText.trim()).slice(0, -1); // sin columna copiar
+    csv += headers.join(';') + '\n';
+    Array.from(tabla.rows).forEach(fila => {
+      if (fila.style.display === 'none') return;
+      const celdas = Array.from(fila.cells).slice(0, -1); // sin columna copiar
+      csv += celdas.map(td => '"' + td.innerText.replace(/"/g, '""') + '"').join(';') + '\n';
+    });
+    // Agregar BOM UTF-8
+    const blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'dashboard_clientes.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   });
   filtrarTabla();
   </script>
