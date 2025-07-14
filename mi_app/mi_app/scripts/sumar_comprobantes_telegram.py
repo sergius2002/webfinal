@@ -206,7 +206,7 @@ async def procesar_imagen(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 mensaje = f"Monto detectado: {formato_bs(monto)}\nEnviado por: {user_info['first_name']} (@{user_info['username']})"
                 
                 if fecha and operacion:
-                    ok, hash_val = await manager.subir_a_supabase(fecha, monto, operacion, context, update, user_info)
+                    ok, hash_val = await manager.subir_a_supabase(fecha, monto, operacion, context, update, False, user_info)
                     if ok:
                         manager.suma_total += monto
                         manager.montos.append(monto)
