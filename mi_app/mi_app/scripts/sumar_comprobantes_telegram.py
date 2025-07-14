@@ -210,20 +210,120 @@ async def procesar_imagen(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if ok:
                         manager.suma_total += monto
                         manager.montos.append(monto)
-                        mensaje += f"\nSuma total: {formato_bs(manager.suma_total)}"
-                        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Total actualizado: {formato_bs(manager.suma_total)}")
+                        
+                        # Calcular total personalizado del usuario
+                        total_usuario = await calcular_total_usuario(user_info['id'])
+                        
+                        mensaje += f"\n✅ Comprobante registrado exitosamente"
+                        mensaje += f"\n📊 Tu total personal: {formato_bs(total_usuario)}"
+                        mensaje += f"\n🌐 Total general: {formato_bs(manager.suma_total)}"
+                        
+                        await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
                     else:
                         mensaje += f"\n(Advertencia: comprobante pendiente de confirmación por duplicado.)"
+                        await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
                 else:
                     mensaje += "\n(Advertencia: No se pudo extraer fecha u operación para Supabase)"
+                    await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
             else:
                 mensaje = f"No se pudo detectar el monto en la imagen.\nEnviado por: {user_info['first_name']} (@{user_info['username']})"
-                
-            await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
+                await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
             
         except Exception as e:
             logger.error("Error procesando imagen: %s", e)
             await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error procesando imagen: {e}")
+
+async def calcular_total_usuario(user_id):
+    """Calcula el total de comprobantes de un usuario específico"""
+    hoy = datetime.date.today().strftime('%d/%m/%Y')
+    try:
+        res = supabase.table("comprobantes").select("brs").eq("fecha", hoy).eq("usuario_id", user_id).execute()
+        total = sum(float(item['brs']) for item in res.data)
+        return total
+    except Exception as e:
+        logger.error("Error calculando total del usuario %s: %s", user_id, e)
+        return 0.0
+
+async def mi_total(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Muestra el total personal del usuario que ejecuta el comando"""
+    user = update.effective_user
+    user_info = {
+        'id': user.id,
+        'username': user.username or 'Sin username',
+        'first_name': user.first_name or 'Sin nombre',
+        'last_name': user.last_name or ''
+    }
+    
+    try:
+        total_personal = await calcular_total_usuario(user_info['id'])
+        total_general = await calcular_total_general()
+        
+        mensaje = f"📊 Resumen personal de {user_info['first_name']} (@{user_info['username']})\n\n"
+        mensaje += f"💰 Tu total: {formato_bs(total_personal)}\n"
+        mensaje += f"🌐 Total general: {formato_bs(total_general)}\n"
+        
+        if total_general > 0:
+            porcentaje = (total_personal / total_general) * 100
+            mensaje += f"📈 Porcentaje: {porcentaje:.1f}%"
+        
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
+        
+    except Exception as e:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error al calcular tu total: {e}")
+
+async def calcular_total_general():
+    """Calcula el total general del día"""
+    hoy = datetime.date.today().strftime('%d/%m/%Y')
+    try:
+        res = supabase.table("comprobantes").select("brs").eq("fecha", hoy).execute()
+        total = sum(float(item['brs']) for item in res.data)
+        return total
+    except Exception as e:
+        logger.error("Error calculando total general: %s", e)
+        return 0.0
+
+async def mi_detalle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Muestra el detalle personal del usuario que ejecuta el comando"""
+    user = update.effective_user
+    user_info = {
+        'id': user.id,
+        'username': user.username or 'Sin username',
+        'first_name': user.first_name or 'Sin nombre',
+        'last_name': user.last_name or ''
+    }
+    
+    hoy = datetime.date.today().strftime('%d/%m/%Y')
+    try:
+        res = supabase.table("comprobantes").select("brs,timestamp_envio").eq("fecha", hoy).eq("usuario_id", user_info['id']).execute()
+        montos_personales = res.data
+        
+        if montos_personales:
+            lista = []
+            for i, item in enumerate(montos_personales):
+                monto = float(item['brs'])
+                timestamp = item.get('timestamp_envio', '')
+                hora = timestamp.split('T')[1][:5] if timestamp else ''
+                
+                lista.append(f"{i+1}. {formato_bs(monto)} {hora}")
+            
+            lista_texto = '\n'.join(lista)
+            total_personal = sum(float(item['brs']) for item in montos_personales)
+            total_general = await calcular_total_general()
+            
+            mensaje = f"📋 Tus comprobantes del día ({hoy}):\n\n{lista_texto}\n\n"
+            mensaje += f"💰 Tu total: {formato_bs(total_personal)}\n"
+            mensaje += f"🌐 Total general: {formato_bs(total_general)}"
+            
+            if total_general > 0:
+                porcentaje = (total_personal / total_general) * 100
+                mensaje += f"\n📈 Porcentaje: {porcentaje:.1f}%"
+        else:
+            mensaje = f"No has enviado comprobantes hoy, {user_info['first_name']}."
+            
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
+        
+    except Exception as e:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error al consultar tu detalle: {e}")
 
 async def permitir(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Permite la inserción de un comprobante duplicado"""
@@ -239,8 +339,19 @@ async def permitir(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Sumar también los duplicados permitidos
             manager.suma_total += float(data['brs'])
             manager.montos.append(float(data['brs']))
-            await context.bot.send_message(chat_id=update.effective_chat.id, text="Comprobante insertado de todos modos.")
-            await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Total actualizado: {formato_bs(manager.suma_total)}")
+            
+            # Calcular total personal del usuario
+            user_id = data.get('usuario_id')
+            if user_id:
+                total_usuario = await calcular_total_usuario(user_id)
+                mensaje = "Comprobante insertado de todos modos."
+                mensaje += f"\n📊 Tu total personal: {formato_bs(total_usuario)}"
+                mensaje += f"\n🌐 Total general: {formato_bs(manager.suma_total)}"
+            else:
+                mensaje = "Comprobante insertado de todos modos."
+                mensaje += f"\n🌐 Total general: {formato_bs(manager.suma_total)}"
+            
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
         except Exception as e:
             await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error al insertar duplicado: {e}")
         
@@ -379,11 +490,15 @@ Comandos disponibles:
 • /permitir - Confirmar inserción de duplicado
 • /denegar - Rechazar inserción de duplicado
 • /estadisticas - Ver estadísticas por usuario
+
+📊 Comandos personales:
+• /mi_total - Ver tu total personal vs general
+• /mi_detalle - Ver tus comprobantes del día
 • /ayuda - Mostrar esta ayuda
 
 Ejemplo: /ingreso_manual 1.234,56
 
-📝 Nota: El bot registra automáticamente quién envía cada comprobante.
+📝 Nota: El bot registra automáticamente quién envía cada comprobante y muestra totales personalizados.
 """
     await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
 
@@ -403,6 +518,8 @@ def main():
     app.add_handler(CommandHandler('total_sin_duplicados', total_sin_duplicados))
     app.add_handler(CommandHandler('total', total))
     app.add_handler(CommandHandler('estadisticas', estadisticas_usuarios))
+    app.add_handler(CommandHandler('mi_total', mi_total))
+    app.add_handler(CommandHandler('mi_detalle', mi_detalle))
     app.add_handler(CommandHandler('ayuda', ayuda))
     app.add_handler(CommandHandler('start', ayuda))
     

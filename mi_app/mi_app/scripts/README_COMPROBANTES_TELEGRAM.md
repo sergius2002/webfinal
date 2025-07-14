@@ -14,6 +14,7 @@ Este script es una herramienta de apoyo independiente que permite procesar compr
 - 📝 **Ingreso Manual**: Permite agregar montos manualmente
 - 👤 **Detección de Usuarios**: Registra quién envía cada comprobante
 - 📈 **Estadísticas por Usuario**: Muestra resúmenes por persona
+- 🎯 **Totales Personalizados**: Cada usuario ve su contribución individual
 
 ## Instalación
 
@@ -81,7 +82,14 @@ python sumar_comprobantes_telegram.py
 | `/permitir` | Confirma inserción de duplicado |
 | `/denegar` | Rechaza inserción de duplicado |
 | `/estadisticas` | Ver estadísticas por usuario |
-| `/ayuda` | Muestra esta ayuda |
+
+### 📊 Comandos Personales
+
+| Comando | Descripción |
+|---------|-------------|
+| `/mi_total` | Ver tu total personal vs general |
+| `/mi_detalle` | Ver tus comprobantes del día |
+| `/ayuda` | Mostrar ayuda completa |
 
 ### Ejemplos
 
@@ -89,6 +97,8 @@ python sumar_comprobantes_telegram.py
 /ingreso_manual 1.234,56
 /detalle
 /estadisticas
+/mi_total
+/mi_detalle
 /total_sin_duplicados
 ```
 
@@ -116,6 +126,16 @@ python sumar_comprobantes_telegram.py
 - ✅ Almacena nombre, username, ID y timestamp
 - ✅ Muestra información del usuario en cada respuesta
 
+### Respuesta al Enviar Comprobante
+Cuando envías una foto, recibes:
+```
+Monto detectado: 50.000,00 Bs
+Enviado por: Juan Pérez (@juanperez)
+✅ Comprobante registrado exitosamente
+📊 Tu total personal: 125.000,00 Bs
+🌐 Total general: 250.000,00 Bs
+```
+
 ### Comando `/detalle`
 Muestra listado con formato:
 ```
@@ -138,6 +158,30 @@ Muestra resumen por usuario:
 Total general: 155.000,00 Bs
 ```
 
+### Comando `/mi_total`
+Muestra tu resumen personal:
+```
+📊 Resumen personal de Juan Pérez (@juanperez)
+
+💰 Tu total: 75.000,00 Bs
+🌐 Total general: 155.000,00 Bs
+📈 Porcentaje: 48.4%
+```
+
+### Comando `/mi_detalle`
+Muestra tus comprobantes del día:
+```
+📋 Tus comprobantes del día (14/07/2025):
+
+1. 25.000,00 Bs 14:30
+2. 30.000,00 Bs 15:45
+3. 20.000,00 Bs 16:20
+
+💰 Tu total: 75.000,00 Bs
+🌐 Total general: 155.000,00 Bs
+📈 Porcentaje: 48.4%
+```
+
 ## Logs
 
 El script genera logs en:
@@ -152,6 +196,7 @@ El script genera logs en:
 - ✅ Logs detallados de todas las operaciones
 - ✅ Validación de datos antes de insertar
 - ✅ Registro de usuarios para auditoría
+- ✅ Totales personalizados por usuario
 
 ## Mantenimiento
 
@@ -179,6 +224,20 @@ GROUP BY usuario_nombre, usuario_username
 ORDER BY comprobantes DESC;
 ```
 
+### Consultar totales por usuario
+```sql
+-- En Supabase SQL Editor
+SELECT 
+    usuario_nombre,
+    usuario_username,
+    COUNT(*) as comprobantes,
+    SUM(brs) as total_brs
+FROM comprobantes 
+WHERE fecha = '14/07/2025'
+GROUP BY usuario_nombre, usuario_username
+ORDER BY total_brs DESC;
+```
+
 ## Notas Importantes
 
 1. **Independiente de la web**: Este bot funciona por separado
@@ -187,6 +246,8 @@ ORDER BY comprobantes DESC;
 4. **Formato boliviano**: Los montos deben estar en formato Bs (1.234,56)
 5. **Detección de usuarios**: Registra automáticamente quién envía cada comprobante
 6. **Auditoría completa**: Timestamp y usuario en cada registro
+7. **Totales personalizados**: Cada usuario ve su contribución individual
+8. **Porcentajes**: Muestra qué porcentaje del total representa cada usuario
 
 ## Soporte
 
@@ -199,6 +260,6 @@ Para problemas o mejoras:
 ---
 
 **Autor**: Sistema de Gestión Empresarial  
-**Versión**: 2.0  
+**Versión**: 3.0  
 **Fecha**: 2024  
-**Nuevas funcionalidades**: Detección de usuarios, estadísticas, auditoría completa 
+**Nuevas funcionalidades**: Detección de usuarios, estadísticas, auditoría completa, totales personalizados 
