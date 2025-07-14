@@ -110,7 +110,7 @@ class ComprobantesManager:
             self.montos = []
             self.suma_total = 0.0
     
-    async def subir_a_supabase(self, fecha, brs, operacion, context=None, update=None, es_duplicado=False):
+    async def subir_a_supabase(self, fecha, brs, operacion, context=None, update=None, es_duplicado=False, user_info=None):
         """
         Sube un comprobante a Supabase
         
@@ -121,6 +121,7 @@ class ComprobantesManager:
             context: Contexto de Telegram
             update: Update de Telegram
             es_duplicado (bool): Si es un duplicado permitido
+            user_info (dict): Información del usuario que envió el comprobante
             
         Returns:
             tuple: (success, hash_val)
@@ -135,6 +136,16 @@ class ComprobantesManager:
             "hash": hash_val,
             "es_duplicado": es_duplicado
         }
+        
+        # Agregar información del usuario si está disponible
+        if user_info:
+            data.update({
+                "usuario_id": user_info['id'],
+                "usuario_username": user_info['username'],
+                "usuario_nombre": user_info['first_name'],
+                "usuario_apellido": user_info['last_name'],
+                "timestamp_envio": user_info['timestamp']
+            })
         
         try:
             # Verificar si ya existe el hash
@@ -170,6 +181,16 @@ async def procesar_imagen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Procesa una imagen de comprobante enviada por Telegram"""
     if update.message.photo:
         try:
+            # Obtener información del usuario
+            user = update.effective_user
+            user_info = {
+                'id': user.id,
+                'username': user.username or 'Sin username',
+                'first_name': user.first_name or 'Sin nombre',
+                'last_name': user.last_name or '',
+                'timestamp': update.message.date.isoformat()
+            }
+            
             foto = update.message.photo[-1]
             file = await context.bot.get_file(foto.file_id)
             img_bytes = await file.download_as_bytearray()
@@ -177,15 +198,15 @@ async def procesar_imagen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # OCR
             texto = pytesseract.image_to_string(imagen, lang='spa')
-            logger.info("OCR recibido: %s", texto)
+            logger.info("OCR recibido de %s (@%s): %s", user_info['first_name'], user_info['username'], texto)
             
             monto, fecha, operacion = extraer_datos(texto)
             
             if monto is not None:
-                mensaje = f"Monto detectado: {formato_bs(monto)}"
+                mensaje = f"Monto detectado: {formato_bs(monto)}\nEnviado por: {user_info['first_name']} (@{user_info['username']})"
                 
                 if fecha and operacion:
-                    ok, hash_val = await manager.subir_a_supabase(fecha, monto, operacion, context, update)
+                    ok, hash_val = await manager.subir_a_supabase(fecha, monto, operacion, context, update, user_info)
                     if ok:
                         manager.suma_total += monto
                         manager.montos.append(monto)
@@ -196,7 +217,7 @@ async def procesar_imagen(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else:
                     mensaje += "\n(Advertencia: No se pudo extraer fecha u operación para Supabase)"
             else:
-                mensaje = "No se pudo detectar el monto en la imagen."
+                mensaje = f"No se pudo detectar el monto en la imagen.\nEnviado por: {user_info['first_name']} (@{user_info['username']})"
                 
             await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
             
@@ -237,15 +258,30 @@ async def denegar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=update.effective_chat.id, text="No hay comprobante pendiente para descartar.")
 
 async def detalle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Muestra el detalle de todos los montos del día"""
+    """Muestra el detalle de todos los montos del día con información del usuario"""
     hoy = datetime.date.today().strftime('%d/%m/%Y')
     try:
-        res = supabase.table("comprobantes").select("brs").eq("fecha", hoy).execute()
-        montos_todos = [float(item['brs']) for item in res.data]
+        res = supabase.table("comprobantes").select("brs,usuario_nombre,usuario_username,timestamp_envio").eq("fecha", hoy).execute()
+        montos_todos = res.data
         
         if montos_todos:
-            lista = '\n'.join([f"{i+1}. {formato_bs(m)}" for i, m in enumerate(montos_todos)])
-            mensaje = f"Listado de montos detectados (incluyendo duplicados):\n{lista}\n\nTotal: {formato_bs(sum(montos_todos))}"
+            lista = []
+            for i, item in enumerate(montos_todos):
+                monto = float(item['brs'])
+                usuario = item.get('usuario_nombre', 'Desconocido')
+                username = item.get('usuario_username', '')
+                timestamp = item.get('timestamp_envio', '')
+                
+                if username:
+                    usuario_info = f"{usuario} (@{username})"
+                else:
+                    usuario_info = usuario
+                
+                lista.append(f"{i+1}. {formato_bs(monto)} - {usuario_info}")
+            
+            lista_texto = '\n'.join(lista)
+            total = sum(float(item['brs']) for item in montos_todos)
+            mensaje = f"Listado de montos detectados (incluyendo duplicados):\n{lista_texto}\n\nTotal: {formato_bs(total)}"
         else:
             mensaje = "Aún no hay montos registrados."
             
@@ -288,6 +324,47 @@ async def total(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error al consultar total: {e}")
 
+async def estadisticas_usuarios(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Muestra estadísticas de comprobantes por usuario"""
+    hoy = datetime.date.today().strftime('%d/%m/%Y')
+    try:
+        res = supabase.table("comprobantes").select("brs,usuario_nombre,usuario_username").eq("fecha", hoy).execute()
+        montos_todos = res.data
+        
+        if montos_todos:
+            # Agrupar por usuario
+            usuarios = {}
+            for item in montos_todos:
+                monto = float(item['brs'])
+                usuario = item.get('usuario_nombre', 'Desconocido')
+                username = item.get('usuario_username', '')
+                
+                if usuario not in usuarios:
+                    usuarios[usuario] = {'total': 0, 'count': 0, 'username': username}
+                
+                usuarios[usuario]['total'] += monto
+                usuarios[usuario]['count'] += 1
+            
+            # Crear mensaje de estadísticas
+            stats = []
+            for usuario, data in usuarios.items():
+                if data['username']:
+                    usuario_info = f"{usuario} (@{data['username']})"
+                else:
+                    usuario_info = usuario
+                
+                stats.append(f"• {usuario_info}: {data['count']} comprobantes - {formato_bs(data['total'])}")
+            
+            stats_texto = '\n'.join(stats)
+            total_general = sum(data['total'] for data in usuarios.values())
+            mensaje = f"📊 Estadísticas por usuario ({hoy}):\n\n{stats_texto}\n\nTotal general: {formato_bs(total_general)}"
+        else:
+            mensaje = "Aún no hay comprobantes registrados hoy."
+            
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
+    except Exception as e:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error al consultar estadísticas: {e}")
+
 async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Muestra la ayuda con los comandos disponibles"""
     mensaje = """
@@ -295,15 +372,18 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Comandos disponibles:
 • Envía una foto de comprobante para procesarla automáticamente
-• /detalle - Mostrar listado de montos del día
+• /detalle - Mostrar listado de montos del día con usuarios
 • /total - Mostrar total con duplicados
 • /total_sin_duplicados - Mostrar total sin duplicados
 • /ingreso_manual <monto> - Ingresar monto manualmente
 • /permitir - Confirmar inserción de duplicado
 • /denegar - Rechazar inserción de duplicado
+• /estadisticas - Ver estadísticas por usuario
 • /ayuda - Mostrar esta ayuda
 
 Ejemplo: /ingreso_manual 1.234,56
+
+📝 Nota: El bot registra automáticamente quién envía cada comprobante.
 """
     await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
 
@@ -322,6 +402,7 @@ def main():
     app.add_handler(CommandHandler('denegar', denegar))
     app.add_handler(CommandHandler('total_sin_duplicados', total_sin_duplicados))
     app.add_handler(CommandHandler('total', total))
+    app.add_handler(CommandHandler('estadisticas', estadisticas_usuarios))
     app.add_handler(CommandHandler('ayuda', ayuda))
     app.add_handler(CommandHandler('start', ayuda))
     
