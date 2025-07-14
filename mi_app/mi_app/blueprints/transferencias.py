@@ -385,7 +385,7 @@ def asignar_pago():
             'monto_total': monto,
             'fecha_registro': fecha_hora
         }).execute()
-        
+
         if nuevo_pago.data:
             pago_id = nuevo_pago.data[0]['id']
         else:

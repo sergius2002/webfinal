@@ -46,9 +46,9 @@
         <option value="deuda">Con deuda</option>
         <option value="favor">Saldo a favor</option>
         <option value="cero">Sin saldo</option>
-      </select>
+        </select>
+      </div>
     </div>
-  </div>
   <div class="card shadow-lg">
     <div class="card-body">
       <div id="loading-indicator" class="text-center py-3" style="display: none;">
@@ -129,7 +129,7 @@
     th.sortable { cursor: pointer; user-select: none; }
     th.sortable .sort-arrow { font-size: 0.9em; margin-left: 2px; }
   </style>
-  <script>
+<script>
   // Variables globales
   let dashboardData = [];
   let currentFecha = '{{ fecha }}';
@@ -329,7 +329,7 @@
     // Volver a asignar el evento a los enlaces de cliente después de filtrar
     document.querySelectorAll('.cliente-link').forEach(link => {
       link.addEventListener('click', function(e) {
-        e.preventDefault();
+  e.preventDefault();
         const cliente = this.getAttribute('data-cliente');
         abrirModalCliente(cliente);
       });
@@ -460,23 +460,23 @@
     });
     
     toggleAuto.addEventListener('click', function() {
-      autoRefresh = !autoRefresh;
-      localStorage.setItem('dashboard_auto_refresh', autoRefresh);
+  autoRefresh = !autoRefresh;
+  localStorage.setItem('dashboard_auto_refresh', autoRefresh);
       
-      if (autoRefresh) {
-        this.innerHTML = '<i class="fas fa-pause"></i>';
-        this.title = 'Desactivar actualización automática';
+  if (autoRefresh) {
+    this.innerHTML = '<i class="fas fa-pause"></i>';
+    this.title = 'Desactivar actualización automática';
         iniciarAutoRefresh();
-      } else {
-        this.innerHTML = '<i class="fas fa-play"></i>';
-        this.title = 'Activar actualización automática';
-        if (refreshTimer) clearInterval(refreshTimer);
-      }
+  } else {
+    this.innerHTML = '<i class="fas fa-play"></i>';
+    this.title = 'Activar actualización automática';
+    if (refreshTimer) clearInterval(refreshTimer);
+  }
     });
 
     refreshInterval.addEventListener('change', function() {
       if (autoRefresh) {
-        if (refreshTimer) clearInterval(refreshTimer);
+  if (refreshTimer) clearInterval(refreshTimer);
         iniciarAutoRefresh();
       }
     });
@@ -515,11 +515,11 @@
      cargarDashboard();
      
      // Iniciar auto-refresh si está habilitado
-     if (autoRefresh) {
+  if (autoRefresh) {
        iniciarAutoRefresh();
      }
         });
-  </script>
+</script>
 </div>
 
 <!-- Modal de detalles del cliente -->

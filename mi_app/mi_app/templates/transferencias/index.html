@@ -24,7 +24,7 @@
           <i class="fas fa-filter me-2"></i>Filtros en Tiempo Real
         </div>
         <div class="card-body p-4">
-          <div class="row g-3">
+          <div class="row g-3 align-items-end">
             <div class="col-md-3">
               <label for="filtro-cliente" class="form-label" style="font-size:0.98rem; color:#333;">
                 <i class="fas fa-user me-1"></i>Cliente
@@ -58,6 +58,11 @@
                 <option value="asignado">Asignadas</option>
                 <option value="no-asignado">No asignadas</option>
               </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              <button id="btn-ocultar-empresas" class="btn btn-outline-dark w-100" type="button">
+                <i class="fas fa-eye-slash me-1"></i>Ocultar empresas
+              </button>
             </div>
           </div>
           <div class="row mt-3">
@@ -314,6 +319,41 @@
   </div>
 </div>
 
+<!-- Modal Ocultar Empresas -->
+<div class="modal fade" id="modalEmpresas" tabindex="-1" aria-labelledby="modalEmpresasLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalEmpresasLabel"><i class="fas fa-eye-slash me-2"></i>Empresas a ocultar</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-ocultar-empresas">
+          <div class="mb-2">
+            <small class="text-muted">Marca las empresas que NO quieres ver en la tabla:</small>
+          </div>
+          <div class="row">
+            {% for emp in empresas %}
+              {% if emp != "Todas" %}
+              <div class="col-6 mb-2">
+                <div class="form-check">
+                  <input class="form-check-input chk-empresa-ocultar" type="checkbox" value="{{ emp }}" id="chk-emp-{{ loop.index }}">
+                  <label class="form-check-label" for="chk-emp-{{ loop.index }}">{{ emp }}</label>
+                </div>
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-aplicar-ocultar-empresas">Aplicar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -474,9 +514,12 @@ $(document).ready(function(){
           toastr.success(response.message || 'Pago asignado correctamente.');
           var modal = bootstrap.Modal.getInstance(document.getElementById('modalAsignarPago'));
           modal.hide();
-          // Eliminar la fila de la transferencia asignada con animación
+          // Animación de resaltado antes de eliminar la fila
           var row = $('#row-' + transferId);
-          row.fadeOut(400, function() { $(this).remove(); });
+          row.addClass('resaltado-animado');
+          setTimeout(function() {
+            row.fadeOut(400, function() { $(this).remove(); });
+          }, 600);
         } else {
           toastr.error(response.message || 'Error al asignar el pago.');
         }
@@ -644,10 +687,15 @@ $(document).ready(function(){
     const filtroRut = $('#filtro-rut').val().toLowerCase();
     const filtroMonto = $('#filtro-monto').val().toLowerCase();
     const filtroAsignado = $('#filtro-asignado').val();
-    
     const filas = $('#tabla-transferencias tbody tr');
     let visibles = 0;
-    
+    let empresasOcultas = [];
+
+    // Obtener empresas a ocultar
+    $('.chk-empresa-ocultar:checked').each(function() {
+      empresasOcultas.push($(this).val().toLowerCase());
+    });
+
     filas.each(function() {
       const fila = $(this);
       const cliente = fila.data('cliente') || '';
@@ -656,6 +704,9 @@ $(document).ready(function(){
       const monto = fila.data('monto') || '';
       const asignado = fila.data('asignado') || '';
       
+      // Ocultar si la empresa está en la lista de ocultas
+      const ocultarEmpresa = empresasOcultas.includes(empresa);
+      
       // Aplicar filtros
       const coincideCliente = cliente.includes(filtroCliente);
       const coincideEmpresa = empresa.includes(filtroEmpresa);
@@ -663,7 +714,7 @@ $(document).ready(function(){
       const coincideMonto = monto.toString().includes(filtroMonto);
       const coincideAsignado = !filtroAsignado || asignado === filtroAsignado;
       
-      const mostrar = coincideCliente && coincideEmpresa && coincideRut && coincideMonto && coincideAsignado;
+      const mostrar = coincideCliente && coincideEmpresa && coincideRut && coincideMonto && coincideAsignado && !ocultarEmpresa;
       
       if (mostrar) {
         fila.show();
@@ -689,7 +740,7 @@ $(document).ready(function(){
     
     // Mostrar mensaje si no hay coincidencias
     let mensaje = $('#mensaje-no-coincidencias');
-    if (visibles === 0 && (filtroCliente || filtroEmpresa || filtroRut || filtroMonto || filtroAsignado)) {
+    if (visibles === 0 && (filtroCliente || filtroEmpresa || filtroRut || filtroMonto || filtroAsignado || empresasOcultas.length > 0)) {
       if (mensaje.length === 0) {
         mensaje = $('<tr id="mensaje-no-coincidencias"><td colspan="7" class="text-center text-danger"><i class="fas fa-search me-2"></i>No hay transferencias que coincidan con los filtros aplicados.</td></tr>');
         $('#tabla-transferencias tbody').append(mensaje);
@@ -783,12 +834,44 @@ $(document).ready(function(){
   
   // Inicializar filtros
   aplicarFiltrosTiempoReal();
+
+  // Abrir modal de ocultar empresas
+  $('#btn-ocultar-empresas').on('click', function() {
+    $('#modalEmpresas').modal('show');
+  });
+
+  // Guardar empresas a ocultar y aplicar filtro
+  let empresasOcultas = [];
+  $('#btn-aplicar-ocultar-empresas').on('click', function() {
+    empresasOcultas = [];
+    $('.chk-empresa-ocultar:checked').each(function() {
+      empresasOcultas.push($(this).val().toLowerCase());
+    });
+    $('#modalEmpresas').modal('hide');
+    aplicarFiltrosTiempoReal();
+  });
 });
 </script>
 
 <style>
   .table-striped > tbody > tr:nth-of-type(odd) {
     background-color: #f8f9fa;
+  }
+  .table-striped > tbody > tr:nth-of-type(even) {
+    background-color: #f3f6fa;
+  }
+  .table-striped > tbody > tr:hover {
+    background-color: #e3f0ff !important;
+    transition: background 0.2s;
+  }
+  .resaltado-animado {
+    animation: highlight-row 0.6s ease-in-out;
+    background-color: #ffe082 !important;
+  }
+  @keyframes highlight-row {
+    0% { background-color: #fffde7; }
+    50% { background-color: #ffe082; }
+    100% { background-color: #ffe082; }
   }
   .table th, .table td {
     vertical-align: middle;
