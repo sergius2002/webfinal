@@ -721,9 +721,64 @@ $(document).ready(function(){
     }, 200);
   });
   
-  // Botón exportar (placeholder por ahora)
+  // Botón exportar (ahora funcional)
   $('#btn-exportar-csv').on('click', function() {
-    toastr.info('Funcionalidad de exportación será implementada en el siguiente paso.');
+    // Obtener fecha y hora actual para el nombre del archivo
+    const now = new Date();
+    const pad = n => n.toString().padStart(2, '0');
+    const fechaStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+    const nombreArchivo = `transferencias_filtradas_${fechaStr}.csv`;
+
+    // Seleccionar solo las filas visibles
+    const filas = $('#tabla-transferencias tbody tr:visible').not('#mensaje-no-coincidencias');
+    if (filas.length === 0) {
+      toastr.warning('No hay transferencias para exportar.');
+      return;
+    }
+
+    // Encabezados
+    const headers = [
+      'Cliente', 'Monto', 'Empresa', 'RUT', 'Fecha', 'Fecha Detec', 'Estado Asignación'
+    ];
+    let csv = '\uFEFF' + headers.join(',') + '\n'; // BOM UTF-8
+
+    // Recorrer filas visibles y extraer datos
+    filas.each(function() {
+      const tds = $(this).find('td');
+      const cliente = $(tds[0]).text().replace(/\s+/g, ' ').trim();
+      const monto = $(tds[1]).text().replace(/\s+/g, '').replace(/\./g, '').replace(/\u00a0/g, '').replace(/\$/g, '').replace(/,/g, '');
+      const empresa = $(tds[2]).text().replace(/\s+/g, ' ').trim();
+      const rut = $(tds[3]).text().replace(/\s+/g, '').trim();
+      const fecha = $(tds[4]).text().replace(/\s+/g, ' ').trim();
+      const fechaDetec = $(tds[5]).text().replace(/\s+/g, ' ').trim();
+      // Estado asignación
+      const asignado = $(this).data('asignado') === 'asignado' ? 'Asignada' : 'No asignada';
+      // Construir línea CSV
+      const row = [cliente, monto, empresa, rut, fecha, fechaDetec, asignado].map(v => '"' + v.replace(/"/g, '""') + '"').join(',');
+      csv += row + '\n';
+    });
+
+    // Descargar el archivo
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (navigator.msSaveBlob) { // IE 10+
+      navigator.msSaveBlob(blob, nombreArchivo);
+    } else {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', nombreArchivo);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+    // Feedback visual
+    $(this).addClass('btn-success').removeClass('btn-outline-success');
+    $(this).html('<i class="fas fa-check"></i> Exportado');
+    setTimeout(() => {
+      $(this).removeClass('btn-success').addClass('btn-outline-success');
+      $(this).html('<i class="fas fa-file-excel me-1"></i>Exportar');
+    }, 1200);
   });
   
   // Inicializar filtros
