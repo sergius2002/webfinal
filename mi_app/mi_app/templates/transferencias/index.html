@@ -16,62 +16,74 @@
     </a>
   </div>
 
-  <!-- Filtros y Ordenamiento en dos columnas -->
+  <!-- Filtros en tiempo real -->
   <div class="row mb-4">
-    <div class="col-12 d-flex justify-content-center">
-      <div class="card shadow-lg" style="max-width: 420px; width:100%; border-radius: 18px; background: #fff;">
-        <div class="card-header" style="font-size:1.15rem; color:#0a2c53; background:#f4f6fa; border-radius: 18px 18px 0 0; font-weight:600; letter-spacing:0.5px;">Filtros</div>
+    <div class="col-12">
+      <div class="card shadow-lg" style="border-radius: 18px; background: #fff;">
+        <div class="card-header" style="font-size:1.15rem; color:#0a2c53; background:#f4f6fa; border-radius: 18px 18px 0 0; font-weight:600; letter-spacing:0.5px;">
+          <i class="fas fa-filter me-2"></i>Filtros en Tiempo Real
+        </div>
         <div class="card-body p-4">
-          <form action="{{ url_for('transferencias.index') }}" method="get" id="filtros-form">
-            <input type="hidden" name="page" value="1" id="page-reset">
-            <div class="mb-3">
-              <label for="cliente" class="form-label" style="font-size:0.98rem; color:#333;">Cliente</label>
-              <select name="cliente" id="cliente" class="form-select select-custom" style="border-radius:10px;">
-                <option value="">Seleccione un cliente</option>
-                {% for client in cliente %}
-                  <option value="{{ client }}" {% if client in request.args.getlist('cliente') %}selected{% endif %}>{{ client }}</option>
-                {% endfor %}
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label for="filtro-cliente" class="form-label" style="font-size:0.98rem; color:#333;">
+                <i class="fas fa-user me-1"></i>Cliente
+              </label>
+              <input type="text" id="filtro-cliente" class="form-control" placeholder="Buscar cliente..." style="border-radius:10px;">
+            </div>
+            <div class="col-md-3">
+              <label for="filtro-empresa" class="form-label" style="font-size:0.98rem; color:#333;">
+                <i class="fas fa-building me-1"></i>Empresa
+              </label>
+              <input type="text" id="filtro-empresa" class="form-control" placeholder="Buscar empresa..." style="border-radius:10px;">
+            </div>
+            <div class="col-md-2">
+              <label for="filtro-rut" class="form-label" style="font-size:0.98rem; color:#333;">
+                <i class="fas fa-id-card me-1"></i>RUT
+              </label>
+              <input type="text" id="filtro-rut" class="form-control" placeholder="Buscar RUT..." style="border-radius:10px;">
+            </div>
+            <div class="col-md-2">
+              <label for="filtro-monto" class="form-label" style="font-size:0.98rem; color:#333;">
+                <i class="fas fa-dollar-sign me-1"></i>Monto
+              </label>
+              <input type="text" id="filtro-monto" class="form-control" placeholder="Buscar monto..." style="border-radius:10px;">
+            </div>
+            <div class="col-md-2">
+              <label for="filtro-asignado" class="form-label" style="font-size:0.98rem; color:#333;">
+                <i class="fas fa-check-circle me-1"></i>Estado
+              </label>
+              <select id="filtro-asignado" class="form-select" style="border-radius:10px;">
+                <option value="">Todos</option>
+                <option value="asignado">Asignadas</option>
+                <option value="no-asignado">No asignadas</option>
               </select>
             </div>
-            <div class="mb-3">
-              <label for="empresa" class="form-label" style="font-size:0.98rem; color:#333;">Empresas</label>
-              <small class="text-muted d-block mb-2">Haz clic en cada empresa que desees seleccionar. Puedes seleccionar hasta 5 empresas.</small>
-              <select name="empresa" id="empresa" class="form-select select-custom" multiple data-placeholder="Seleccione una o más empresas" style="border-radius:10px;">
-                <option value="">Todas</option>
-                {% for emp in empresas %}
-                  {% if emp != "Todas" %}
-                    <option value="{{ emp }}" {% if emp in request.args.getlist('empresa') %}selected{% endif %}>{{ emp }}</option>
-                  {% endif %}
-                {% endfor %}
-              </select>
+          </div>
+          <div class="row mt-3">
+            <div class="col-12 d-flex justify-content-between align-items-center">
+              <div class="d-flex gap-2">
+                <button id="btn-limpiar-filtros" class="btn btn-outline-secondary" type="button" title="Limpiar filtros">
+                  <i class="fas fa-eraser me-1"></i>Limpiar filtros
+                </button>
+                <span id="contador-resultados" class="badge bg-info align-self-center" style="font-size:0.9rem;">
+                  {{ transfers|length }} transferencias
+                </span>
+              </div>
+              <div class="d-flex gap-2">
+                <button id="btn-exportar-csv" class="btn btn-outline-success" type="button" title="Exportar a Excel">
+                  <i class="fas fa-file-excel me-1"></i>Exportar
+                </button>
+              </div>
             </div>
-            <div class="mb-3">
-              <label for="rut" class="form-label" style="font-size:0.98rem; color:#333;">Rut</label>
-              <input type="text" name="rut" id="rut" class="form-control" placeholder="Ej: 12.345.678-9" value="{{ request.args.get('rut','') }}" style="border-radius:10px;">
-            </div>
-            <div class="mb-3">
-              <label for="monto" class="form-label" style="font-size:0.98rem; color:#333;">Monto</label>
-              <input type="text" name="monto" id="monto" class="form-control" placeholder="Ej: 100000" value="{{ request.args.get('monto','') }}" style="border-radius:10px;">
-            </div>
-            <div class="mb-3">
-              <label for="verificada" class="form-label" style="font-size:0.98rem; color:#333;">Estado</label>
-              <select name="verificada" id="verificada" class="form-select" style="border-radius:10px;">
-                <option value="">Todo</option>
-                <option value="true" {% if request.args.get('verificada')=='true' %}selected{% endif %}>Verificada</option>
-                <option value="false" {% if request.args.get('verificada')=='false' %}selected{% endif %}>No verificada</option>
-              </select>
-            </div>
-            <div class="d-flex justify-content-end mt-3">
-              <button type="submit" class="btn btn-primary px-4 py-2" style="border-radius:10px; font-weight:600;">Aplicar filtros</button>
-            </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Tabla de resultados -->
-  <table class="table table-striped mt-4">
+  <table class="table table-striped mt-4" id="tabla-transferencias">
     <thead class="sticky-header">
       <tr>
         <th>Cliente</th>
@@ -88,13 +100,18 @@
         <tr><td colspan="7" class="text-center text-muted">No hay transferencias para mostrar.</td></tr>
       {% else %}
       {% for t in transfers %}
-      <tr id="row-{{ t.id }}">
-        <td>{{ t.cliente }}</td>
-        <td class="text-end">{{ t.monto | format_monto }}</td>
-        <td>{{ t.empresa }}</td>
-        <td>{{ t.rut }}</td>
-        <td>{{ t.fecha | format_date }}</td>
-        <td>{{ t.fecha_detec | format_fecha_detec }}</td>
+      <tr id="row-{{ t.id }}" 
+          data-cliente="{{ t.cliente|lower }}" 
+          data-empresa="{{ t.empresa|lower }}" 
+          data-rut="{{ t.rut|lower }}" 
+          data-monto="{{ t.monto }}" 
+          data-asignado="{{ 'asignado' if t.asignado else 'no-asignado' }}">
+        <td class="td-cliente">{{ t.cliente }}</td>
+        <td class="text-end td-monto">{{ t.monto | format_monto }}</td>
+        <td class="td-empresa">{{ t.empresa }}</td>
+        <td class="td-rut">{{ t.rut }}</td>
+        <td class="td-fecha">{{ t.fecha | format_date }}</td>
+        <td class="td-fecha-detec">{{ t.fecha_detec | format_fecha_detec }}</td>
         <td>
           {% if t.manual %}
             <a href="{{ url_for('transferencias.editar_transferencia', transfer_id=t.id) }}" class="btn btn-sm btn-warning">Editar</a>
@@ -617,6 +634,100 @@ $(document).ready(function(){
     $('#previewArchivo').hide();
     $('#btnSubirArchivo').prop('disabled', true);
   });
+
+  // ===== FILTROS EN TIEMPO REAL =====
+  
+  // Función para aplicar filtros en tiempo real
+  function aplicarFiltrosTiempoReal() {
+    const filtroCliente = $('#filtro-cliente').val().toLowerCase();
+    const filtroEmpresa = $('#filtro-empresa').val().toLowerCase();
+    const filtroRut = $('#filtro-rut').val().toLowerCase();
+    const filtroMonto = $('#filtro-monto').val().toLowerCase();
+    const filtroAsignado = $('#filtro-asignado').val();
+    
+    const filas = $('#tabla-transferencias tbody tr');
+    let visibles = 0;
+    
+    filas.each(function() {
+      const fila = $(this);
+      const cliente = fila.data('cliente') || '';
+      const empresa = fila.data('empresa') || '';
+      const rut = fila.data('rut') || '';
+      const monto = fila.data('monto') || '';
+      const asignado = fila.data('asignado') || '';
+      
+      // Aplicar filtros
+      const coincideCliente = cliente.includes(filtroCliente);
+      const coincideEmpresa = empresa.includes(filtroEmpresa);
+      const coincideRut = rut.includes(filtroRut);
+      const coincideMonto = monto.toString().includes(filtroMonto);
+      const coincideAsignado = !filtroAsignado || asignado === filtroAsignado;
+      
+      const mostrar = coincideCliente && coincideEmpresa && coincideRut && coincideMonto && coincideAsignado;
+      
+      if (mostrar) {
+        fila.show();
+        visibles++;
+        
+        // Resaltar texto buscado en cliente
+        if (filtroCliente) {
+          const tdCliente = fila.find('.td-cliente');
+          const textoOriginal = tdCliente.text();
+          const textoResaltado = textoOriginal.replace(
+            new RegExp(filtroCliente, 'gi'),
+            match => `<mark style="background-color: #ffeb3b; padding: 1px 2px; border-radius: 2px;">${match}</mark>`
+          );
+          tdCliente.html(textoResaltado);
+        }
+      } else {
+        fila.hide();
+      }
+    });
+    
+    // Actualizar contador
+    $('#contador-resultados').text(`${visibles} transferencias`);
+    
+    // Mostrar mensaje si no hay coincidencias
+    let mensaje = $('#mensaje-no-coincidencias');
+    if (visibles === 0 && (filtroCliente || filtroEmpresa || filtroRut || filtroMonto || filtroAsignado)) {
+      if (mensaje.length === 0) {
+        mensaje = $('<tr id="mensaje-no-coincidencias"><td colspan="7" class="text-center text-danger"><i class="fas fa-search me-2"></i>No hay transferencias que coincidan con los filtros aplicados.</td></tr>');
+        $('#tabla-transferencias tbody').append(mensaje);
+      }
+    } else {
+      mensaje.remove();
+    }
+  }
+  
+  // Event listeners para filtros en tiempo real
+  $('#filtro-cliente, #filtro-empresa, #filtro-rut, #filtro-monto').on('input', function() {
+    aplicarFiltrosTiempoReal();
+  });
+  
+  $('#filtro-asignado').on('change', function() {
+    aplicarFiltrosTiempoReal();
+  });
+  
+  // Botón limpiar filtros
+  $('#btn-limpiar-filtros').on('click', function() {
+    $('#filtro-cliente, #filtro-empresa, #filtro-rut, #filtro-monto').val('');
+    $('#filtro-asignado').val('');
+    aplicarFiltrosTiempoReal();
+    
+    // Efecto visual de feedback
+    $(this).addClass('btn-secondary').removeClass('btn-outline-secondary');
+    setTimeout(() => {
+      $(this).removeClass('btn-secondary').addClass('btn-outline-secondary');
+    }, 200);
+  });
+  
+  // Botón exportar (placeholder por ahora)
+  $('#btn-exportar-csv').on('click', function() {
+    toastr.info('Funcionalidad de exportación será implementada en el siguiente paso.');
+  });
+  
+  // Inicializar filtros
+  aplicarFiltrosTiempoReal();
 });
 </script>
 
@@ -638,6 +749,46 @@ $(document).ready(function(){
   }
   .text-end {
     text-align: right !important;
+  }
+  
+  /* Animaciones para filtros */
+  .card {
+    transition: all 0.3s ease;
+  }
+  
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+  }
+  
+  /* Efectos visuales para botones */
+  .btn {
+    transition: all 0.2s ease;
+  }
+  
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+  
+  /* Resaltado de búsqueda */
+  mark {
+    animation: highlight 0.3s ease-in-out;
+  }
+  
+  @keyframes highlight {
+    0% { background-color: #fff3cd; }
+    100% { background-color: #ffeb3b; }
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .card-body {
+      padding: 1rem;
+    }
+    
+    .row.g-3 > div {
+      margin-bottom: 1rem;
+    }
   }
 </style>
 {% endblock %}
