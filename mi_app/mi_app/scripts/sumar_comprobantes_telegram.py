@@ -74,17 +74,54 @@ def extraer_datos(texto):
     Returns:
         tuple: (monto, fecha, operacion)
     """
-    # Buscar monto en formato boliviano
-    monto_match = re.search(r'([\d\.]+,\d{2})\s*[Bb][sS]', texto, re.MULTILINE)
-    monto = float(monto_match.group(1).replace('.', '').replace(',', '.')) if monto_match else None
+    # Buscar monto en formato boliviano (más flexible)
+    monto_patterns = [
+        r'([\d\.]+,\d{2})\s*[Bb][sS]',  # 5,600.00 Bs
+        r'([\d\.]+,\d{2})\s*[Bb][oO][Ll][Ii][Vv][Ii][Aa][Nn][Oo][Ss]',  # 5,600.00 Bolivianos
+        r'([\d\.]+,\d{2})',  # Solo el número
+        r'([\d,]+\.\d{2})',  # Formato alternativo
+    ]
     
-    # Buscar fecha
-    fecha_match = re.search(r'Fecha[:\s]+([\d/]+)', texto)
-    fecha = fecha_match.group(1) if fecha_match else ""
+    monto = None
+    for pattern in monto_patterns:
+        monto_match = re.search(pattern, texto, re.MULTILINE | re.IGNORECASE)
+        if monto_match:
+            try:
+                monto_str = monto_match.group(1).replace('.', '').replace(',', '.')
+                monto = float(monto_str)
+                break
+            except ValueError:
+                continue
     
-    # Buscar número de operación
-    operacion_match = re.search(r'Operaci[oó]n[:\s]+([\d]+)', texto)
-    operacion = operacion_match.group(1) if operacion_match else ""
+    # Buscar fecha (más flexible)
+    fecha_patterns = [
+        r'Fecha[:\s]+([\d/]+)',  # Fecha: 14/07/2025
+        r'([\d]{1,2}/[\d]{1,2}/[\d]{4})',  # 14/07/2025
+        r'([\d]{1,2}-[\d]{1,2}-[\d]{4})',  # 14-07-2025
+        r'([\d]{1,2}\.[\d]{1,2}\.[\d]{4})',  # 14.07.2025
+    ]
+    
+    fecha = ""
+    for pattern in fecha_patterns:
+        fecha_match = re.search(pattern, texto, re.MULTILINE | re.IGNORECASE)
+        if fecha_match:
+            fecha = fecha_match.group(1)
+            break
+    
+    # Buscar número de operación (más flexible)
+    operacion_patterns = [
+        r'Operaci[oó]n[:\s]+([\d]+)',  # Operación: 123456789
+        r'([\d]{10,})',  # Números largos (10+ dígitos)
+        r'Ref[:\s]+([\d]+)',  # Ref: 123456789
+        r'ID[:\s]+([\d]+)',  # ID: 123456789
+    ]
+    
+    operacion = ""
+    for pattern in operacion_patterns:
+        operacion_match = re.search(pattern, texto, re.MULTILINE | re.IGNORECASE)
+        if operacion_match:
+            operacion = operacion_match.group(1)
+            break
     
     return monto, fecha, operacion
 
@@ -196,8 +233,18 @@ async def procesar_imagen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             img_bytes = await file.download_as_bytearray()
             imagen = Image.open(BytesIO(img_bytes))
             
-            # OCR
-            texto = pytesseract.image_to_string(imagen, lang='spa')
+            # Mejorar calidad de imagen para OCR
+            # Convertir a escala de grises
+            imagen_gris = imagen.convert('L')
+            
+            # Aumentar contraste
+            from PIL import ImageEnhance
+            enhancer = ImageEnhance.Contrast(imagen_gris)
+            imagen_contraste = enhancer.enhance(2.0)
+            
+            # OCR con configuración optimizada
+            config = '--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚáéíóúÑñ.,:()/- '
+            texto = pytesseract.image_to_string(imagen_contraste, lang='spa', config=config)
             logger.info("OCR recibido de %s (@%s): %s", user_info['first_name'], user_info['username'], texto)
             
             monto, fecha, operacion = extraer_datos(texto)
