@@ -379,17 +379,17 @@ def asignar_pago():
         fecha_transferencia = transferencia.get('fecha')
 
         # SIEMPRE crear un nuevo pago, aunque ya exista otro igual
-        fecha_hora = datetime.now(chile_tz).isoformat()
-        nuevo_pago = supabase.table('pagos_realizados').insert({
-            'cliente': cliente,
-            'monto_total': monto,
-            'fecha_registro': fecha_hora
-        }).execute()
-
-        if nuevo_pago.data:
-            pago_id = nuevo_pago.data[0]['id']
-        else:
-            return jsonify({'success': False, 'message': 'Error al crear el pago.'}), 500
+            fecha_hora = datetime.now(chile_tz).isoformat()
+            nuevo_pago = supabase.table('pagos_realizados').insert({
+                'cliente': cliente,
+                'monto_total': monto,
+                'fecha_registro': fecha_hora
+            }).execute()
+            
+            if nuevo_pago.data:
+                pago_id = nuevo_pago.data[0]['id']
+            else:
+                return jsonify({'success': False, 'message': 'Error al crear el pago.'}), 500
 
         # Obtener el usuario actual de la sesión
         usuario = session.get('email', 'desconocido')

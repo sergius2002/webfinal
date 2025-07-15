@@ -75,136 +75,119 @@
   </div>
   <!-- Estilos del ticker se encuentran en static/css/styles.css -->
 
-  <!-- Card que envuelve el formulario de filtrado y la tabla -->
-  <div class="card shadow-lg">
+  <!-- Filtros en tiempo real -->
+  <div class="card shadow-sm mb-3">
     <div class="card-header bg-light">
-      <h5 class="mb-0">
-        <i class="fas fa-filter me-1"></i>Filtros y Resultados
-      </h5>
+      <div class="d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+          <i class="fas fa-filter me-1"></i>Filtros en tiempo real
+        </h6>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-primary" id="contador-resultados">
+            {{ pedidos|length }} pedidos
+          </span>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-limpiar-filtros">
+            <i class="fas fa-eraser me-1"></i>Limpiar
+          </button>
+        </div>
+      </div>
     </div>
     <div class="card-body">
-      <div class="row">
-        <!-- Columna izquierda: Formulario de Filtrado (más angosta) -->
-        <div class="col-md-3">
-          <form action="{{ url_for('pedidos.index') }}" method="get" id="filtro-form">
-            <div class="mb-3">
-              <label for="cliente_pedidos" class="form-label">
-                <i class="fas fa-user me-1"></i>Cliente
-              </label>
-              <select name="cliente" id="cliente_pedidos" class="form-select">
-                <option value="">Seleccione cliente</option>
-                {% for client in cliente %}
-                  <option value="{{ client }}" {% if client in request.args.getlist('cliente') %}selected{% endif %}>
-                    {{ client }}
-                  </option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="mb-3">
-              <label for="fecha" class="form-label">
-                <i class="fas fa-calendar me-1"></i>Fecha
-              </label>
-              <input type="date" name="fecha" id="fecha" class="form-control" placeholder="Fecha (YYYY-MM-DD)" value="{{ request.args.get('fecha', current_date) }}">
-            </div>
-            <div class="mb-3">
-              <label for="brs_display" class="form-label">
-                <i class="fas fa-coins me-1"></i>BRS
-              </label>
-              <!-- Campo visible para el usuario -->
-              <input type="text" id="brs_display" class="form-control" placeholder="BRS" value="{{ request.args.get('brs','') }}">
-              <!-- Campo oculto real para el formulario -->
-              <input type="hidden" id="brs" name="brs" value="{{ request.args.get('brs','') }}">
-            </div>
-            <div class="mb-3">
-              <label for="clp_display" class="form-label">
-                <i class="fas fa-calculator me-1"></i>CLP
-              </label>
-              <!-- Campo visible para el usuario -->
-              <input type="text" id="clp_display" class="form-control" placeholder="CLP" value="{{ request.args.get('clp','') }}">
-              <!-- Campo oculto real para el formulario -->
-              <input type="hidden" id="clp" name="clp" value="{{ request.args.get('clp','') }}">
-            </div>
-            <div class="mb-3">
-              <label for="cuenta_pedidos" class="form-label">
-                <i class="fas fa-university me-1"></i>Cuenta Corriente
-              </label>
-              <select name="cuenta_id" id="cuenta_pedidos" class="form-select">
-                <option value="">Todas las cuentas</option>
-                {% for cuenta in cuentas_activas %}
-                  <option value="{{ cuenta.id }}" {% if cuenta.id|string == request.args.get('cuenta_id', '') %}selected{% endif %}>
-                    {{ cuenta.numero_cuenta }} - {{ cuenta.nombre_titular }}
-                  </option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="mb-3">
-              <button type="submit" class="btn btn-primary w-100">
-                <i class="fas fa-search me-1"></i>Filtrar
-              </button>
-            </div>
-            <div class="mb-3">
-              <button type="button" class="btn btn-outline-secondary w-100" id="btn-limpiar-filtros">
-                <i class="fas fa-eraser me-1"></i>Limpiar Filtros
-              </button>
-            </div>
-          </form>
+      <div class="row g-3">
+        <div class="col-md-2">
+          <label for="filtro-cliente" class="form-label small text-muted">
+            <i class="fas fa-user me-1"></i>Cliente
+          </label>
+          <input type="text" class="form-control form-control-sm" id="filtro-cliente" placeholder="Buscar cliente...">
         </div>
-        <!-- Columna derecha: Tabla de Pedidos (más ancha) -->
-        <div class="col-md-9">
-          <div class="table-responsive">
-            <table class="table table-striped table-hover">
-              <thead class="table-dark">
-                <tr>
-                  <th><i class="fas fa-user me-1"></i>Cliente</th>
-                  <th><i class="fas fa-calendar me-1"></i>Fecha</th>
-                  <th><i class="fas fa-coins me-1"></i>BRS</th>
-                  <th><i class="fas fa-percentage me-1"></i>Tasa</th>
-                  <th><i class="fas fa-calculator me-1"></i>CLP</th>
-                  <th><i class="fas fa-university me-1"></i>Cuenta</th>
-                  <th><i class="fas fa-money-bill-wave me-1"></i>Comisión</th>
-                  <th><i class="fas fa-cogs me-1"></i>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for p in pedidos %}
-                <tr>
-                  <td><strong>{{ p.cliente }}</strong></td>
-                  <td>{{ p.fecha | format_date }}</td>
-                  <td class="text-end">{{ p.brs | format_int }}</td>
-                  <td class="text-end">{{ p.tasa | format_decimal5 | replace('.', ',') }}</td>
-                  <td class="text-end fw-bold">{{ p.clp | format_int }}</td>
-                  <td>
-                    {% if p.cuentas_activas and p.cuentas_activas.numero_cuenta %}
-                      ****{{ (p.cuentas_activas.numero_cuenta|string)[-4:] }}
-                    {% else %}
-                      <span class="text-muted">Sin cuenta</span>
-                    {% endif %}
-                  </td>
-                  <td class="text-center">{{ p.comision | default(0) | format_int }}</td>
-                  <td>
-                    <div class="btn-group" role="group">
-                      <a href="{{ url_for('pedidos.editar', pedido_id=p.id) }}" class="btn btn-sm btn-primary" title="Editar">
-                        <i class="fas fa-edit"></i>
-                      </a>
-                      <button type="button" class="btn btn-sm btn-danger" title="Eliminar" 
-                              onclick="confirmarEliminacion({{ p.id }}, '{{ p.cliente }}')">
-                        <i class="fas fa-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+        <div class="col-md-2">
+          <label for="filtro-brs" class="form-label small text-muted">
+            <i class="fas fa-coins me-1"></i>BRS
+          </label>
+          <input type="text" class="form-control form-control-sm" id="filtro-brs" placeholder="Buscar BRS...">
+        </div>
+        <div class="col-md-2">
+          <label for="filtro-clp" class="form-label small text-muted">
+            <i class="fas fa-calculator me-1"></i>CLP
+          </label>
+          <input type="text" class="form-control form-control-sm" id="filtro-clp" placeholder="Buscar CLP...">
+        </div>
+        <div class="col-md-2">
+          <label for="filtro-fecha" class="form-label small text-muted">
+            <i class="fas fa-calendar me-1"></i>Fecha
+          </label>
+          <input type="text" class="form-control form-control-sm" id="filtro-fecha" placeholder="Buscar fecha...">
+        </div>
+        <div class="col-md-2">
+          <label for="filtro-cuenta" class="form-label small text-muted">
+            <i class="fas fa-university me-1"></i>Cuenta Corriente
+          </label>
+          <input type="text" class="form-control form-control-sm" id="filtro-cuenta" placeholder="Buscar cuenta...">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla de Pedidos -->
+  <div class="card shadow-lg">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" id="tabla-pedidos">
+          <thead class="table-dark">
+            <tr>
+              <th><i class="fas fa-user me-1"></i>Cliente</th>
+              <th><i class="fas fa-calendar me-1"></i>Fecha</th>
+              <th><i class="fas fa-coins me-1"></i>BRS</th>
+              <th><i class="fas fa-percentage me-1"></i>Tasa</th>
+              <th><i class="fas fa-calculator me-1"></i>CLP</th>
+              <th><i class="fas fa-university me-1"></i>Cuenta</th>
+              <th><i class="fas fa-money-bill-wave me-1"></i>Comisión</th>
+              <th><i class="fas fa-cogs me-1"></i>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in pedidos %}
+            <tr class="fila-pedido" 
+                data-cliente="{{ p.cliente|lower }}" 
+                data-brs="{{ p.brs }}" 
+                data-clp="{{ p.clp }}" 
+                data-fecha="{{ p.fecha | format_date|lower }}" 
+                data-cuenta="{% if p.cuentas_activas and p.cuentas_activas.numero_cuenta %}****{{ (p.cuentas_activas.numero_cuenta|string)[-4:] }}{% else %}sin cuenta{% endif %}">
+              <td><strong>{{ p.cliente }}</strong></td>
+              <td>{{ p.fecha | format_date }}</td>
+              <td class="text-end">{{ p.brs | format_int }}</td>
+              <td class="text-end">{{ p.tasa | format_decimal5 | replace('.', ',') }}</td>
+              <td class="text-end fw-bold">{{ p.clp | format_int }}</td>
+              <td>
+                {% if p.cuentas_activas and p.cuentas_activas.numero_cuenta %}
+                  ****{{ (p.cuentas_activas.numero_cuenta|string)[-4:] }}
                 {% else %}
-                <tr>
-                  <td colspan="7" class="text-center text-muted py-4">
-                    <i class="fas fa-inbox fa-2x mb-2"></i>
-                    <p class="mb-0">No se encontraron pedidos con los filtros aplicados</p>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  <span class="text-muted">Sin cuenta</span>
+                {% endif %}
+              </td>
+              <td class="text-center">{{ p.comision | default(0) | format_int }}</td>
+              <td>
+                <div class="btn-group" role="group">
+                  <a href="{{ url_for('pedidos.editar', pedido_id=p.id) }}" class="btn btn-sm btn-primary" title="Editar">
+                    <i class="fas fa-edit"></i>
+                  </a>
+                  <button type="button" class="btn btn-sm btn-danger" title="Eliminar" 
+                          onclick="confirmarEliminacion({{ p.id }}, '{{ p.cliente }}')">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="text-center text-muted py-4">
+                <i class="fas fa-inbox fa-2x mb-2"></i>
+                <p class="mb-0">No se encontraron pedidos</p>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -234,73 +217,98 @@
   </div>
 </div>
 
-<!-- Script para inicializar Select2 en el select de clientes -->
+<!-- Script para filtros en tiempo real -->
 <script>
 $(document).ready(function(){
-  $('#cliente_pedidos').select2({
-    width: '100%',
-    placeholder: 'Seleccione un cliente',
-    allowClear: true,
-    minimumResultsForSearch: 0
-  });
-  
-  $('#cuenta_pedidos').select2({
-    width: '100%',
-    placeholder: 'Seleccione una cuenta',
-    allowClear: true,
-    minimumResultsForSearch: 0
-  });
-  
-  // Formateo automático para campos numéricos
-  $('#brs_display').on('input', function() {
-    let value = this.value.replace(/[^\d]/g, '');
-    if (value) {
-      this.value = parseInt(value, 10).toLocaleString('de-DE');
-      $('#brs').val(value);
+  // Función para aplicar filtros
+  function aplicarFiltros() {
+    const filtroCliente = $('#filtro-cliente').val().toLowerCase();
+    const filtroBrs = $('#filtro-brs').val().toLowerCase();
+    const filtroClp = $('#filtro-clp').val().toLowerCase();
+    const filtroFecha = $('#filtro-fecha').val().toLowerCase();
+    const filtroCuenta = $('#filtro-cuenta').val().toLowerCase();
+    
+    let filasVisibles = 0;
+    
+    $('.fila-pedido').each(function() {
+      const $fila = $(this);
+      const cliente = $fila.data('cliente');
+      const brs = $fila.data('brs').toString();
+      const clp = $fila.data('clp').toString();
+      const fecha = $fila.data('fecha');
+      const cuenta = $fila.data('cuenta');
+      
+      const coincideCliente = !filtroCliente || cliente.includes(filtroCliente);
+      const coincideBrs = !filtroBrs || brs.includes(filtroBrs);
+      const coincideClp = !filtroClp || clp.includes(filtroClp);
+      const coincideFecha = !filtroFecha || fecha.includes(filtroFecha);
+      const coincideCuenta = !filtroCuenta || cuenta.includes(filtroCuenta);
+      
+      if (coincideCliente && coincideBrs && coincideClp && coincideFecha && coincideCuenta) {
+        $fila.show();
+        filasVisibles++;
+        
+        // Resaltar coincidencias
+        $fila.find('td').each(function() {
+          const $celda = $(this);
+          const texto = $celda.text().toLowerCase();
+          
+          if (filtroCliente && texto.includes(filtroCliente)) {
+            $celda.addClass('highlight-match');
+          } else if (filtroBrs && texto.includes(filtroBrs)) {
+            $celda.addClass('highlight-match');
+          } else if (filtroClp && texto.includes(filtroClp)) {
+            $celda.addClass('highlight-match');
+          } else if (filtroFecha && texto.includes(filtroFecha)) {
+            $celda.addClass('highlight-match');
+          } else if (filtroCuenta && texto.includes(filtroCuenta)) {
+            $celda.addClass('highlight-match');
+          } else {
+            $celda.removeClass('highlight-match');
+          }
+        });
+      } else {
+        $fila.hide();
+        $fila.find('td').removeClass('highlight-match');
+      }
+    });
+    
+    // Actualizar contador
+    $('#contador-resultados').text(filasVisibles + ' pedidos');
+    
+    // Mostrar mensaje si no hay resultados
+    if (filasVisibles === 0) {
+      if ($('#tabla-pedidos tbody tr.no-results').length === 0) {
+        $('#tabla-pedidos tbody').append(`
+          <tr class="no-results">
+            <td colspan="8" class="text-center text-muted py-4">
+              <i class="fas fa-search fa-2x mb-2"></i>
+              <p class="mb-0">No se encontraron pedidos con los filtros aplicados</p>
+            </td>
+          </tr>
+        `);
+      }
     } else {
-      $('#brs').val('');
-    }
-  });
-  
-  // Inicializar campos numéricos al cargar la página
-  if ($('#brs_display').val()) {
-    let value = $('#brs_display').val().replace(/[^\d]/g, '');
-    if (value) {
-      $('#brs_display').val(parseInt(value, 10).toLocaleString('de-DE'));
-      $('#brs').val(value);
+      $('.no-results').remove();
     }
   }
   
-  $('#clp_display').on('input', function() {
-    let value = this.value.replace(/[^\d]/g, '');
-    if (value) {
-      this.value = parseInt(value, 10).toLocaleString('de-DE');
-      $('#clp').val(value);
-    } else {
-      $('#clp').val('');
-    }
+  // Event listeners para filtros
+  $('#filtro-cliente, #filtro-brs, #filtro-clp, #filtro-fecha, #filtro-cuenta').on('input', function() {
+    aplicarFiltros();
   });
   
-  // Inicializar campo CLP al cargar la página
-  if ($('#clp_display').val()) {
-    let value = $('#clp_display').val().replace(/[^\d]/g, '');
-    if (value) {
-      $('#clp_display').val(parseInt(value, 10).toLocaleString('de-DE'));
-      $('#clp').val(value);
-    }
-  }
-  
-  // Limpiar filtros
+  // Botón limpiar filtros
   $('#btn-limpiar-filtros').on('click', function() {
-    $('#cliente_pedidos').val('').trigger('change');
-    $('#cuenta_pedidos').val('').trigger('change');
-    $('#fecha').val('');
-    $('#brs_display').val('');
-    $('#brs').val('');
-    $('#clp_display').val('');
-    $('#clp').val('');
-    $('#filtro-form').submit();
+    $('#filtro-cliente, #filtro-brs, #filtro-clp, #filtro-fecha, #filtro-cuenta').val('');
+    $('.fila-pedido').show();
+    $('.fila-pedido td').removeClass('highlight-match');
+    $('.no-results').remove();
+    $('#contador-resultados').text('{{ pedidos|length }} pedidos');
   });
+  
+  // Aplicar sombreado alterno
+  $('#tabla-pedidos tbody tr:visible:even').addClass('table-light');
 });
 
 // Función para confirmar eliminación

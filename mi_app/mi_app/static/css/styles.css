@@ -539,3 +539,52 @@ h1.text-azul-oscuro {
   60% { background-color: #ffe5e5; }
   100% { background-color: #fff; }
 }
+
+/* Estilos para filtros en tiempo real */
+.highlight-match {
+  background-color: #87ceeb !important;
+  color: #000 !important;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(0, 123, 255, 0.1) !important;
+  transition: background-color 0.3s ease;
+}
+
+.table tbody tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+.table tbody tr:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+/* Animación para filas al mostrar/ocultar */
+.fila-pedido, .fila-transferencia {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fila-pedido.hidden, .fila-transferencia.hidden {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+/* Estilos para el contador de resultados */
+#contador-resultados {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Estilos para los filtros */
+.form-control-sm {
+  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+}
+
+.form-label.small {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6c757d;
+}
