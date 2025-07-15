@@ -118,9 +118,6 @@
         <td class="td-fecha">{{ t.fecha | format_date }}</td>
         <td class="td-fecha-detec">{{ t.fecha_detec | format_fecha_detec }}</td>
         <td>
-          {% if t.manual %}
-            <a href="{{ url_for('transferencias.editar_transferencia', transfer_id=t.id) }}" class="btn btn-sm btn-warning">Editar</a>
-          {% endif %}
           <!-- Dropdown de clientes (siempre visible con Select2) -->
           <div class="asignar-pago-dropdown mt-2 d-flex align-items-center gap-2" id="dropdown-{{ t.id }}" style="display:block; min-width:220px;">
             <select class="js-example-basic-single form-select form-select-sm" name="cliente" data-transfer-id="{{ t.id }}" style="width: 160px; min-width: 120px;" {% if t.asignado %}disabled{% endif %}>

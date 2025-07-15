@@ -193,6 +193,9 @@
                   <td class="text-center">{{ p.comision | default(0) | format_int }}</td>
                   <td class="align-middle">
                     <div class="btn-group" role="group">
+                      <a href="{{ url_for('pedidos.editar', pedido_id=p.id) }}" class="btn btn-primary btn-sm" title="Editar">
+                        <i class="fas fa-edit"></i>
+                      </a>
                       <button type="button" class="btn btn-sm btn-danger" title="Eliminar" 
                               onclick="confirmarEliminacion({{ p.id }}, '{{ p.cliente }}')">
                         <i class="fas fa-trash"></i>
