@@ -3,6 +3,7 @@ venv/
 env/
 .venv/
 .env
+mi_app/venv_subida/
 
 # Python cache
 __pycache__/
