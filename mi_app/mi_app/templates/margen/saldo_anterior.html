@@ -140,6 +140,32 @@
                                     </div>
                                 </div>
                             </div>
+                            <!-- Costo pago móvil -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingCostoPagoMovil">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCostoPagoMovil" aria-expanded="false" aria-controls="collapseCostoPagoMovil">
+                                        Costo pago móvil
+                                    </button>
+                                </h2>
+                                <div id="collapseCostoPagoMovil" class="accordion-collapse collapse" aria-labelledby="headingCostoPagoMovil" data-bs-parent="#margenAccordion">
+                                    <div class="accordion-body">
+                                        <table class="table table-bordered table-custom mx-auto mb-0">
+                                            <tr>
+                                                <td class="label-cell">PAGO MOVIL</td>
+                                                <td class="value-cell">{{ pago_movil | format_miles }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell">PONDERADO VES/CLP</td>
+                                                <td class="value-cell">{{ ponderado_ves_clp | float | round(5) if ponderado_ves_clp is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                            <tr style="background-color: #f8f9fa; font-weight: bold;">
+                                                <td class="label-cell">COSTO PAGO MÓVIL</td>
+                                                <td class="value-cell">{{ costo_pago_movil | format_miles if costo_pago_movil is not none else 'Sin datos' }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                             <!-- Saldo Anterior -->
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="headingSaldoAnterior">
@@ -360,6 +386,14 @@
                                                 <td class="label-cell">Margen Total</td>
                                                 <td class="value-cell">{{ margen_total | round(2) | format_miles }}</td>
                                             </tr>
+                                            <tr>
+                                                <td class="label-cell">Costo Pago Móvil</td>
+                                                <td class="value-cell text-danger">-{{ costo_pago_movil | round(2) | format_miles }}</td>
+                                            </tr>
+                                            <tr style="background-color: #f8f9fa; font-weight: bold;">
+                                                <td class="label-cell">Margen Neto</td>
+                                                <td class="value-cell">{{ margen_neto | round(2) | format_miles }}</td>
+                                            </tr>
                                         </table>
                                     </div>
                                 </div>
@@ -406,6 +440,19 @@
                             <span class="mx-2 text-muted">|</span>
                             <span class="text-secondary">Margen %:</span>
                             <span class="fw-bold text-dark">{{ (margen_total / (clp_recibidos_mayor + clp_recibidos_detal) * 100) | round(2) if (clp_recibidos_mayor + clp_recibidos_detal) else 0.00 }} %</span>
+                        </div>
+                    </div>
+                    <div class="my-3 text-center bg-light border rounded shadow-sm py-3" style="width: 100%; min-width: 350px; max-width: 100%; margin-left: auto; margin-right: auto;">
+                        <h5 class="text-secondary mb-1">Margen Neto</h5>
+                        <div style="font-size: 1.2rem;">
+                            <span class="text-secondary">Margen neto:</span>
+                            <span class="fw-bold text-success">$ {{ margen_neto | format_number(0) }}</span>
+                            <span class="mx-2 text-muted">|</span>
+                            <span class="text-secondary">Costo pago móvil:</span>
+                            <span class="fw-bold text-danger">$ {{ costo_pago_movil | format_number(0) }}</span>
+                            <span class="mx-2 text-muted">|</span>
+                            <span class="text-secondary">Margen neto %:</span>
+                            <span class="fw-bold text-dark">{{ (margen_neto / (clp_recibidos_mayor + clp_recibidos_detal) * 100) | round(2) if (clp_recibidos_mayor + clp_recibidos_detal) else 0.00 }} %</span>
                         </div>
                     </div>
                 </div>

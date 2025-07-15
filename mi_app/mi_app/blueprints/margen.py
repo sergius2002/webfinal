@@ -241,9 +241,14 @@ def index():
     if ponderado_ves_clp > 0:
         margen_mayor = clp_recibidos_mayor - (brs_vendidos_mayor / ponderado_ves_clp)
         margen_detal = clp_recibidos_detal - (brs_vendidos_detal / ponderado_ves_clp)
+        # Calcular costo pago móvil
+        costo_pago_movil = pago_movil / ponderado_ves_clp
     else:
         margen_mayor = 0
         margen_detal = 0
+        costo_pago_movil = 0
     margen_total = margen_mayor + margen_detal
+    # Margen neto después de restar el costo pago móvil
+    margen_neto = margen_total - costo_pago_movil
     
-    return render_template("margen/saldo_anterior.html", saldo_anterior=saldo_anterior, fecha_ayer=fecha_ayer, fecha_hoy=fecha_hoy, brs_vendidos_hoy=brs_vendidos_hoy, clp_recibidos=clp_recibidos, brs_comprados=brs_comprados, usdt_vendidos=usdt_vendidos, usdt_comprados=usdt_comprados, usdt_vendidos_clp=usdt_vendidos_clp, clp_recibidos_usdt=clp_recibidos_usdt, clp_invertidos=clp_invertidos, tasa_usdt_clp_actual=tasa_usdt_clp_actual, tasa_usdt_ves_actual=tasa_usdt_ves_actual, total_brs=total_brs, total_usdt=total_usdt, clp_anterior=clp_anterior, total_clp=total_clp, clp_por_usdt_vendido=clp_por_usdt_vendido, tasa_ves_clp_actual=tasa_ves_clp_actual, ponderado_ves_clp=ponderado_ves_clp, tasa_usdt_clp_general=tasa_usdt_clp_general, gastos=gastos, pago_movil=pago_movil, sobrante_usdt=sobrante_usdt, sobrante_brs=sobrante_brs, brs_vendidos_detal=brs_vendidos_detal, brs_vendidos_mayor=brs_vendidos_mayor, sobrante_al_mayor=sobrante_al_mayor, envios_al_detal=envios_al_detal, clp_recibidos_mayor=clp_recibidos_mayor, clp_recibidos_detal=clp_recibidos_detal, margen_mayor=margen_mayor, margen_detal=margen_detal, margen_total=margen_total) 
+    return render_template("margen/saldo_anterior.html", saldo_anterior=saldo_anterior, fecha_ayer=fecha_ayer, fecha_hoy=fecha_hoy, brs_vendidos_hoy=brs_vendidos_hoy, clp_recibidos=clp_recibidos, brs_comprados=brs_comprados, usdt_vendidos=usdt_vendidos, usdt_comprados=usdt_comprados, usdt_vendidos_clp=usdt_vendidos_clp, clp_recibidos_usdt=clp_recibidos_usdt, clp_invertidos=clp_invertidos, tasa_usdt_clp_actual=tasa_usdt_clp_actual, tasa_usdt_ves_actual=tasa_usdt_ves_actual, total_brs=total_brs, total_usdt=total_usdt, clp_anterior=clp_anterior, total_clp=total_clp, clp_por_usdt_vendido=clp_por_usdt_vendido, tasa_ves_clp_actual=tasa_ves_clp_actual, ponderado_ves_clp=ponderado_ves_clp, tasa_usdt_clp_general=tasa_usdt_clp_general, gastos=gastos, pago_movil=pago_movil, sobrante_usdt=sobrante_usdt, sobrante_brs=sobrante_brs, brs_vendidos_detal=brs_vendidos_detal, brs_vendidos_mayor=brs_vendidos_mayor, sobrante_al_mayor=sobrante_al_mayor, envios_al_detal=envios_al_detal, clp_recibidos_mayor=clp_recibidos_mayor, clp_recibidos_detal=clp_recibidos_detal, margen_mayor=margen_mayor, margen_detal=margen_detal, margen_total=margen_total, costo_pago_movil=costo_pago_movil, margen_neto=margen_neto) 
