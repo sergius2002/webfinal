@@ -1,8 +1,8 @@
 # Virtual environment
 venv/
+venv_telegram/
 env/
 .venv/
-.env
 mi_app/venv_subida/
 
 # Python cache
