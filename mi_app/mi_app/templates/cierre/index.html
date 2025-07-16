@@ -5,40 +5,40 @@
 {% block content %}
 <style>
      .cierre-container {
-     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+     background: #f5f5f5;
      min-height: 100vh;
      padding: 1rem 0;
    }
   
   .cierre-card {
     background: white;
-    border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
     overflow: hidden;
-    transition: transform 0.3s ease;
-  }
-  
-  .cierre-card:hover {
-    transform: translateY(-5px);
+    border: 1px solid #e0e0e0;
+    max-width: 600px;
+    margin: 0 auto;
   }
   
      .cierre-header {
-     background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+     background: #2c3e50;
      color: white;
      padding: 1rem;
      text-align: center;
      position: relative;
+     border-bottom: 1px solid #34495e;
    }
   
   
   
      .cierre-date {
-     background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+     background: #34495e;
      color: white;
-     padding: 0.5rem;
+     padding: 0.75rem;
      text-align: center;
-     font-weight: bold;
-     font-size: 1rem;
+     font-weight: 500;
+     font-size: 0.9rem;
+     border-bottom: 1px solid #2c3e50;
    }
   
   .cierre-table {
@@ -46,145 +46,185 @@
   }
   
      .cierre-table td, .cierre-table th {
-     padding: 0.5rem 1rem;
+     padding: 0.75rem 1rem;
      vertical-align: middle;
      border-bottom: 1px solid #e9ecef;
-     transition: all 0.3s ease;
-     font-size: 0.9rem;
+     font-size: 0.95rem;
+     line-height: 1.3;
    }
   
   .field-icon {
-    font-size: 1.2rem;
-    margin-right: 0.5rem;
+    font-size: 1rem;
+    margin-right: 0.4rem;
     display: inline-block;
-    width: 1.5rem;
+    width: 1.2rem;
     text-align: center;
   }
   
   .field-label {
-    font-weight: 500;
+    font-weight: 400;
     color: #2c3e50;
+    font-size: 0.95rem;
+    text-align: left;
+    padding-left: 0;
   }
   
   .field-value {
-    font-weight: bold;
-    font-size: 1.1rem;
-    text-align: center;
+    font-weight: 400;
+    font-size: 1rem;
+    text-align: right !important;
+    color: #2c3e50;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.3px;
   }
   
   /* Colores semánticos */
   .positive-value {
     color: #27ae60;
+    font-weight: 600;
   }
   
   .negative-value {
     color: #e74c3c;
+    font-weight: 600;
   }
   
   .neutral-value {
-    color: #34495e;
+    color: #7f8c8d;
+    font-weight: 500;
   }
   
   /* Campos editables */
   .editable-field {
-    background: transparent;
-    border: 2px solid transparent;
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    text-align: center;
-    font-weight: bold;
-    font-size: 1.1rem;
-    transition: all 0.3s ease;
-    min-height: 40px;
+    background: #fafafa;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    text-align: right !important;
+    font-weight: 400;
+    font-size: 0.95rem;
+    min-height: 35px;
     position: relative;
+    color: #2c3e50;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.3px;
+    width: 140px;
   }
   
   .editable-field:hover {
-    background: #f8f9fa;
-    border-color: #3498db;
-    transform: scale(1.02);
-    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+    /* Sin efectos hover */
   }
   
   .editable-field:focus {
     outline: none;
     background: #ffffff;
-    border-color: #2980b9;
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-    transform: scale(1.05);
+    border-color: #0056b3;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
   }
   
      /* Filas especiales */
    .total-row {
-     background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+     background: #34495e;
      color: white;
-     font-weight: bold;
+     font-weight: 600;
    }
    
    .total-row td {
-     border-top: 2px solid #2c3e50;
-     border-bottom: 2px solid #2c3e50;
-     font-size: 1.1rem;
+     border-top: 1px solid #2c3e50;
+     border-bottom: 1px solid #2c3e50;
+     font-size: 1rem;
+     font-weight: 400;
+   }
+   
+   /* Alinear todos los valores numéricos a la derecha */
+   .cierre-table .field-value,
+   .cierre-table .editable-field,
+   .cierre-table input[type="text"] {
+     text-align: right !important;
    }
   
   .mayor-row {
-    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    background: #2c3e50;
     color: white;
+    font-weight: 400;
+  }
+  
+  .mayor-row td {
+    font-size: 1.05rem;
+    font-weight: 400;
   }
   
   .final-row {
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    background: #2c3e50;
     color: white;
+    font-weight: 400;
   }
   
   .final-row td {
-    border-top: 3px solid #1abc9c;
-    font-size: 1.2rem;
-    font-weight: bold;
+    border-top: 1px solid #34495e;
+    font-size: 1.1rem;
+    font-weight: 400;
   }
   
-  /* Animaciones para valores calculados */
-  .animated-value {
-    transition: all 0.5s ease;
-  }
-  
-  .value-updated {
-    animation: valueUpdate 0.6s ease;
-  }
-  
-  @keyframes valueUpdate {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); color: #3498db; }
-    100% { transform: scale(1); }
-  }
+     /* Valores calculados */
+   .animated-value {
+     /* Sin animaciones */
+   }
+   
+   .value-updated {
+     /* Sin animaciones */
+   }
   
   /* Responsive */
   @media (max-width: 768px) {
     .cierre-container {
-      padding: 1rem;
+      padding: 0.5rem;
     }
     
     .cierre-card {
-      border-radius: 15px;
+      border-radius: 8px;
+      max-width: 100%;
     }
     
     .cierre-header {
-      padding: 1.5rem;
+      padding: 1rem;
     }
     
     .cierre-table td, .cierre-table th {
-      padding: 0.8rem 1rem;
-      font-size: 0.9rem;
+      padding: 0.6rem 0.8rem;
+      font-size: 0.85rem;
     }
     
     .field-value {
-      font-size: 1rem;
+      font-size: 0.9rem;
     }
     
     .editable-field {
-      min-height: 35px;
-      font-size: 1rem;
+      min-height: 30px;
+      font-size: 0.9rem;
+      width: 100px;
     }
+  }
+  
+  /* Alineación general de números */
+  .cierre-table .field-value,
+  .cierre-table .editable-field,
+  .cierre-table input[type="text"],
+  .modal input[type="text"],
+  .card input[type="text"],
+  #saldo-bancos,
+  .cierre-table td:last-child {
+    text-align: right !important;
+  }
+  
+  /* Asegurar que las celdas con inputs tengan el mismo ancho */
+  .cierre-table td:last-child {
+    width: 150px;
+  }
+  
+  /* Asegurar que las etiquetas estén alineadas a la izquierda */
+  .cierre-table .field-label {
+    text-align: left !important;
   }
   
   /* Indicadores de carga */
@@ -281,60 +321,51 @@
      z-index: 1000;
    }
    
-   /* Estilos para ingresos clickeable */
+   /* Estilos para ingresos */
    .clickable-ingresos {
      cursor: pointer;
-     transition: all 0.3s ease;
      border-radius: 4px;
      padding: 4px 8px;
    }
    
    .clickable-ingresos:hover {
-     background: rgba(52, 152, 219, 0.1);
-     transform: scale(1.02);
-     box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
-   }
-   
-   .clickable-ingresos::after {
-     content: ' 🔍';
-     font-size: 0.8rem;
-     opacity: 0.7;
+     /* Sin efectos hover */
    }
    
    /* Estilos para la tarjeta de cuadre */
    .cuadre-perfecto {
-     background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+     background: #27ae60;
    }
    
    .cuadre-aceptable {
-     background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+     background: #f39c12;
    }
    
    .cuadre-error {
-     background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+     background: #e74c3c;
    }
    
    .cuadre-neutro {
-     background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+     background: #95a5a6;
    }
    
    #diferencia-card.positivo {
-     background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+     background: #e74c3c;
      color: white;
    }
    
    #diferencia-card.negativo {
-     background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+     background: #e74c3c;
      color: white;
    }
    
    #diferencia-card.perfecto {
-     background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+     background: #27ae60;
      color: white;
    }
    
    #diferencia-card.aceptable {
-     background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+     background: #f39c12;
      color: white;
    }
 
@@ -353,133 +384,195 @@
   border: none;
   padding: 0.4rem 0.7rem;
 }
+
+/* Estilos para totales de sección */
+.cierre-table .total-ingresos-row {
+  background: #f8f9fa;
+  color: #2c3e50;
+  border-top: 2px solid #3498db;
+  border-bottom: 2px solid #3498db;
+}
+
+.cierre-table .total-ingresos-row .field-label,
+.cierre-table .total-ingresos-row .field-value {
+  font-weight: 600 !important;
+  font-size: 1.05rem !important;
+  color: #2c3e50 !important;
+}
+
+.cierre-table .total-egresos-row {
+  background: #f8f9fa;
+  color: #2c3e50;
+  border-top: 2px solid #3498db;
+  border-bottom: 2px solid #3498db;
+}
+
+.cierre-table .total-egresos-row .field-label,
+.cierre-table .total-egresos-row .field-value {
+  font-weight: 600 !important;
+  font-size: 1.05rem !important;
+  color: #2c3e50 !important;
+}
+
+.cierre-table .mayor-row {
+  background: #f8f9fa;
+  color: #2c3e50;
+  border-top: 2px solid #3498db;
+  border-bottom: 2px solid #3498db;
+}
+
+.cierre-table .mayor-row .field-label,
+.cierre-table .mayor-row .field-value {
+  font-weight: 600 !important;
+  font-size: 1.05rem !important;
+  color: #2c3e50 !important;
+}
+
+.cierre-table .cierre-final-row {
+  background: #f8f9fa;
+  color: #2c3e50;
+  border-top: 2px solid #3498db;
+  border-bottom: 2px solid #3498db;
+}
+
+.cierre-table .cierre-final-row .field-label,
+.cierre-table .cierre-final-row .field-value {
+  font-weight: 600 !important;
+  font-size: 1.05rem !important;
+  color: #2c3e50 !important;
+}
+
+/* Etiquetas normales, izquierda, sin negrita */
+.cierre-table .field-label.label-normal {
+  font-weight: 400 !important;
+  text-align: left !important;
+  font-size: 1.05rem;
+  color: #2c3e50;
+  font-family: inherit;
+}
+
+/* Alinear a la izquierda campos específicos */
+.cierre-table .field-label.saldo-inicial,
+.cierre-table .field-label.cierre-mayor,
+.cierre-table .field-label.cierre-detal,
+.cierre-table .field-label.cierre-final {
+  text-align: left !important;
+}
+
+/* Cierre Mayor en negrita */
+.cierre-table .field-label.cierre-mayor {
+  font-weight: bold !important;
+}
 </style>
 
 <div class="cierre-container">
   <div class="container">
     <div class="row justify-content-center">
-      <div class="col-md-11 col-lg-10">
+      <div class="col-md-8 col-lg-6">
         <div class="cierre-card">
           <div class="cierre-header">
             <h4 class="mb-0">Cierre de Caja</h4>
           </div>
-          <div class="cierre-date text-center mt-1">
-            <label for="fecha-cierre" class="form-label text-white-50 mb-1" style="font-size: 0.95rem; font-weight: 500;">
-              <i class="fas fa-calendar-alt me-1"></i>Selecciona la fecha del cierre
-            </label>
-            <div class="d-flex justify-content-center align-items-center" style="gap: 0.5rem;">
-              <span class="input-group-text bg-white border-0" style="border-radius: 8px 0 0 8px;">
-                <i class="fas fa-calendar-alt text-primary"></i>
-              </span>
-              <input type="date" id="fecha-cierre"
-                class="form-control form-control-sm text-center"
-                style="width: 160px; font-weight: bold; border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(44,62,80,0.08); border: 1px solid #b2bec3; text-align: center; padding-left: 0.5rem;"
-                value="{{ fecha_iso }}">
+          <div class="cierre-date">
+            <div class="row justify-content-center">
+              <div class="col-md-4">
+                <label for="fecha-cierre" class="form-label mb-1">Selecciona la fecha del cierre</label>
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <i class="fas fa-calendar"></i>
+                  </span>
+                  <input type="date" class="form-control" id="fecha-cierre" value="{{ fecha_iso }}" required>
+                </div>
+              </div>
             </div>
-            <small class="d-block text-white-50 mt-2" style="font-size: 0.92rem;">
-              Fecha actual: <span style="font-weight: 600;">{{ fecha_mostrar }}</span>
-            </small>
-            
-            <!-- Indicador de configuración inicial -->
-            {% if config_info %}
-              {% if config_info.configurado %}
-                <div class="mt-2">
-                  <small class="badge bg-success" style="font-size: 0.8rem;">
-                    ⚙️ Sistema configurado - Inicio: {{ config_info.fecha_inicio }}
-                  </small>
-                </div>
-              {% else %}
-                <div class="mt-2">
-                  <small class="badge bg-warning text-dark" style="font-size: 0.8rem;">
-                    ⚠️ Sistema sin configurar - <a href="{{ url_for('admin.configuracion_inicial') }}" class="text-dark"><u>Configurar ahora</u></a>
-                  </small>
-                </div>
-              {% endif %}
-            {% endif %}
           </div>
           <div class="table-responsive">
             <table class="table cierre-table">
               <tbody>
                                  <tr>
-                   <td class="field-label">
+                   <td class="field-label saldo-inicial">
                      Saldo inicial
                    </td>
                    <td class="field-value neutral-value info-field" title="Cierre día anterior">{{ saldo_inicial }}</td>
                  </tr>
                  <tr>
-                   <td class="field-label">
+                   <td class="field-label label-normal">
                      Ingresos
                    </td>
                    <td class="field-value positive-value clickable-ingresos" id="ingresos-total">{{ ingresos }}</td>
                  </tr>
                  <tr>
-                   <td class="field-label">
+                   <td class="field-label label-normal">
                      Ingresos Extra
-                     <button type="button" class="btn btn-outline-primary btn-sm ms-2" id="btn-ingresos-modal" data-bs-toggle="modal" data-bs-target="#ingresosModal">
-                       <i class="fas fa-plus"></i>
+                     <button type="button" class="btn btn-link btn-sm ms-1 p-0" id="btn-ingresos-modal" data-bs-toggle="modal" data-bs-target="#ingresosModal" style="color: #6c757d; text-decoration: none; font-size: 0.7rem;">
+                       <i class="fas fa-edit"></i>
                      </button>
                    </td>
                    <td class="field-value positive-value" id="ingresos-extra-total">0</td>
                  </tr>
-                 <tr class="total-row">
+                 <tr class="total-ingresos-row">
                    <td class="field-label">
                      Total ingresos
                    </td>
                    <td class="field-value animated-value calculated-field" id="total-ingresos" title="Saldo inicial + Ingresos + Ingresos Extra">0</td>
                  </tr>
                  <tr>
-                   <td class="field-label">
+                   <td class="field-label label-normal">
                      Egresos
                    </td>
-                   <td class="field-value negative-value" id="egresos">{{ egresos }}</td>
+                   <td class="field-value negative-value" id="egresos" style="font-weight: 400;">{{ egresos }}</td>
                  </tr>
                  <tr>
-                   <td class="field-label">
+                   <td class="field-label label-normal">
                      Ingresos hacia detal
                    </td>
                    <td>
-                     <input type="text" id="egresos-detal" class="editable-field" inputmode="numeric" pattern="[0-9]*" placeholder="0" value="{{ egresos_detal }}">
+                     <input type="text" id="egresos-detal" class="editable-field" inputmode="numeric" pattern="[0-9]*" placeholder="0" value="{{ envios_al_detal }}">
+                     <!-- DEBUG: envios_al_detal = {{ envios_al_detal }} -->
                    </td>
                  </tr>
                  <tr>
-                   <td class="field-label">
+                   <td class="field-label label-normal">
                      Gastos
-                     <button type="button" class="btn btn-outline-secondary btn-sm ms-2" id="btn-gastos-modal" data-bs-toggle="modal" data-bs-target="#gastosModal">
-                       <i class="fas fa-plus"></i>
+                     <button type="button" class="btn btn-link btn-sm ms-1 p-0" id="btn-gastos-modal" data-bs-toggle="modal" data-bs-target="#gastosModal" style="color: #6c757d; text-decoration: none; font-size: 0.7rem;">
+                       <i class="fas fa-edit"></i>
                      </button>
                    </td>
-                   <td class="field-value negative-value" id="gastos-total">0</td>
+                   <td>
+                     <input type="text" id="gastos" class="editable-field" inputmode="numeric" placeholder="0" value="{{ gastos }}">
+                   </td>
                  </tr>
                  <tr>
-                   <td class="field-label">
+                   <td class="field-label label-normal">
                      Pago móvil
                    </td>
                    <td>
-                     <input type="text" id="pago-movil" class="editable-field" inputmode="numeric" placeholder="Ingresa monto..." value="0">
+                     <input type="text" id="pago-movil" class="editable-field" inputmode="numeric" placeholder="Ingresa monto..." value="{{ pago_movil }}">
+                     <!-- DEBUG: pago_movil = {{ pago_movil }} -->
                    </td>
                  </tr>
-                 <tr class="total-row">
+                 <tr class="total-egresos-row">
                    <td class="field-label">
                      Total egresos
                    </td>
                    <td class="field-value animated-value calculated-field" id="total-egresos" title="Egresos + Ingresos hacia detal + Gastos + Pago móvil">0</td>
                  </tr>
                  <tr class="mayor-row">
-                   <td class="field-label">
+                   <td class="field-label cierre-mayor">
                      Cierre Mayor
                    </td>
                    <td class="field-value animated-value calculated-field" id="cierre-mayor" title="Total ingresos - Total egresos">0</td>
                  </tr>
                  <tr>
-                   <td class="field-label">
+                   <td class="field-label cierre-detal">
                      Cierre Detal
                    </td>
                    <td>
                      <input type="text" id="cierre-detal" class="editable-field" inputmode="numeric" placeholder="Ingresa monto...">
                    </td>
                  </tr>
-                 <tr class="final-row">
-                   <td class="field-label">
+                 <tr class="cierre-final-row">
+                   <td class="field-label cierre-final">
                      Cierre Final
                    </td>
                    <td class="field-value animated-value calculated-field" id="cierre-final" title="Cierre Mayor + Cierre Detal">0<span class="loading-indicator" id="loading"></span></td>
@@ -490,24 +583,20 @@
          </div>
          
          <!-- Saldo en Bancos - Campo separado -->
-         <div class="mt-2">
-           <div class="card border-info">
-             <div class="card-header bg-info text-white text-center py-2">
-               <h6 class="mb-0">💳 Saldo en Bancos</h6>
-             </div>
-             <div class="card-body py-2 text-center">
-               <div class="row align-items-center">
-                 <div class="col-md-4">
-                   <span class="field-label info-field" title="Preguntar a Gilmar">
-                     <strong>Saldo Actual:</strong>
-                   </span>
-                 </div>
-                 <div class="col-md-8">
-                   <input type="text" id="saldo-bancos" class="form-control text-center" inputmode="numeric" placeholder="Ingresa monto..." style="font-size: 1rem; font-weight: bold;">
-                 </div>
+         <div class="card mt-3">
+           <div class="card-header bg-light">
+             <h6 class="mb-0">Saldo en Bancos</h6>
+           </div>
+           <div class="card-body">
+             <div class="row align-items-center">
+               <div class="col-md-4">
+                 <label class="form-label mb-1">Saldo Actual:</label>
                </div>
-               <small class="text-muted mt-1 d-block">Independiente del cierre de caja</small>
+               <div class="col-md-8">
+                 <input type="text" class="form-control" id="saldo-bancos" placeholder="Ingresa monto..." value="{{ saldo_bancos|default('') }}">
+               </div>
              </div>
+             <small class="text-muted">Independiente del cierre de caja</small>
            </div>
          </div>
          
@@ -515,23 +604,23 @@
          <div class="mt-2">
            <div class="card" id="cuadre-card">
              <div class="card-header text-white text-center py-2" id="cuadre-header">
-               <h6 class="mb-0">⚖️ Cuadre</h6>
+               <h6 class="mb-0" style="font-weight: 500;">Cuadre</h6>
              </div>
              <div class="card-body py-2 text-center">
                <div class="row mb-2">
                  <div class="col-md-4">
-                   <div class="card bg-light">
+                   <div class="card" style="background: #f8f9fa; border: 1px solid #e9ecef;">
                      <div class="card-body py-2">
-                       <small class="card-title">Cierre Final</small>
-                       <div class="h6 text-primary mb-0" id="cuadre-cierre-final">0</div>
+                       <small class="card-title" style="color: #6c757d;">Cierre Final</small>
+                       <div class="h6 mb-0" id="cuadre-cierre-final" style="color: #2c3e50; font-family: 'Courier New', monospace; font-weight: 400; font-size: 1.1rem;">0</div>
                      </div>
                    </div>
                  </div>
                  <div class="col-md-4">
-                   <div class="card bg-light">
+                   <div class="card" style="background: #f8f9fa; border: 1px solid #e9ecef;">
                      <div class="card-body py-2">
-                       <small class="card-title">Saldo Bancos</small>
-                       <div class="h6 text-info mb-0" id="cuadre-saldo-bancos">0</div>
+                       <small class="card-title" style="color: #6c757d;">Saldo Bancos</small>
+                       <div class="h6 mb-0" id="cuadre-saldo-bancos" style="color: #2c3e50; font-family: 'Courier New', monospace; font-weight: 400; font-size: 1.1rem;">0</div>
                      </div>
                    </div>
                  </div>
@@ -539,7 +628,7 @@
                    <div class="card" id="diferencia-card">
                      <div class="card-body py-2">
                        <small class="card-title">Diferencia</small>
-                       <div class="h6 mb-0" id="cuadre-diferencia">0</div>
+                       <div class="h6 mb-0" id="cuadre-diferencia" style="font-family: 'Courier New', monospace; font-weight: 400; font-size: 1.1rem;">0</div>
                      </div>
                    </div>
                  </div>
@@ -549,7 +638,7 @@
                  <small class="mb-0" id="cuadre-mensaje">Ingresa el saldo en bancos para calcular el cuadre</small>
                </div>
                
-               <small class="text-muted">Diferencia = Cierre Final - Saldo en Bancos</small>
+               <small class="text-muted" style="color: #7f8c8d;">Diferencia = Cierre Final - Saldo en Bancos</small>
              </div>
            </div>
          </div>
@@ -558,13 +647,13 @@
          <div class="mt-3 text-center">
            <div class="row justify-content-center">
              <div class="col-md-6 mb-2">
-               <button type="button" class="btn btn-success btn-lg w-100 py-3" id="btn-realizar-cierre" style="font-size: 1.1rem; font-weight: bold; border-radius: 15px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
-                 <i class="fas fa-save me-2"></i>💾 Realizar Cierre
+               <button type="button" class="btn btn-lg w-100 py-3" id="btn-realizar-cierre" style="font-size: 1.1rem; font-weight: 600; border-radius: 4px; background: #27ae60; border: 1px solid #27ae60; color: white;">
+                 <i class="fas fa-save me-2"></i>Realizar Cierre
                </button>
              </div>
              <div class="col-md-6 mb-2">
-               <a href="{{ url_for('cierre.historial') }}" class="btn btn-info btn-lg w-100 py-3" style="font-size: 1.1rem; font-weight: bold; border-radius: 15px; box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3); text-decoration: none;">
-                 <i class="fas fa-history me-2"></i>📋 Ver Historial
+               <a href="{{ url_for('cierre.historial') }}" class="btn btn-lg w-100 py-3" style="font-size: 1.1rem; font-weight: 600; border-radius: 4px; background: #34495e; border: 1px solid #34495e; color: white; text-decoration: none;">
+                 <i class="fas fa-history me-2"></i>Ver Historial
                </a>
              </div>
            </div>
@@ -592,7 +681,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h6>Agregar Gasto:</h6>
           <button type="button" class="btn btn-warning btn-sm" id="agregar-gasto-modal">
-            ➕ Agregar
+            <i class="fas fa-plus me-1"></i>Agregar
           </button>
         </div>
         <div class="table-responsive">
@@ -640,7 +729,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h6>Agregar Ingreso Extra:</h6>
           <button type="button" class="btn btn-primary btn-sm" id="agregar-ingreso">
-            ➕ Agregar
+            <i class="fas fa-plus me-1"></i>Agregar
           </button>
         </div>
         <div class="table-responsive">
@@ -678,85 +767,86 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Obtener valores
+  // Variables inyectadas desde Jinja
   const saldoInicial = parseInt("{{ saldo_inicial }}".replace(/[^\d]/g, '')) || 0;
   const ingresosBinance = parseInt("{{ ingresos }}".replace(/[^\d]/g, '')) || 0;
   let ingresosExtra = 0;
   let totalIngresos = saldoInicial + ingresosBinance + ingresosExtra;
   const egresos = parseInt("{{ egresos }}".replace(/[^\d]/g, '')) || 0;
-  
-  // Al inicio del script principal, inyectar los datos guardados desde Jinja:
   const ingresosExtraDetalle = {{ ingresos_extra_detalle|tojson|safe }};
   const gastosDetalle = {{ gastos_detalle|tojson|safe }};
-  const pagoMovilGuardado = {{ pago_movil|default(0)|int }};
+  const pagoMovilGuardado = "{{ pago_movil|default('0') }}";
   const cierreDetalGuardado = {{ cierre_detal|default(0)|int }};
   const saldoBancosGuardado = {{ saldo_bancos|default(0)|int }};
-  const egresosDetalGuardado = "{{ egresos_detal }}";
-  
-  // Calcular total ingresos inicial
-  const calcularTotalIngresos = () => totalIngresos;
-  
-  // Formatear y mostrar con animación
-  function updateValueWithAnimation(elementId, value, isPositive = null) {
-    const element = document.getElementById(elementId);
-    const formattedValue = value.toLocaleString('de-DE');
+  const egresosDetalGuardado = "{{ envios_al_detal|default('0') }}";
+
+
+
+
+
+  // Calcular total ingresos
+  function calcularTotalIngresos() {
+    const saldoInicial = parseInt("{{ saldo_inicial }}".replace(/[^\d]/g, '')) || 0;
+    const ingresosBinance = parseInt("{{ ingresos }}".replace(/[^\d]/g, '')) || 0;
+    const ingresosExtra = parseInt(document.getElementById('ingresos-extra-total').textContent.replace(/[^\d]/g, '')) || 0;
     
-    // Mostrar indicador de carga
-    const loading = document.getElementById('loading');
-    if (loading) {
-      loading.classList.add('show');
-    }
+    console.log('Calculando total ingresos:', {
+      saldoInicial: saldoInicial,
+      ingresosBinance: ingresosBinance,
+      ingresosExtra: ingresosExtra
+    });
     
-    setTimeout(() => {
-      element.textContent = formattedValue;
-      element.classList.add('value-updated');
-      
-      // Aplicar color semántico
-      if (isPositive === true) {
-        element.className = element.className.replace(/negative-value|neutral-value/g, '') + ' positive-value';
-      } else if (isPositive === false) {
-        element.className = element.className.replace(/positive-value|neutral-value/g, '') + ' negative-value';
-      }
-      
-      // Ocultar indicador de carga
-      if (loading) {
-        loading.classList.remove('show');
-      }
-      
-      setTimeout(() => {
-        element.classList.remove('value-updated');
-      }, 600);
-    }, 200);
+    const total = saldoInicial + ingresosBinance + ingresosExtra;
+    console.log('Total ingresos calculado:', total);
+    return total;
   }
   
-  // Función para formatear input mientras se escribe
-  function formatInput(input) {
-    input.addEventListener('input', function() {
-      let value = this.value.replace(/[^\d]/g, '');
-      if (value) {
-        this.value = parseInt(value).toLocaleString('de-DE');
-      }
-    });
-    
-    input.addEventListener('focus', function() {
-      this.style.transform = 'scale(1.05)';
-      this.style.boxShadow = '0 0 0 3px rgba(52, 152, 219, 0.1)';
-    });
-    
-    input.addEventListener('blur', function() {
-      this.style.transform = 'scale(1)';
-      this.style.boxShadow = 'none';
-    });
-  }
+     // Formatear y mostrar sin animación
+   function updateValueWithAnimation(elementId, value, isPositive = null) {
+     const element = document.getElementById(elementId);
+     const formattedValue = value.toLocaleString('de-DE');
+     
+     // Mostrar indicador de carga
+     const loading = document.getElementById('loading');
+     if (loading) {
+       loading.classList.add('show');
+     }
+     
+     setTimeout(() => {
+       element.textContent = formattedValue;
+       
+       // Aplicar color semántico
+       if (isPositive === true) {
+         element.className = element.className.replace(/negative-value|neutral-value/g, '') + ' positive-value';
+       } else if (isPositive === false) {
+         element.className = element.className.replace(/positive-value|neutral-value/g, '') + ' negative-value';
+       }
+       
+       // Ocultar indicador de carga
+       if (loading) {
+         loading.classList.remove('show');
+       }
+     }, 200);
+   }
   
-  // Aplicar formato a todos los inputs
-  document.querySelectorAll('.editable-field').forEach(formatInput);
+     // Función para formatear input mientras se escribe
+   function formatInput(input) {
+     input.addEventListener('input', function() {
+       let value = this.value.replace(/[^\d]/g, '');
+       if (value) {
+         this.value = parseInt(value).toLocaleString('de-DE');
+       }
+     });
+   }
+  
+  // Los valores ya vienen formateados del backend, no aplicar formateo adicional
+  // document.querySelectorAll('.editable-field').forEach(formatInput);
   
   // Función para calcular total egresos
   function calcularTotalEgresos() {
     const egresos = parseInt(document.getElementById('egresos').textContent.replace(/[^\d]/g, '')) || 0;
     const ingresosHaciaDetal = parseInt(document.getElementById('egresos-detal').value.replace(/[^\d]/g, '')) || 0;
-    const gastos = parseInt(document.getElementById('gastos-total').textContent.replace(/[^\d]/g, '')) || 0;
+    const gastos = parseInt(document.getElementById('gastos').value.replace(/[^\d]/g, '')) || 0;
     const pagoMovil = parseInt(document.getElementById('pago-movil').value.replace(/[^\d]/g, '')) || 0;
     console.log('egresos:', egresos, 'ingresosHaciaDetal:', ingresosHaciaDetal, 'gastos:', gastos, 'pagoMovil:', pagoMovil);
     const totalEgresos = egresos + ingresosHaciaDetal + gastos + pagoMovil;
@@ -802,25 +892,22 @@ document.addEventListener('DOMContentLoaded', function() {
     recalcularTodo();
   }, 500);
   
-  // Event listeners
-  const gastosInput = document.getElementById('gastos');
-  if (gastosInput) {
-    gastosInput.addEventListener('input', recalcularTodo);
-  }
-  document.getElementById('pago-movil').addEventListener('input', recalcularTodo);
-  document.getElementById('cierre-detal').addEventListener('input', calcularCierreFinal);
-  
-  // Efectos visuales adicionales
-  document.querySelectorAll('tr').forEach(row => {
-    row.addEventListener('mouseenter', function() {
-      this.style.transform = 'translateX(5px)';
-      this.style.transition = 'transform 0.2s ease';
-    });
-    
-         row.addEventListener('mouseleave', function() {
-       this.style.transform = 'translateX(0)';
-     });
+     // Event listeners
+   document.getElementById('gastos').addEventListener('input', function() {
+     recalcularTodo();
+     actualizarGastosEnBD();
    });
+   document.getElementById('pago-movil').addEventListener('input', function() {
+     recalcularTodo();
+     actualizarGastosEnBD();
+   });
+   document.getElementById('egresos-detal').addEventListener('input', function() {
+     recalcularTodo();
+     actualizarGastosEnBD();
+   });
+   document.getElementById('cierre-detal').addEventListener('input', calcularCierreFinal);
+  
+     // Sin efectos visuales adicionales
    
    // Funcionalidad del modal de gastos
    let gastosList = [];
@@ -829,13 +916,19 @@ document.addEventListener('DOMContentLoaded', function() {
      gastosList.forEach((item, idx) => {
        const montoInput = document.getElementById(`gasto-monto-${idx}`);
        if (montoInput) {
-         const monto = parseFloat(montoInput.value) || 0;
+         const monto = parseFloat(montoInput.value.replace(/\./g, '').replace(',', '.')) || 0;
          total += monto;
          gastosList[idx].monto = monto;
        }
      });
      document.getElementById('total-gastos-modal').textContent = total.toLocaleString('de-DE');
-     document.getElementById('gastos-total').textContent = total.toLocaleString('de-DE');
+     
+     // Solo actualizar el campo principal si hay gastos en el modal
+     if (total > 0) {
+       document.getElementById('gastos').value = total.toLocaleString('de-DE');
+     }
+     // Si no hay gastos en el modal, mantener el valor original del backend
+     
      recalcularTodo();
    }
    document.addEventListener('click', function(e) {
@@ -845,7 +938,7 @@ document.addEventListener('DOMContentLoaded', function() {
        const row = document.createElement('tr');
        row.innerHTML = `
          <td><input type="text" class="form-control" placeholder="Concepto..." id="gasto-concepto-${idx}"></td>
-         <td><input type="number" class="form-control" placeholder="0" id="gasto-monto-${idx}" step="0.01"></td>
+         <td><input type="text" class="form-control" placeholder="0" id="gasto-monto-${idx}"></td>
          <td><button type="button" class="btn btn-danger btn-sm" onclick="eliminarGasto(${idx})">🗑️</button></td>
        `;
        tbody.appendChild(row);
@@ -868,27 +961,33 @@ document.addEventListener('DOMContentLoaded', function() {
      ingresosExtraList.forEach((item, idx) => {
        const montoInput = document.getElementById(`ingreso-monto-${idx}`);
        if (montoInput) {
-         const monto = parseFloat(montoInput.value) || 0;
+         const monto = parseFloat(montoInput.value.replace(/\./g, '').replace(',', '.')) || 0;
          total += monto;
          ingresosExtraList[idx].monto = monto;
        }
      });
      document.getElementById('total-ingresos-modal').textContent = total.toLocaleString('de-DE');
      document.getElementById('ingresos-extra-total').textContent = total.toLocaleString('de-DE');
-     ingresosExtra = total;
-     totalIngresos = saldoInicial + ingresosBinance + ingresosExtra;
+     
+     console.log('Ingresos extra actualizados:', total);
+     
+     // Actualizar total ingresos usando la nueva función
      updateValueWithAnimation('total-ingresos', calcularTotalIngresos(), true);
-     recalcularTodo();
+     
+     // Recalcular todo
+     setTimeout(() => {
+       recalcularTodo();
+     }, 300);
    }
    document.getElementById('agregar-ingreso').addEventListener('click', function() {
      const tbody = document.getElementById('tbody-ingresos');
      const idx = ingresosExtraList.length;
      const row = document.createElement('tr');
-     row.innerHTML = `
-       <td><input type="text" class="form-control" placeholder="Concepto..." id="ingreso-concepto-${idx}"></td>
-       <td><input type="number" class="form-control" placeholder="0" id="ingreso-monto-${idx}" step="0.01"></td>
-       <td><button type="button" class="btn btn-danger btn-sm" onclick="eliminarIngreso(${idx})">🗑️</button></td>
-     `;
+            row.innerHTML = `
+         <td><input type="text" class="form-control" placeholder="Concepto..." id="ingreso-concepto-${idx}"></td>
+         <td><input type="text" class="form-control" placeholder="0" id="ingreso-monto-${idx}"></td>
+         <td><button type="button" class="btn btn-danger btn-sm" onclick="eliminarIngreso(${idx})">🗑️</button></td>
+       `;
      tbody.appendChild(row);
      ingresosExtraList.push({ concepto: '', monto: 0 });
      document.getElementById(`ingreso-monto-${idx}`).addEventListener('input', actualizarIngresosExtra);
@@ -1014,6 +1113,40 @@ document.addEventListener('DOMContentLoaded', function() {
      };
    }
 
+   // Función para actualizar gastos en la base de datos
+   async function actualizarGastosEnBD() {
+     try {
+       const gastos = parseInt(document.getElementById('gastos').value.replace(/[^\d]/g, '')) || 0;
+       const pagoMovil = parseInt(document.getElementById('pago-movil').value.replace(/[^\d]/g, '')) || 0;
+       const enviosAlDetal = parseInt(document.getElementById('egresos-detal').value.replace(/[^\d]/g, '')) || 0;
+       
+       const datosGastos = {
+         fecha: document.getElementById('fecha-cierre').value,
+         gastos: gastos,
+         pago_movil: pagoMovil,
+         envios_al_detal: enviosAlDetal
+       };
+       
+       const response = await fetch('/cierre/actualizar_gastos', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify(datosGastos)
+       });
+       
+       const result = await response.json();
+       if (result.success) {
+         console.log('Gastos actualizados en BD:', result.message);
+       } else {
+         console.error('Error actualizando gastos:', result.message);
+       }
+       
+     } catch (error) {
+       console.error('Error al actualizar gastos:', error);
+     }
+   }
+
    // Función para guardar el cierre
    async function guardarCierre() {
      const btnGuardar = document.getElementById('btn-realizar-cierre');
@@ -1096,19 +1229,47 @@ document.addEventListener('DOMContentLoaded', function() {
      fechaInput.addEventListener('change', function() {
        const fecha = this.value;
        if (fecha) {
+         console.log('Cambiando fecha a:', fecha);
          window.location.href = '?fecha=' + fecha;
        }
      });
    }
 
-   // En el script, agrega el listener y el formateo:
-   document.getElementById('egresos-detal').addEventListener('input', function() {
-     let value = this.value.replace(/[^\d]/g, '');
-     if (value) {
-       this.value = parseInt(value).toLocaleString('de-DE');
-     }
-     recalcularTodo();
-   });
+   // COMENTADO: Los valores ya vienen formateados del backend
+   // document.getElementById('egresos-detal').addEventListener('input', function() {
+   //   let value = this.value.replace(/[^\d]/g, '');
+   //   if (value) {
+   //     this.value = parseInt(value).toLocaleString('de-DE');
+   //   }
+   //   recalcularTodo();
+   // });
+
+   // COMENTADO: Los valores ya vienen formateados del backend
+   // document.getElementById('pago-movil').addEventListener('input', function() {
+   //   let value = this.value.replace(/[^\d]/g, '');
+   //   if (value) {
+   //     this.value = parseInt(value).toLocaleString('de-DE');
+   //   }
+   //   recalcularTodo();
+   // });
+
+   // COMENTADO: Los valores ya vienen formateados del backend
+   // document.getElementById('cierre-detal').addEventListener('input', function() {
+   //   let value = this.value.replace(/[^\d]/g, '');
+   //   if (value) {
+   //     this.value = parseInt(value).toLocaleString('de-DE');
+   //   }
+   //   calcularCierreFinal();
+   // });
+
+   // COMENTADO: Los valores ya vienen formateados del backend
+   // document.getElementById('saldo-bancos').addEventListener('input', function() {
+   //   let value = this.value.replace(/[^\d]/g, '');
+   //   if (value) {
+   //     this.value = parseInt(value).toLocaleString('de-DE');
+   //   }
+   //   calcularCuadre();
+   // });
 
    // Rellenar ingresos extra si hay datos guardados
    (function() {
@@ -1123,7 +1284,7 @@ document.addEventListener('DOMContentLoaded', function() {
        const row = document.createElement('tr');
        row.innerHTML = `
          <td><input type="text" class="form-control" placeholder="Concepto..." id="ingreso-concepto-${idx}" value="${item.concepto ?? ''}"></td>
-         <td><input type="number" class="form-control" placeholder="0" id="ingreso-monto-${idx}" step="0.01" value="${item.monto ?? 0}"></td>
+         <td><input type="text" class="form-control" placeholder="0" id="ingreso-monto-${idx}" value="${item.monto ? item.monto.toLocaleString('de-DE') : '0'}"></td>
          <td><button type="button" class="btn btn-danger btn-sm" onclick="eliminarIngreso(${idx})">🗑️</button></td>
        `;
        tbody.appendChild(row);
@@ -1145,32 +1306,41 @@ document.addEventListener('DOMContentLoaded', function() {
        const row = document.createElement('tr');
        row.innerHTML = `
          <td><input type="text" class="form-control" placeholder="Concepto..." id="gasto-concepto-${idx}" value="${item.concepto ?? ''}"></td>
-         <td><input type="number" class="form-control" placeholder="0" id="gasto-monto-${idx}" step="0.01" value="${item.monto ?? 0}"></td>
+         <td><input type="text" class="form-control" placeholder="0" id="gasto-monto-${idx}" value="${item.monto ? item.monto.toLocaleString('de-DE') : '0'}"></td>
          <td><button type="button" class="btn btn-danger btn-sm" onclick="eliminarGasto(${idx})">🗑️</button></td>
        `;
        tbody.appendChild(row);
        gastosList.push({ concepto: item.concepto ?? '', monto: item.monto ?? 0 });
        document.getElementById(`gasto-monto-${idx}`).addEventListener('input', actualizarGastos);
      });
-     actualizarGastos();
-   })();
-   // Rellenar campos editables con valores guardados (forzar SIEMPRE el valor del backend, aunque sea 0 o vacío)
-   if (document.getElementById('egresos-detal')) {
-     let val = egresosDetalGuardado ?? '';
-     if (!isNaN(val)) {
-       val = parseInt(val, 10);
+     
+     // Solo actualizar gastos si hay datos en el modal, sino mantener el valor del backend
+     if (datos.length > 0 && datos.some(item => item.monto > 0)) {
+       actualizarGastos();
      }
-     document.getElementById('egresos-detal').value = val || '';
-   }
-   if (document.getElementById('pago-movil')) {
-     document.getElementById('pago-movil').value = pagoMovilGuardado ?? '';
-   }
-   if (document.getElementById('cierre-detal')) {
-     document.getElementById('cierre-detal').value = cierreDetalGuardado ?? '';
-   }
-   if (document.getElementById('saldo-bancos')) {
-     document.getElementById('saldo-bancos').value = saldoBancosGuardado ?? '';
-   }
+   })();
+   // COMENTADO: Los valores ya vienen formateados del backend
+   // function formatearCampo(id, valor) {
+   //   const campo = document.getElementById(id);
+   //   if (campo) {
+   //     if (valor !== null && valor !== undefined && valor !== '') {
+   //       const numValor = parseFloat(valor);
+   //       if (!isNaN(numValor)) {
+   //         campo.value = numValor.toLocaleString('de-DE');
+   //       } else {
+   //         campo.value = '';
+   //       }
+   //     } else {
+   //       campo.value = '';
+   //     }
+   //   }
+   // }
+   
+   // COMENTADO: Los valores ya vienen formateados del backend
+   // formatearCampo('egresos-detal', egresosDetalGuardado);
+   // formatearCampo('pago-movil', pagoMovilGuardado);
+   // formatearCampo('cierre-detal', cierreDetalGuardado);
+   // formatearCampo('saldo-bancos', saldoBancosGuardado);
    setTimeout(function() {
      document.getElementById('cuadre-cierre-final').textContent = document.getElementById('cierre-final').textContent;
      calcularCuadre();
@@ -1178,18 +1348,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- Script para recargar al cambiar la fecha de cierre -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  var fechaInput = document.getElementById('fecha-cierre');
-  if (fechaInput) {
-    fechaInput.addEventListener('change', function() {
-      const fecha = this.value;
-      if (fecha) {
-        window.location.href = '?fecha=' + fecha;
-      }
-    });
-  }
-});
-</script>
+
+
+<!-- Script eliminado: Los valores ya vienen formateados del backend -->
 {% endblock %} 
