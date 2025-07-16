@@ -30,7 +30,7 @@ async def obtener_valor_usdt_por_banco(banco: str) -> float:
     payload = {
         'proMerchantAds': False,
         'page': 1,
-        'transAmount': 100000,
+        'transAmount': 500000,
         'rows': 20,
         'payTypes': [banco],
         'publisherType': 'merchant',

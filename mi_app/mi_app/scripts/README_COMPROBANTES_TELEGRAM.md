@@ -1,5 +1,21 @@
 # Bot de Comprobantes Bancarios - Telegram
 
+## 🚀 Cómo arrancar el bot (ejecución recomendada)
+
+1. Abre una terminal.
+2. Cambia al directorio del script:
+   ```bash
+   cd /Users/sergioplaza/Library/CloudStorage/OneDrive-Personal/Sergio/WEB/mi_app/mi_app/scripts
+   ```
+3. Activa el entorno virtual:
+   ```bash
+   source /Users/sergioplaza/Library/CloudStorage/OneDrive-Personal/Sergio/WEB/venv_telegram/bin/activate
+   ```
+4. Ejecuta el bot:
+   ```bash
+   python sumar_comprobantes_telegram.py
+   ```
+
 ## Descripción
 
 Este script es una herramienta de apoyo independiente que permite procesar comprobantes bancarios a través de Telegram. **No está integrado directamente con la web**, sino que funciona como una herramienta auxiliar para la empresa.
