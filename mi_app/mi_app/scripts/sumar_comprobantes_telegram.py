@@ -37,6 +37,7 @@ from supabase import create_client, Client
 import hashlib
 import datetime
 import logging
+import pytz
 
 # Configuración de logging
 logging.basicConfig(
@@ -59,6 +60,12 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 
 # Inicializar cliente Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def obtener_fecha_chile():
+    """Obtiene la fecha actual en zona horaria de Chile"""
+    zona_horaria_chile = pytz.timezone('America/Santiago')
+    fecha_chile = datetime.datetime.now(zona_horaria_chile)
+    return fecha_chile.strftime('%d/%m/%Y')
 
 def formato_bs(monto):
     """Formatea un monto en formato boliviano"""
@@ -135,13 +142,13 @@ class ComprobantesManager:
         self.cargar_historial_hoy()
     
     def cargar_historial_hoy(self):
-        """Carga el historial de comprobantes del día actual"""
-        hoy = datetime.date.today().strftime('%d/%m/%Y')
+        """Carga el historial de comprobantes del día actual en zona horaria de Chile"""
+        hoy = obtener_fecha_chile()
         try:
             res = supabase.table("comprobantes").select("brs,es_duplicado").eq("fecha", hoy).execute()
             self.montos = [float(item['brs']) for item in res.data if not item.get('es_duplicado', False)]
             self.suma_total = sum(self.montos)
-            logger.info(f"Historial del día {hoy} cargado: {len(self.montos)} comprobantes originales, suma total: {self.suma_total}")
+            logger.info(f"Historial del día {hoy} (Chile) cargado: {len(self.montos)} comprobantes originales, suma total: {self.suma_total}")
         except Exception as e:
             logger.error(f"Error cargando historial del día: {e}")
             self.montos = []
@@ -281,8 +288,8 @@ async def procesar_imagen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error procesando imagen: {e}")
 
 async def calcular_total_usuario(user_id):
-    """Calcula el total de comprobantes de un usuario específico"""
-    hoy = datetime.date.today().strftime('%d/%m/%Y')
+    """Calcula el total de comprobantes de un usuario específico en zona horaria de Chile"""
+    hoy = obtener_fecha_chile()
     try:
         res = supabase.table("comprobantes").select("brs").eq("fecha", hoy).eq("usuario_id", user_id).execute()
         total = sum(float(item['brs']) for item in res.data)
@@ -319,8 +326,8 @@ async def mi_total(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error al calcular tu total: {e}")
 
 async def calcular_total_general():
-    """Calcula el total general del día"""
-    hoy = datetime.date.today().strftime('%d/%m/%Y')
+    """Calcula el total general del día en zona horaria de Chile"""
+    hoy = obtener_fecha_chile()
     try:
         res = supabase.table("comprobantes").select("brs").eq("fecha", hoy).execute()
         total = sum(float(item['brs']) for item in res.data)
@@ -339,7 +346,7 @@ async def mi_detalle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         'last_name': user.last_name or ''
     }
     
-    hoy = datetime.date.today().strftime('%d/%m/%Y')
+    hoy = obtener_fecha_chile()
     try:
         res = supabase.table("comprobantes").select("brs,timestamp_envio").eq("fecha", hoy).eq("usuario_id", user_info['id']).execute()
         montos_personales = res.data
@@ -416,8 +423,8 @@ async def denegar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=update.effective_chat.id, text="No hay comprobante pendiente para descartar.")
 
 async def detalle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Muestra el detalle de todos los montos del día con información del usuario"""
-    hoy = datetime.date.today().strftime('%d/%m/%Y')
+    """Muestra el detalle de todos los montos del día con información del usuario en zona horaria de Chile"""
+    hoy = obtener_fecha_chile()
     try:
         res = supabase.table("comprobantes").select("brs,usuario_nombre,usuario_username,timestamp_envio").eq("fecha", hoy).execute()
         montos_todos = res.data
@@ -463,8 +470,8 @@ async def ingreso_manual(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text=mensaje)
 
 async def total_sin_duplicados(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Muestra el total sin duplicados"""
-    hoy = datetime.date.today().strftime('%d/%m/%Y')
+    """Muestra el total sin duplicados en zona horaria de Chile"""
+    hoy = obtener_fecha_chile()
     try:
         res = supabase.table("comprobantes").select("brs,es_duplicado").eq("fecha", hoy).execute()
         suma = sum(float(item['brs']) for item in res.data if not item.get('es_duplicado', False))
@@ -473,8 +480,8 @@ async def total_sin_duplicados(update: Update, context: ContextTypes.DEFAULT_TYP
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error al consultar total: {e}")
 
 async def total(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Muestra el total con duplicados"""
-    hoy = datetime.date.today().strftime('%d/%m/%Y')
+    """Muestra el total con duplicados en zona horaria de Chile"""
+    hoy = obtener_fecha_chile()
     try:
         res = supabase.table("comprobantes").select("brs").eq("fecha", hoy).execute()
         suma = sum(float(item['brs']) for item in res.data)
@@ -483,8 +490,8 @@ async def total(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Error al consultar total: {e}")
 
 async def estadisticas_usuarios(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Muestra estadísticas de comprobantes por usuario"""
-    hoy = datetime.date.today().strftime('%d/%m/%Y')
+    """Muestra estadísticas de comprobantes por usuario en zona horaria de Chile"""
+    hoy = obtener_fecha_chile()
     try:
         res = supabase.table("comprobantes").select("brs,usuario_nombre,usuario_username").eq("fecha", hoy).execute()
         montos_todos = res.data
