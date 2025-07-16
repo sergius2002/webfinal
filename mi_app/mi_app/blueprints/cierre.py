@@ -121,8 +121,15 @@ def obtener_gastos_desde_margen(fecha_consulta):
     Obtiene los gastos desde el módulo de Márgenes (tabla stock_diario)
     """
     try:
+        logging.info(f"Consultando stock_diario para fecha: {fecha_consulta}")
+        
         # Consultar gastos de la fecha desde la base de datos
-        row_gastos = supabase.table("stock_diario").select("gastos, pago_movil, envios_al_detal").eq("fecha", fecha_consulta).execute().data
+        response = supabase.table("stock_diario").select("gastos, pago_movil, envios_al_detal").eq("fecha", fecha_consulta).execute()
+        
+        logging.info(f"Respuesta de Supabase para stock_diario: {response}")
+        logging.info(f"Datos recibidos: {response.data}")
+        
+        row_gastos = response.data
         
         if row_gastos and row_gastos[0]:
             # Obtener valores raw de la base de datos
@@ -144,7 +151,7 @@ def obtener_gastos_desde_margen(fecha_consulta):
             gastos = 15330
             pago_movil = 7190
             envios_al_detal = 170984
-            logging.info(f"No se encontraron gastos en stock_diario para fecha {fecha_consulta}, usando valores por defecto")
+            logging.warning(f"No se encontraron gastos en stock_diario para fecha {fecha_consulta}, usando valores por defecto: gastos={gastos}, pago_movil={pago_movil}, envios_al_detal={envios_al_detal}")
             return gastos, pago_movil, envios_al_detal
             
     except Exception as e:
