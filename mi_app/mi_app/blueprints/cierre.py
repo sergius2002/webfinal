@@ -92,6 +92,66 @@ def obtener_saldo_inicial_inteligente(fecha_consulta):
     logging.info(f"Usando saldo por defecto: {config['saldo_inicial']}")
     return config['saldo_inicial']
 
+def obtener_saldo_inicial_desde_margen(fecha_consulta):
+    """
+    Obtiene el saldo inicial desde el módulo de Márgenes (BRS del día anterior)
+    """
+    try:
+        # Obtener fecha anterior (ayer)
+        fecha_consulta_dt = datetime.strptime(fecha_consulta, '%Y-%m-%d')
+        fecha_ayer = (fecha_consulta_dt - timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        # Consultar stock diario de ayer desde la tabla stock_diario
+        row = supabase.table("stock_diario").select("brs_stock").eq("fecha", fecha_ayer).execute().data
+        
+        if row and row[0] and row[0].get("brs_stock") is not None:
+            saldo_brs = float(row[0]["brs_stock"])
+            logging.info(f"Usando BRS del módulo Márgenes para fecha {fecha_ayer}: {saldo_brs}")
+            return saldo_brs
+        else:
+            logging.warning(f"No se encontró BRS en stock_diario para fecha {fecha_ayer}")
+            return None
+            
+    except Exception as e:
+        logging.error(f"Error al obtener saldo desde módulo Márgenes: {e}")
+        return None
+
+def obtener_gastos_desde_margen(fecha_consulta):
+    """
+    Obtiene los gastos desde el módulo de Márgenes (tabla stock_diario)
+    """
+    try:
+        # Consultar gastos de la fecha desde la base de datos
+        row_gastos = supabase.table("stock_diario").select("gastos, pago_movil, envios_al_detal").eq("fecha", fecha_consulta).execute().data
+        
+        if row_gastos and row_gastos[0]:
+            # Obtener valores raw de la base de datos
+            gastos_raw = row_gastos[0].get('gastos', 15330)
+            pago_movil_raw = row_gastos[0].get('pago_movil', 7190)
+            envios_al_detal_raw = row_gastos[0].get('envios_al_detal', 170984)
+            
+            logging.info(f"Valores raw de BD para fecha {fecha_consulta}: gastos_raw={gastos_raw} (tipo: {type(gastos_raw)}), pago_movil_raw={pago_movil_raw} (tipo: {type(pago_movil_raw)}), envios_al_detal_raw={envios_al_detal_raw} (tipo: {type(envios_al_detal_raw)})")
+            
+            # Convertir a float manteniendo precisión
+            gastos = float(gastos_raw) if gastos_raw is not None else 15330.0
+            pago_movil = float(pago_movil_raw) if pago_movil_raw is not None else 7190.0
+            envios_al_detal = float(envios_al_detal_raw) if envios_al_detal_raw is not None else 170984.0
+            
+            logging.info(f"Valores convertidos a float: gastos={gastos}, pago_movil={pago_movil}, envios_al_detal={envios_al_detal}")
+            return gastos, pago_movil, envios_al_detal
+        else:
+            # Usar valores por defecto si no hay datos para esta fecha
+            gastos = 15330
+            pago_movil = 7190
+            envios_al_detal = 170984
+            logging.info(f"No se encontraron gastos en stock_diario para fecha {fecha_consulta}, usando valores por defecto")
+            return gastos, pago_movil, envios_al_detal
+            
+    except Exception as e:
+        logging.error(f"Error al obtener gastos desde módulo Márgenes: {e}")
+        # Valores por defecto en caso de error
+        return 15330, 7190, 170984
+
 cierre_bp = Blueprint('cierre', __name__)
 
 @cierre_bp.route('/')
@@ -99,23 +159,39 @@ cierre_bp = Blueprint('cierre', __name__)
 def index():
     # Obtener fecha desde query param o usar hoy
     fecha_param = request.args.get('fecha')
+    logging.info(f"Parámetro fecha recibido: {fecha_param}")
+    
     try:
         if fecha_param:
             fecha_dt = datetime.strptime(fecha_param, '%Y-%m-%d')
             fecha = fecha_dt.strftime('%Y-%m-%d')
+            logging.info(f"Fecha procesada: {fecha}")
         else:
             fecha_dt = datetime.now()
             fecha = fecha_dt.strftime('%Y-%m-%d')
+            logging.info(f"Usando fecha actual: {fecha}")
     except ValueError:
         # Formato inválido -> usar hoy
         fecha_dt = datetime.now()
         fecha = fecha_dt.strftime('%Y-%m-%d')
+        logging.warning(f"Formato de fecha inválido, usando fecha actual: {fecha}")
 
     # Formato para mostrar en el header (DD-MMM)
     fecha_mostrar = fecha_dt.strftime('%d-%b').lower()
     
-    # Obtener saldo inicial usando la lógica inteligente
-    saldo_inicial = obtener_saldo_inicial_inteligente(fecha)
+    # Obtener saldo inicial desde el módulo de Márgenes (BRS del día anterior)
+    saldo_inicial_margen = obtener_saldo_inicial_desde_margen(fecha)
+    if saldo_inicial_margen is not None:
+        saldo_inicial = saldo_inicial_margen
+        logging.info(f"Usando saldo inicial desde Márgenes: {saldo_inicial}")
+    else:
+        # Fallback a la lógica inteligente original
+        saldo_inicial = obtener_saldo_inicial_inteligente(fecha)
+        logging.info(f"Usando saldo inicial inteligente (fallback): {saldo_inicial}")
+    
+    # Obtener gastos desde el módulo de Márgenes
+    gastos, pago_movil, envios_al_detal = obtener_gastos_desde_margen(fecha)
+    logging.info(f"Gastos obtenidos para fecha {fecha}: gastos={gastos}, pago_movil={pago_movil}, envios_al_detal={envios_al_detal}")
     
     # Consulta ingresos (compras)
     try:
@@ -127,6 +203,7 @@ def index():
             .lte("createtime", f"{fecha}T23:59:59") \
             .execute()
         total_ingresos = sum(item.get("totalprice", 0) for item in resp_ing.data) if resp_ing.data else 0
+        logging.info(f"Ingresos para fecha {fecha}: {total_ingresos}")
     except Exception as e:
         logging.error("Error al obtener ingresos: %s", e)
         total_ingresos = 0
@@ -137,6 +214,7 @@ def index():
         resp_ped = supabase.table("pedidos").select("brs,cliente").eq("fecha", fecha).eq("eliminado", False).execute()
         egresos_no_detal = sum(item.get("brs", 0) for item in resp_ped.data if item.get("cliente") != "DETAL") if resp_ped.data else 0
         egresos_detal = sum(item.get("brs", 0) for item in resp_ped.data if item.get("cliente") == "DETAL") if resp_ped.data else 0
+        logging.info(f"Egresos para fecha {fecha}: no_detal={egresos_no_detal}, detal={egresos_detal}")
     except Exception as e:
         logging.error("Error al obtener egresos: %s", e)
         egresos_no_detal = 0
@@ -155,9 +233,7 @@ def index():
         logging.error(f"Error al consultar cierre guardado: {e}")
 
     # Valores por defecto
-    egresos_detal = ''
-    gastos = 0
-    pago_movil = 0
+    egresos_detal = 0
     cierre_detal = 0
     saldo_bancos = 0
     ingresos_extra_detalle = []
@@ -165,9 +241,7 @@ def index():
 
     # Si hay cierre guardado, sobreescribir valores SOLO de los campos manuales
     if cierre_guardado:
-        egresos_detal = str(cierre_guardado.get("egresos_detal", ''))
-        gastos = cierre_guardado.get("gastos", 0)
-        pago_movil = cierre_guardado.get("pago_movil", 0)
+        egresos_detal = cierre_guardado.get("egresos_detal", 0)
         cierre_detal = cierre_guardado.get("cierre_detal", 0)
         saldo_bancos = cierre_guardado.get("saldo_bancos", 0)
         # Refuerzo para ingresos_extra_detalle
@@ -196,14 +270,35 @@ def index():
     # Obtener información de configuración para mostrar en la interfaz
     config_info = obtener_configuracion_inicial()
     
+    # Formatear valores para mostrar en el template con separadores de miles
+    # Convertir a entero primero para evitar problemas con decimales
+    gastos_int = int(gastos) if gastos else 0
+    pago_movil_int = int(pago_movil) if pago_movil else 0
+    envios_al_detal_int = int(envios_al_detal) if envios_al_detal else 0
+    
+    formatted_gastos = f"{gastos_int:,}".replace(",", ".")
+    formatted_pago_movil = f"{pago_movil_int:,}".replace(",", ".")
+    formatted_envios_al_detal = f"{envios_al_detal_int:,}".replace(",", ".")
+    
+    logging.info(f"Valores originales: gastos={gastos} (tipo: {type(gastos)}), pago_movil={pago_movil} (tipo: {type(pago_movil)}), envios_al_detal={envios_al_detal} (tipo: {type(envios_al_detal)})")
+    logging.info(f"Valores formateados: gastos='{formatted_gastos}', pago_movil='{formatted_pago_movil}', envios_al_detal='{formatted_envios_al_detal}'")
+    logging.info(f"Renderizando template con fecha_iso={fecha}, ingresos={formatted_ingresos}, egresos={formatted_egresos}")
+    
+    # Log temporal para debug
+    print(f"DEBUG - Valores enviados al template:")
+    print(f"  gastos: '{formatted_gastos}' (tipo: {type(formatted_gastos)})")
+    print(f"  pago_movil: '{formatted_pago_movil}' (tipo: {type(formatted_pago_movil)})")
+    print(f"  envios_al_detal: '{formatted_envios_al_detal}' (tipo: {type(formatted_envios_al_detal)})")
+    
     return render_template('cierre/index.html', active_page='cierre',
                            ingresos=formatted_ingresos, egresos=formatted_egresos,
                            egresos_detal=egresos_detal,
                            saldo_inicial=formatted_saldo_inicial, fecha_iso=fecha,
                            fecha_mostrar=fecha_mostrar,
-                           gastos=gastos, pago_movil=pago_movil, cierre_detal=cierre_detal,
+                           gastos=formatted_gastos, pago_movil=formatted_pago_movil, cierre_detal=cierre_detal,
                            saldo_bancos=saldo_bancos, ingresos_extra_detalle=ingresos_extra_detalle,
-                           gastos_detalle=gastos_detalle, config_info=config_info)
+                           gastos_detalle=gastos_detalle, config_info=config_info,
+                           envios_al_detal=formatted_envios_al_detal)
 
 @cierre_bp.route('/guardar', methods=['POST'])
 @login_required
@@ -219,18 +314,24 @@ def guardar_cierre():
         if not data:
             return jsonify({'success': False, 'message': 'No se recibieron datos'}), 400
         
-        # Obtener saldo inicial usando la lógica inteligente
-        saldo_inicial = obtener_saldo_inicial_inteligente(fecha)
+        # Obtener saldo inicial desde el módulo de Márgenes (BRS del día anterior)
+        saldo_inicial_margen = obtener_saldo_inicial_desde_margen(fecha)
+        if saldo_inicial_margen is not None:
+            saldo_inicial = saldo_inicial_margen
+        else:
+            # Fallback a la lógica inteligente original
+            saldo_inicial = obtener_saldo_inicial_inteligente(fecha)
             
+        # Obtener gastos desde el módulo de Márgenes
+        gastos, pago_movil, envios_al_detal = obtener_gastos_desde_margen(fecha)
+        
         # Extraer valores del frontend
         ingresos_binance = float(data.get('ingresos_binance', 0))
         ingresos_extra = float(data.get('ingresos_extra', 0))
         total_ingresos = float(data.get('total_ingresos', 0))
         egresos_pedidos = float(data.get('egresos_pedidos', 0))
         egresos_detal = float(data.get('egresos_detal', 0))
-        gastos = float(data.get('gastos', 0))
         gastos_detalle = data.get('gastos_detalle', [])
-        pago_movil = float(data.get('pago_movil', 0))
         cierre_detal = float(data.get('cierre_detal', 0))
         saldo_bancos = float(data.get('saldo_bancos', 0))
         total_egresos = float(data.get('total_egresos', 0))
@@ -253,6 +354,7 @@ def guardar_cierre():
             'pago_movil': pago_movil,
             'cierre_detal': cierre_detal,
             'saldo_bancos': saldo_bancos,
+            'envios_al_detal': envios_al_detal,
             'total_egresos': total_egresos,
             'cierre_mayor': cierre_mayor,
             'cierre_final': cierre_final,
@@ -365,4 +467,64 @@ def historial_fecha(fecha):
         return jsonify({'success': False, 'message': 'Formato de fecha inválido'}), 400
     except Exception as e:
         logging.error(f"Error al obtener historial de fecha {fecha}: {e}")
-        return jsonify({'success': False, 'message': 'Error al obtener historial'}), 500 
+        return jsonify({'success': False, 'message': 'Error al obtener historial'}), 500
+
+@cierre_bp.route('/actualizar_gastos', methods=['POST'])
+@login_required
+def actualizar_gastos():
+    """Actualiza los gastos en la tabla stock_diario (mismo lugar que Márgenes)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No se recibieron datos'}), 400
+        
+        fecha = data.get('fecha')
+        gastos = data.get('gastos')
+        pago_movil = data.get('pago_movil')
+        envios_al_detal = data.get('envios_al_detal')
+        
+        if not all([fecha, gastos is not None, pago_movil is not None, envios_al_detal is not None]):
+            return jsonify({'success': False, 'message': 'Todos los campos son requeridos'}), 400
+        
+        try:
+            gastos = float(gastos)
+            pago_movil = float(pago_movil)
+            envios_al_detal = float(envios_al_detal)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'Los valores deben ser números válidos'}), 400
+        
+        # Verificar si ya existe un registro para esta fecha
+        existing_response = supabase.table("stock_diario").select("fecha").eq("fecha", fecha).execute()
+        
+        if existing_response.data:
+            # Actualizar solo los campos de gastos en el registro existente
+            gastos_data = {
+                'gastos': gastos,
+                'pago_movil': pago_movil,
+                'envios_al_detal': envios_al_detal
+            }
+            response = supabase.table("stock_diario").update(gastos_data).eq("fecha", fecha).execute()
+            message = f"Gastos actualizados exitosamente para {fecha}"
+        else:
+            # Crear un nuevo registro con valores por defecto para los campos NOT NULL
+            # y los gastos proporcionados
+            nuevo_registro = {
+                'fecha': fecha,
+                'brs_stock': 0.0,  # Valor por defecto
+                'usdt_stock': 0.0,  # Valor por defecto
+                'tasa_ves_clp': 0.0,  # Valor por defecto
+                'usdt_tasa': 0.0,  # Valor por defecto
+                'gastos': gastos,
+                'pago_movil': pago_movil,
+                'envios_al_detal': envios_al_detal
+            }
+            response = supabase.table("stock_diario").insert(nuevo_registro).execute()
+            message = f"Gastos guardados exitosamente para {fecha}"
+        
+        if response.data:
+            return jsonify({'success': True, 'message': message})
+        else:
+            return jsonify({'success': False, 'message': 'Error al guardar en la base de datos'}), 500
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500 

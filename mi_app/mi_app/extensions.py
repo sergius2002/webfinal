@@ -29,4 +29,13 @@ def user_allowed(f):
             flash("Error interno al verificar permisos.")
             return redirect(url_for("index"))
         return f(*args, **kwargs)
-    return wrapper 
+    return wrapper
+
+def format_number(value):
+    """Filtro para formatear números con separadores de miles"""
+    if value is None:
+        return "0"
+    try:
+        return "{:,}".format(int(value)).replace(",", ".")
+    except (ValueError, TypeError):
+        return str(value) 
