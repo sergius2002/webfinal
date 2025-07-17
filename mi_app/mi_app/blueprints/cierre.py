@@ -554,17 +554,16 @@ def guardar_stock_diario():
         logging.info(f"Guardando en stock_diario para fecha {fecha}: envios_al_detal={envios_al_detal}, gastos={gastos}, pago_movil={pago_movil}")
         
         # Verificar si ya existe un registro para esta fecha
-        existing_response = supabase.table("stock_diario").select("id").eq("fecha", fecha).execute()
+        existing_response = supabase.table("stock_diario").select("fecha").eq("fecha", fecha).execute()
         
         if existing_response.data:
-            # Actualizar registro existente
-            stock_id = existing_response.data[0]['id']
+            # Actualizar registro existente usando fecha como clave
             response = supabase.table("stock_diario").update({
                 'envios_al_detal': envios_al_detal,
                 'gastos': gastos,
                 'pago_movil': pago_movil,
                 'usuario_modificacion': usuario_email
-            }).eq("id", stock_id).execute()
+            }).eq("fecha", fecha).execute()
             message = "Datos actualizados en Stock Diario exitosamente"
         else:
             # Crear nuevo registro
