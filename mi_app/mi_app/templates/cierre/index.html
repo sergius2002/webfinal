@@ -551,6 +551,14 @@
                      <!-- DEBUG: pago_movil = {{ pago_movil }} -->
                    </td>
                  </tr>
+                 <tr>
+                   <td colspan="2" class="text-center py-2">
+                     <button type="button" class="btn btn-primary btn-sm" id="btn-guardar-stock-diario" style="font-size: 0.9rem; font-weight: 500;">
+                       <i class="fas fa-database me-1"></i>Guardar en Stock Diario
+                     </button>
+                     <small class="d-block text-muted mt-1">Guarda Ingresos hacia detal, Gastos y Pago móvil</small>
+                   </td>
+                 </tr>
                  <tr class="total-egresos-row">
                    <td class="field-label">
                      Total egresos
@@ -1220,8 +1228,103 @@ document.addEventListener('DOMContentLoaded', function() {
      }
    }
 
+   // Función para guardar en stock_diario
+   async function guardarStockDiario() {
+     const btnGuardar = document.getElementById('btn-guardar-stock-diario');
+     const estadoGuardado = document.getElementById('estado-guardado');
+     
+     // Obtener valores de los campos
+     const egresosDetal = parseFloat(document.getElementById('egresos-detal').value.replace(/[^\d]/g, '')) || 0;
+     const gastos = parseFloat(document.getElementById('gastos').value.replace(/[^\d]/g, '')) || 0;
+     const pagoMovil = parseFloat(document.getElementById('pago-movil').value.replace(/[^\d]/g, '')) || 0;
+     const fecha = document.getElementById('fecha-cierre').value;
+     
+     // Validar que hay una fecha
+     if (!fecha) {
+       alert('Por favor selecciona una fecha');
+       return;
+     }
+     
+     // Deshabilitar botón y mostrar loading
+     btnGuardar.disabled = true;
+     btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Guardando...';
+     
+     try {
+       const datos = {
+         fecha: fecha,
+         envios_al_detal: egresosDetal,
+         gastos: gastos,
+         pago_movil: pagoMovil
+       };
+       
+       const response = await fetch('/cierre/guardar_stock_diario', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify(datos)
+       });
+       
+       const result = await response.json();
+       
+       if (result.success) {
+         // Éxito
+         estadoGuardado.style.display = 'block';
+         estadoGuardado.innerHTML = `
+           <small class="text-success">
+             <i class="fas fa-check-circle me-1"></i>
+             ${result.message}
+           </small>
+         `;
+         
+         // Cambiar estilo del botón temporalmente
+         btnGuardar.className = 'btn btn-outline-success btn-sm';
+         btnGuardar.innerHTML = '<i class="fas fa-check me-1"></i>✅ Guardado';
+         
+         // Restaurar botón después de 3 segundos
+         setTimeout(() => {
+           btnGuardar.disabled = false;
+           btnGuardar.className = 'btn btn-primary btn-sm';
+           btnGuardar.innerHTML = '<i class="fas fa-database me-1"></i>Guardar en Stock Diario';
+           estadoGuardado.style.display = 'none';
+         }, 3000);
+         
+       } else {
+         // Error
+         estadoGuardado.style.display = 'block';
+         estadoGuardado.innerHTML = `
+           <small class="text-danger">
+             <i class="fas fa-exclamation-triangle me-1"></i>
+             Error: ${result.message}
+           </small>
+         `;
+         
+         // Restaurar botón
+         btnGuardar.disabled = false;
+         btnGuardar.innerHTML = '<i class="fas fa-database me-1"></i>Guardar en Stock Diario';
+       }
+       
+     } catch (error) {
+       // Error de conexión
+       estadoGuardado.style.display = 'block';
+       estadoGuardado.innerHTML = `
+         <small class="text-danger">
+           <i class="fas fa-exclamation-triangle me-1"></i>
+           Error de conexión. Intenta nuevamente.
+         </small>
+       `;
+       
+       // Restaurar botón
+       btnGuardar.disabled = false;
+       btnGuardar.innerHTML = '<i class="fas fa-database me-1"></i>Guardar en Stock Diario';
+     }
+   }
+
    // Event listener para el botón de realizar cierre
    document.getElementById('btn-realizar-cierre').addEventListener('click', guardarCierre);
+   
+   // Event listener para el botón de guardar en stock diario
+   document.getElementById('btn-guardar-stock-diario').addEventListener('click', guardarStockDiario);
 
    // Script para recargar al cambiar la fecha
    var fechaInput = document.getElementById('fecha-cierre');

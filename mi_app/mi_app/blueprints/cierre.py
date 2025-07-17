@@ -534,4 +534,56 @@ def actualizar_gastos():
             return jsonify({'success': False, 'message': 'Error al guardar en la base de datos'}), 500
             
     except Exception as e:
-        return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500 
+        return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
+
+@cierre_bp.route('/guardar_stock_diario', methods=['POST'])
+@login_required
+def guardar_stock_diario():
+    """Guarda o actualiza los datos en la tabla stock_diario"""
+    try:
+        data = request.get_json()
+        fecha = data.get('fecha')
+        envios_al_detal = data.get('envios_al_detal', 0)
+        gastos = data.get('gastos', 0)
+        pago_movil = data.get('pago_movil', 0)
+        usuario_email = session.get('email', 'usuario_desconocido')
+        
+        if not fecha:
+            return jsonify({'success': False, 'message': 'Fecha requerida'}), 400
+        
+        logging.info(f"Guardando en stock_diario para fecha {fecha}: envios_al_detal={envios_al_detal}, gastos={gastos}, pago_movil={pago_movil}")
+        
+        # Verificar si ya existe un registro para esta fecha
+        existing_response = supabase.table("stock_diario").select("id").eq("fecha", fecha).execute()
+        
+        if existing_response.data:
+            # Actualizar registro existente
+            stock_id = existing_response.data[0]['id']
+            response = supabase.table("stock_diario").update({
+                'envios_al_detal': envios_al_detal,
+                'gastos': gastos,
+                'pago_movil': pago_movil,
+                'usuario_modificacion': usuario_email
+            }).eq("id", stock_id).execute()
+            message = "Datos actualizados en Stock Diario exitosamente"
+        else:
+            # Crear nuevo registro
+            response = supabase.table("stock_diario").insert({
+                'fecha': fecha,
+                'envios_al_detal': envios_al_detal,
+                'gastos': gastos,
+                'pago_movil': pago_movil,
+                'usuario_creacion': usuario_email
+            }).execute()
+            message = "Datos guardados en Stock Diario exitosamente"
+        
+        if response.data:
+            logging.info(f"Stock diario guardado para fecha {fecha} por usuario {usuario_email}")
+            return jsonify({'success': True, 'message': message})
+        else:
+            logging.error(f"Error al guardar en stock_diario: {response}")
+            return jsonify({'success': False, 'message': 'Error al guardar en la base de datos'}), 500
+            
+    except Exception as e:
+        logging.error(f"Error inesperado en guardar_stock_diario: {e}")
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500 
