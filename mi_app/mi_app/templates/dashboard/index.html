@@ -236,6 +236,19 @@
       
       if (result.success) {
         dashboardData = result.data;
+        
+        // Debug: Verificar si MaxiGiros Richard está en los datos
+        const maxigirosData = dashboardData.find(item => 
+          item.cliente && item.cliente.toLowerCase().includes('maxigiros') || 
+          item.cliente && item.cliente.toLowerCase().includes('richard')
+        );
+        if (maxigirosData) {
+          console.log('✅ MaxiGiros Richard encontrado en dashboardData:', maxigirosData);
+        } else {
+          console.log('❌ MaxiGiros Richard NO encontrado en dashboardData');
+          console.log('Clientes disponibles:', dashboardData.map(item => item.cliente));
+        }
+        
         actualizarTabla();
         actualizarTimestamp(result.timestamp);
       } else {

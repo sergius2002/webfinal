@@ -1096,6 +1096,64 @@ $(document).ready(function() {
   // Ejecutar validación al cargar la página
   validarTasa();
 });
+
+// Función para diagnóstico de cliente especial
+function ejecutarDiagnosticoCliente(cliente) {
+  const clienteEncoded = encodeURIComponent(cliente);
+  const url = `/pedidos/diagnostico_cliente/${clienteEncoded}`;
+  
+  fetch(url)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        const diag = data.diagnostico;
+        let mensaje = `🔍 <strong>Diagnóstico de Pedidos para ${cliente}:</strong><br>`;
+        mensaje += `✅ Existe en clientes: ${diag.existe_en_clientes}<br>`;
+        mensaje += `📦 Pedidos HOY: ${diag.pedidos_hoy}<br>`;
+        mensaje += `📊 Total pedidos: ${diag.total_pedidos}<br>`;
+        mensaje += `💰 Total CLP hoy: $${diag.total_clp_hoy.toLocaleString()}<br>`;
+        
+        if (diag.pedidos_hoy_detalle.length > 0) {
+          mensaje += `<br>📋 <strong>Pedidos de hoy:</strong><br>`;
+          diag.pedidos_hoy_detalle.forEach((pedido, index) => {
+            mensaje += `  ${index + 1}. $${pedido.clp.toLocaleString()} CLP (${pedido.brs} BRS)<br>`;
+          });
+        }
+        
+        Swal.fire({
+          title: 'Diagnóstico de Pedidos',
+          html: mensaje,
+          icon: 'info',
+          confirmButtonText: 'Entendido',
+          width: '600px'
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Error al ejecutar diagnóstico: ' + data.error
+        });
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Error de conexión al ejecutar diagnóstico'
+      });
+    });
+}
+
+// Log cuando se envía el formulario para MaxiGiros Richard
+$(document).ready(function() {
+  $('#form-nuevo-pedido').on('submit', function() {
+    const cliente = $('#cliente').val();
+    if (cliente && (cliente.toLowerCase().includes('maxigiros') || cliente.toLowerCase().includes('richard'))) {
+      console.log('Formulario enviado para cliente especial:', cliente);
+    }
+  });
+});
 </script>
 
 <script>

@@ -294,6 +294,14 @@
 </div>
 
 <!-- Modal de confirmación de asignación de pago -->
+<!-- Botón flotante para ir al dashboard (inicialmente oculto) -->
+<div id="btnDashboardFlotante" class="position-fixed" style="bottom: 20px; right: 20px; z-index: 1050; display: none;">
+  <a href="/dashboard/" target="_blank" class="btn btn-success btn-lg shadow-lg">
+    <i class="fas fa-chart-line me-2"></i>
+    Ver Dashboard
+  </a>
+</div>
+
 <div class="modal fade" id="modalAsignarPago" tabindex="-1" aria-labelledby="modalAsignarPagoLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content border-warning">
@@ -517,6 +525,53 @@ $(document).ready(function(){
           setTimeout(function() {
             row.fadeOut(400, function() { $(this).remove(); });
           }, 600);
+          
+          // Mostrar botón flotante para ir al dashboard
+          $('#btnDashboardFlotante').fadeIn(500);
+          
+          // Ocultar el botón después de 10 segundos
+          setTimeout(function() {
+            $('#btnDashboardFlotante').fadeOut(500);
+          }, 10000);
+          
+          // Mostrar notificación adicional para actualizar dashboard
+          setTimeout(function() {
+            toastr.info('💡 <strong>Consejo:</strong> Ve al Dashboard para ver los cambios actualizados en tiempo real.', {
+              timeOut: 5000,
+              extendedTimeOut: 2000,
+              closeButton: true,
+              onclick: function() {
+                window.open('/dashboard/', '_blank');
+              }
+            });
+          }, 1000);
+          
+          // Si es MaxiGiros Richard, mostrar opción de diagnóstico y forzar actualización
+          if (cliente.toLowerCase().includes('maxigiros') || cliente.toLowerCase().includes('richard')) {
+            setTimeout(function() {
+              toastr.warning('🔍 <strong>Cliente especial detectado:</strong> Si hay problemas, puedes ejecutar diagnóstico.', {
+                timeOut: 8000,
+                extendedTimeOut: 3000,
+                closeButton: true,
+                onclick: function() {
+                  ejecutarDiagnosticoCliente(cliente);
+                }
+              });
+            }, 2000);
+            
+            // Verificar dashboard después de 2 segundos
+            setTimeout(function() {
+              verificarDashboardCliente(cliente);
+            }, 2000);
+            
+            // Forzar actualización del dashboard después de 3 segundos
+            setTimeout(function() {
+              if (window.opener && window.opener.location.pathname.includes('/dashboard/')) {
+                window.opener.location.reload();
+                toastr.success('🔄 Dashboard actualizado automáticamente');
+              }
+            }, 3000);
+          }
         } else {
           toastr.error(response.message || 'Error al asignar el pago.');
         }
@@ -547,6 +602,93 @@ $(document).ready(function(){
       document.querySelector('.select2-container--open .select2-search__field').focus();
     }, 0);
   });
+
+  // Función para verificar el dashboard de un cliente específico
+  function verificarDashboardCliente(cliente) {
+    const clienteEncoded = encodeURIComponent(cliente);
+    const url = `/transferencias/verificar_dashboard/${clienteEncoded}`;
+    
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          let mensaje = `📊 <strong>Estado del Dashboard para ${cliente}:</strong><br>`;
+          mensaje += `📅 Fecha: ${data.fecha}<br>`;
+          mensaje += `💰 Total pagos hoy: $${data.total_pagos_hoy.toLocaleString()}<br>`;
+          mensaje += `📦 Total CLP hoy: $${data.total_clp_hoy.toLocaleString()}<br>`;
+          mensaje += `🔢 Cantidad pagos: ${data.cantidad_pagos}<br>`;
+          mensaje += `📋 Cantidad pedidos: ${data.cantidad_pedidos}<br>`;
+          
+          if (data.pagos_detalle.length > 0) {
+            mensaje += `<br>💳 <strong>Pagos registrados:</strong><br>`;
+            data.pagos_detalle.forEach((pago, index) => {
+              const fecha = pago.fecha_registro ? pago.fecha_registro.substring(11, 19) : 'N/A';
+              mensaje += `  ${index + 1}. $${pago.monto_total.toLocaleString()} (${fecha})<br>`;
+            });
+          }
+          
+          toastr.info(mensaje, {
+            timeOut: 0,
+            extendedTimeOut: 0,
+            closeButton: true,
+            tapToDismiss: false
+          });
+        } else {
+          toastr.error('Error al verificar dashboard: ' + data.error);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        toastr.error('Error de conexión al verificar dashboard');
+      });
+  }
+
+  // Función para ejecutar diagnóstico de cliente
+  function ejecutarDiagnosticoCliente(cliente) {
+    const clienteEncoded = encodeURIComponent(cliente);
+    const url = `/transferencias/diagnostico_cliente/${clienteEncoded}`;
+    
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const diag = data.diagnostico;
+          let mensaje = `🔍 <strong>Diagnóstico de ${cliente}:</strong><br>`;
+          mensaje += `✅ Existe en clientes: ${diag.existe_en_clientes}<br>`;
+          mensaje += `📊 Total pedidos: ${diag.total_pedidos}<br>`;
+          mensaje += `💰 Total pagos: ${diag.total_pagos}<br>`;
+          mensaje += `🔄 Total transferencias: ${diag.total_transferencias}<br>`;
+          mensaje += `📋 Total asignaciones: ${diag.total_asignaciones}<br>`;
+          mensaje += `📅 <strong>Pagos HOY:</strong> ${diag.pagos_hoy} (Total: $${diag.monto_total_hoy.toLocaleString()})<br>`;
+          
+          if (diag.pagos_hoy_detalle.length > 0) {
+            mensaje += `<br>💳 <strong>Pagos de hoy:</strong><br>`;
+            diag.pagos_hoy_detalle.forEach((pago, index) => {
+              const fecha = pago.fecha_registro ? pago.fecha_registro.substring(11, 19) : 'N/A';
+              mensaje += `  ${index + 1}. $${pago.monto_total.toLocaleString()} (${fecha})<br>`;
+            });
+          }
+          
+          if (diag.ultimos_pagos.length > 0) {
+            const ultimoPago = diag.ultimos_pagos[0];
+            mensaje += `<br>💳 <strong>Último pago:</strong> ${ultimoPago.monto_total} (${ultimoPago.fecha_registro})`;
+          }
+          
+          toastr.info(mensaje, {
+            timeOut: 0,
+            extendedTimeOut: 0,
+            closeButton: true,
+            tapToDismiss: false
+          });
+        } else {
+          toastr.error('Error al ejecutar diagnóstico: ' + data.error);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        toastr.error('Error de conexión al ejecutar diagnóstico');
+      });
+  }
 
   // Funcionalidad para subir archivo
   $('#archivo').on('change', function() {

@@ -342,10 +342,24 @@ def nuevo():
             }
             if cuenta_id:
                 pedido_data["cuenta_id"] = cuenta_id
+            # Log antes de insertar para MaxiGiros Richard
+            if 'maxigiros' in cliente.lower() or 'richard' in cliente.lower():
+                logging.info(f"[PEDIDOS] Intentando crear pedido para {cliente}")
+                logging.info(f"[PEDIDOS] Datos a insertar: {pedido_data}")
+            
             result = supabase.table("pedidos").insert(pedido_data).execute()
             if result.data:
+                # Log específico para MaxiGiros Richard
+                if 'maxigiros' in cliente.lower() or 'richard' in cliente.lower():
+                    logging.info(f"[PEDIDOS] Pedido creado para cliente especial: {cliente}")
+                    logging.info(f"[PEDIDOS] CLP: {clp_calculado}, BRS: {brs_num}, Fecha: {fecha}")
+                
                 # Limpiar caché del dashboard
                 cache.clear()
+                
+                # Log adicional para MaxiGiros Richard
+                if 'maxigiros' in cliente.lower() or 'richard' in cliente.lower():
+                    logging.info(f"[PEDIDOS] Caché limpiado para {cliente}")
                 if cuenta_id:
                     pedido_id = result.data[0]["id"]
                     descripcion = f"Pedido para cliente {cliente} - CLP: {clp_calculado:,.0f}"
@@ -360,6 +374,17 @@ def nuevo():
                 else:
                     flash(f"Pedido ingresado con éxito. CLP calculado: {clp_calculado:,.0f}")
                 session['ultimo_cliente_pedidos'] = cliente
+                
+                # Verificación específica para MaxiGiros Richard
+                if 'maxigiros' in cliente.lower() or 'richard' in cliente.lower():
+                    try:
+                        # Verificar que el pedido aparezca en el dashboard
+                        fecha_hoy = fecha
+                        pedidos_verificacion = supabase.table("pedidos").select("clp").eq("cliente", cliente).eq("eliminado", False).eq("fecha", fecha_hoy).execute()
+                        total_clp_hoy = sum(float(p["clp"]) for p in pedidos_verificacion.data) if pedidos_verificacion.data else 0
+                        logging.info(f"[PEDIDOS] Verificación dashboard para {cliente}: {len(pedidos_verificacion.data)} pedidos, Total CLP: {total_clp_hoy}")
+                    except Exception as e:
+                        logging.error(f"[PEDIDOS] Error en verificación dashboard para {cliente}: {e}")
             else:
                 flash("Error: No se pudo insertar el pedido en la base de datos.")
             return redirect(url_for("pedidos.nuevo"))
@@ -532,31 +557,7 @@ def editar(pedido_id):
     return render_template("pedidos/editar.html", pedido=pedido, cliente_pagadores=cliente_pagadores, logs=logs,
                            active_page="pedidos", cuentas_activas=cuentas_activas, tiene_comision=tiene_comision)
 
-@pedidos_bp.route("/test_insert")
-@login_required
-def test_insert():
-    """Ruta de prueba para insertar un pedido con valores hardcodeados"""
-    try:
-        # Valores de prueba MUY pequeños
-        test_data = {
-            "cliente": "TEST",
-            "brs": 100,  # Valor muy pequeño
-            "tasa": 1.0,
-            "fecha": "2025-06-24",
-            "usuario": "test@test.com"
-        }
-        
-        logging.info(f"Intentando insertar datos de prueba: {test_data}")
-        
-        result = supabase.table("pedidos").insert(test_data).execute()
-        
-        logging.info(f"Resultado de inserción: {result}")
-        
-        return jsonify({"success": True, "data": result.data})
-        
-    except Exception as e:
-        logging.error(f"Error en test_insert: {e}")
-        return jsonify({"success": False, "error": str(e)})
+
 
 @pedidos_bp.route("/check_table_structure")
 @login_required
@@ -1380,6 +1381,51 @@ def check_table_structure():
     except Exception as e:
         logging.error(f"Error al verificar estructura de tabla: {e}")
         return False, f"Error al verificar estructura: {str(e)}" 
+
+@pedidos_bp.route('/diagnostico_cliente/<cliente>')
+@login_required
+def diagnostico_cliente_pedidos(cliente):
+    """Ruta de diagnóstico para investigar problemas específicos con clientes en pedidos"""
+    try:
+        fecha_hoy = datetime.now(chile_tz).strftime("%Y-%m-%d")
+        
+        # 1. Verificar pedidos de hoy
+        pedidos_hoy = supabase.table("pedidos").select("*").eq("cliente", cliente).eq("eliminado", False).eq("fecha", fecha_hoy).execute()
+        
+        # 2. Verificar todos los pedidos del cliente
+        todos_pedidos = supabase.table("pedidos").select("*").eq("cliente", cliente).eq("eliminado", False).execute()
+        
+        # 3. Verificar si existe en la tabla clientes
+        cliente_info = supabase.table("clientes").select("*").eq("cliente", cliente).execute()
+        
+        # 4. Simular consulta del dashboard
+        dashboard_pedidos = supabase.table("pedidos").select("clp").eq("cliente", cliente).eq("eliminado", False).eq("fecha", fecha_hoy).execute()
+        total_clp_dashboard = sum(float(p["clp"]) for p in dashboard_pedidos.data) if dashboard_pedidos.data else 0
+        
+        diagnostico = {
+            "cliente": cliente,
+            "fecha_hoy": fecha_hoy,
+            "existe_en_clientes": bool(cliente_info.data),
+            "pedidos_hoy": len(pedidos_hoy.data) if pedidos_hoy.data else 0,
+            "total_pedidos": len(todos_pedidos.data) if todos_pedidos.data else 0,
+            "total_clp_hoy": total_clp_dashboard,
+            "pedidos_hoy_detalle": pedidos_hoy.data if pedidos_hoy.data else [],
+            "ultimos_pedidos": todos_pedidos.data[-5:] if todos_pedidos.data else []
+        }
+        
+        return jsonify({
+            "success": True,
+            "diagnostico": diagnostico
+        })
+        
+    except Exception as e:
+        logging.error(f"Error en diagnóstico de pedidos para {cliente}: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 
 @pedidos_bp.route('/actualizar_tipos_movimiento', methods=['POST'])
 @login_required

@@ -407,9 +407,115 @@ def asignar_pago():
             'cliente': cliente
         }).eq('id', transferencia_id).execute()
 
+        # Log específico para diagnóstico de MaxiGiros Richard
+        if 'maxigiros' in cliente.lower() or 'richard' in cliente.lower():
+            logging.info(f"[DIAGNÓSTICO] Pago asignado para cliente especial: {cliente}")
+            logging.info(f"[DIAGNÓSTICO] Monto: {monto}, Fecha: {fecha_hora}")
+            logging.info(f"[DIAGNÓSTICO] Pago ID: {pago_id}")
+            
+            # Limpiar caché específicamente para este cliente
+            try:
+                from mi_app.mi_app.blueprints.dashboard import cache
+                cache.clear()
+                logging.info(f"[DIAGNÓSTICO] Caché limpiado para {cliente}")
+            except Exception as cache_error:
+                logging.error(f"[DIAGNÓSTICO] Error al limpiar caché: {cache_error}")
+
         return jsonify({'success': True, 'message': 'Pago asignado correctamente.'})
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error inesperado: {str(e)}'}), 500
+
+@transferencias_bp.route('/diagnostico_cliente/<cliente>')
+@login_required
+def diagnostico_cliente(cliente):
+    """Ruta de diagnóstico para investigar problemas específicos con clientes"""
+    try:
+        # Buscar el cliente en diferentes tablas
+        cliente_encoded = cliente.replace(' ', '+')
+        
+        # 1. Verificar si existe en la tabla clientes
+        cliente_info = supabase.table("clientes").select("*").eq("cliente", cliente).execute()
+        
+        # 2. Verificar pedidos del cliente
+        pedidos = supabase.table("pedidos").select("*").eq("cliente", cliente).eq("eliminado", False).execute()
+        
+        # 3. Verificar pagos del cliente
+        pagos = supabase.table("pagos_realizados").select("*").eq("cliente", cliente).eq("eliminado", False).execute()
+        
+        # 4. Verificar transferencias asignadas al cliente
+        transferencias = supabase.table("transferencias").select("*").eq("cliente", cliente).execute()
+        
+        # 5. Verificar asignaciones de transferencias_pagos
+        asignaciones = supabase.table("transferencias_pagos").select("*").eq("cliente", cliente).execute()
+        
+        # 6. Verificar pagos de HOY específicamente
+        fecha_hoy = datetime.now(chile_tz).strftime("%Y-%m-%d")
+        pagos_hoy = supabase.table("pagos_realizados").select("*").eq("cliente", cliente).eq("eliminado", False).gte("fecha_registro", fecha_hoy + "T00:00:00").lte("fecha_registro", fecha_hoy + "T23:59:59").execute()
+        
+        # 7. Verificar dashboard API específicamente para este cliente
+        dashboard_query = supabase.table("pagos_realizados").select("monto_total").eq("cliente", cliente).eq("eliminado", False).gte("fecha_registro", fecha_hoy + "T00:00:00").lte("fecha_registro", fecha_hoy + "T23:59:59")
+        
+        diagnostico = {
+            "cliente": cliente,
+            "existe_en_clientes": bool(cliente_info.data),
+            "info_cliente": cliente_info.data[0] if cliente_info.data else None,
+            "total_pedidos": len(pedidos.data) if pedidos.data else 0,
+            "total_pagos": len(pagos.data) if pagos.data else 0,
+            "total_transferencias": len(transferencias.data) if transferencias.data else 0,
+            "total_asignaciones": len(asignaciones.data) if asignaciones.data else 0,
+            "pagos_hoy": len(pagos_hoy.data) if pagos_hoy.data else 0,
+            "monto_total_hoy": sum(float(p["monto_total"]) for p in pagos_hoy.data) if pagos_hoy.data else 0,
+            "ultimos_pagos": pagos.data[-5:] if pagos.data else [],
+            "ultimos_pedidos": pedidos.data[-5:] if pedidos.data else [],
+            "pagos_hoy_detalle": pagos_hoy.data if pagos_hoy.data else []
+        }
+        
+        return jsonify({
+            "success": True,
+            "diagnostico": diagnostico
+        })
+        
+    except Exception as e:
+        logging.error(f"Error en diagnóstico de cliente {cliente}: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@transferencias_bp.route('/verificar_dashboard/<cliente>')
+@login_required
+def verificar_dashboard_cliente(cliente):
+    """Verifica el estado del dashboard para un cliente específico"""
+    try:
+        fecha_hoy = datetime.now(chile_tz).strftime("%Y-%m-%d")
+        
+        # Simular la consulta exacta que hace el dashboard
+        pagos_hoy = supabase.table("pagos_realizados").select("monto_total").eq("cliente", cliente).eq("eliminado", False).gte("fecha_registro", fecha_hoy + "T00:00:00").lte("fecha_registro", fecha_hoy + "T23:59:59").execute()
+        
+        # Calcular total como lo hace el dashboard
+        total_pagos_hoy = sum(float(p["monto_total"]) for p in pagos_hoy.data) if pagos_hoy.data else 0
+        
+        # Verificar también pedidos de hoy
+        pedidos_hoy = supabase.table("pedidos").select("clp").eq("cliente", cliente).eq("eliminado", False).eq("fecha", fecha_hoy).execute()
+        total_clp_hoy = sum(float(p["clp"]) for p in pedidos_hoy.data) if pedidos_hoy.data else 0
+        
+        return jsonify({
+            "success": True,
+            "cliente": cliente,
+            "fecha": fecha_hoy,
+            "total_pagos_hoy": total_pagos_hoy,
+            "total_clp_hoy": total_clp_hoy,
+            "cantidad_pagos": len(pagos_hoy.data) if pagos_hoy.data else 0,
+            "cantidad_pedidos": len(pedidos_hoy.data) if pedidos_hoy.data else 0,
+            "pagos_detalle": pagos_hoy.data if pagos_hoy.data else []
+        })
+        
+    except Exception as e:
+        logging.error(f"Error al verificar dashboard para {cliente}: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 def procesar_archivo_inmediato(ruta_archivo, nombre_original):
     """
