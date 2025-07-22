@@ -9,6 +9,7 @@ from flask_caching import Cache
 import pytz
 from mi_app.mi_app.extensions import cache
 
+
 # Configuración de zona horaria
 chile_tz = pytz.timezone('America/Santiago')
 
@@ -191,6 +192,18 @@ def index():
         offset = 0
         limit = 1000
         while True:
+            pedidos_batch = supabase.table("pedidos").select("cliente, clp").eq("eliminado", False).lte("fecha", fecha_anterior).order("fecha", desc=True).range(offset, offset + limit - 1).execute().data or []
+            if not pedidos_batch:
+                break
+            pedidos_anterior.extend(pedidos_batch)
+            offset += limit
+            if len(pedidos_batch) < limit:
+                break
+        # Consulta para TODOS los pagos hasta el día anterior CON PAGINACIÓN
+        pagos_anterior = []
+        offset = 0
+        limit = 1000
+        while True:
             pagos_batch = supabase.table("pagos_realizados").select("cliente, monto_total").eq("eliminado", False).lte("fecha_registro", fecha_anterior + "T23:59:59").range(offset, offset + limit - 1).execute().data or []
             if not pagos_batch:
                 break
@@ -199,7 +212,6 @@ def index():
             if len(pagos_batch) < limit:
                 break
         
-        # Calcular deuda anterior por cliente (acumulada)
         deuda_anterior_por_cliente = {}
         for p in pedidos_anterior:
             cliente = p["cliente"]
@@ -683,7 +695,6 @@ def exportar_csv():
             resumen_list = [r for r in resumen.values() if r["cliente"] in clientes_filtrados]
         
         # Generar CSV en memoria (UTF-16LE)
-        import io
         output = io.StringIO()
         separador = ';'
         encabezado = ["Cliente", "Deuda Anterior", "BRS", "Deuda de Hoy", "Pagos", "Saldo Final", "Estado"]
@@ -771,11 +782,16 @@ def api_cliente_detalle(cliente):
         # Formatear datos para el frontend
         pedidos_formateados = []
         for p in pedidos:
+            brs = float(p.get("brs", 0))
+            clp = float(p["clp"])
+            # Calcular tasa en tiempo real (BRS/CLP)
+            tasa = (brs / clp) if clp > 0 else 0
+            
             pedidos_formateados.append({
                 "fecha": p["fecha"],
-                "brs": float(p.get("brs", 0)),
-                "clp": float(p["clp"]),
-                "tasa": float(p.get("tasa", 0))
+                "brs": brs,
+                "clp": clp,
+                "tasa": tasa
             })
         
         pagos_formateados = []
@@ -805,3 +821,5 @@ def api_cliente_detalle(cliente):
             "success": False,
             "error": str(e)
         }), 500 
+
+ 
