@@ -561,8 +561,7 @@ def guardar_stock_diario():
             response = supabase.table("stock_diario").update({
                 'envios_al_detal': envios_al_detal,
                 'gastos': gastos,
-                'pago_movil': pago_movil,
-                'usuario_modificacion': usuario_email
+                'pago_movil': pago_movil
             }).eq("fecha", fecha).execute()
             message = "Datos actualizados en Stock Diario exitosamente"
         else:
@@ -571,8 +570,7 @@ def guardar_stock_diario():
                 'fecha': fecha,
                 'envios_al_detal': envios_al_detal,
                 'gastos': gastos,
-                'pago_movil': pago_movil,
-                'usuario_creacion': usuario_email
+                'pago_movil': pago_movil
             }).execute()
             message = "Datos guardados en Stock Diario exitosamente"
         

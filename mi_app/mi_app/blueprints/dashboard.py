@@ -95,8 +95,34 @@ def index():
         pagos_query = supabase.table("pagos_realizados").select("cliente, monto_total, fecha_registro").eq("eliminado", False).gte("fecha_registro", fecha_inicio + "T00:00:00").lte("fecha_registro", fecha + "T23:59:59")
         
         # Ejecutar consultas en paralelo (simulado)
-        pedidos_hist = pedidos_query.execute().data or []
-        pagos_hist = pagos_query.execute().data or []
+        try:
+            pedidos_hist = pedidos_query.execute().data or []
+            logging.info(f"[DASHBOARD] Consulta pedidos ejecutada. Total pedidos: {len(pedidos_hist)}")
+            
+            # Verificar si hay pedidos de MaxiGiros Richard
+            maxigiros_pedidos = [p for p in pedidos_hist if 'maxigiros' in p.get('cliente', '').lower() or 'richard' in p.get('cliente', '').lower()]
+            if maxigiros_pedidos:
+                logging.info(f"[DASHBOARD] Pedidos de MaxiGiros Richard encontrados: {len(maxigiros_pedidos)}")
+                for p in maxigiros_pedidos:
+                    logging.info(f"[DASHBOARD] Pedido MaxiGiros: {p}")
+            else:
+                logging.info(f"[DASHBOARD] NO se encontraron pedidos de MaxiGiros Richard")
+                
+            # Debug: Verificar todos los pedidos de hoy
+            pedidos_hoy = [p for p in pedidos_hist if p.get('fecha') == fecha]
+            logging.info(f"[DASHBOARD] Total pedidos de hoy ({fecha}): {len(pedidos_hoy)}")
+            logging.info(f"[DASHBOARD] Fechas únicas en pedidos: {list(set([p.get('fecha') for p in pedidos_hist if p.get('fecha')]))}")
+                
+        except Exception as e:
+            logging.error(f"[DASHBOARD] Error al consultar pedidos: {e}")
+            pedidos_hist = []
+            
+        try:
+            pagos_hist = pagos_query.execute().data or []
+            logging.info(f"[DASHBOARD] Consulta pagos ejecutada. Total pagos: {len(pagos_hist)}")
+        except Exception as e:
+            logging.error(f"[DASHBOARD] Error al consultar pagos: {e}")
+            pagos_hist = []
         
         # Procesar datos de manera más eficiente
         clientes_activos = set()
@@ -106,6 +132,11 @@ def index():
         for p in pedidos_hist:
             if p.get("cliente") and p.get("fecha") and p.get("clp") is not None:
                 cliente = p["cliente"]
+                
+                # Log específico para MaxiGiros Richard
+                if 'maxigiros' in cliente.lower() or 'richard' in cliente.lower():
+                    logging.info(f"[DASHBOARD] Procesando pedido para {cliente}: fecha={p.get('fecha')}, clp={p.get('clp')}")
+                
                 clientes_activos.add(cliente)
                 
                 if cliente not in resumen:
@@ -121,6 +152,15 @@ def index():
                 if p["fecha"] == fecha:
                     resumen[cliente]["brs"] += float(p.get("brs", 0))
                     resumen[cliente]["clp"] += float(p["clp"])
+                    
+                    # Log específico para MaxiGiros Richard
+                    if 'maxigiros' in cliente.lower() or 'richard' in cliente.lower():
+                        logging.info(f"[DASHBOARD] Pedido de hoy para {cliente}: BRS={p.get('brs')}, CLP={p.get('clp')}")
+                        logging.info(f"[DASHBOARD] Resumen actualizado para {cliente}: BRS={resumen[cliente]['brs']}, CLP={resumen[cliente]['clp']}")
+                else:
+                    # Log para pedidos que NO son de hoy
+                    if 'maxigiros' in cliente.lower() or 'richard' in cliente.lower():
+                        logging.info(f"[DASHBOARD] Pedido NO de hoy para {cliente}: fecha={p.get('fecha')}, fecha_busqueda={fecha}")
         
         # Procesar pagos
         for p in pagos_hist:
@@ -182,6 +222,13 @@ def index():
                 resumen[cliente]["pagos"]
             )
         
+        # Log final para MaxiGiros Richard
+        if 'MaxiGiros Richard' in resumen:
+            maxigiros_final = resumen['MaxiGiros Richard']
+            print(f"[API] RESULTADO FINAL MaxiGiros Richard: {maxigiros_final}")
+        else:
+            print(f"[API] MaxiGiros Richard NO encontrado en resumen final")
+        
         # Filtrar clientes con algún valor relevante
         clientes_filtrados = sorted([
             r["cliente"] for r in resumen.values()
@@ -196,6 +243,11 @@ def index():
                 resumen_list = []
         else:
             resumen_list = [r for r in resumen.values() if r["cliente"] in clientes_filtrados]
+        
+        # Log final del resumen para MaxiGiros Richard
+        if 'MaxiGiros Richard' in resumen:
+            maxigiros_final = resumen['MaxiGiros Richard']
+            logging.info(f"[DASHBOARD] RESUMEN FINAL MaxiGiros Richard: {maxigiros_final}")
         
         # Si no hay datos, mostrar mensaje amigable
         if not resumen_list:
@@ -377,11 +429,11 @@ def api_datos():
         fecha = request.args.get("fecha", adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d"))
         cliente_filtro = request.args.get("cliente", "")
         
-        # Optimización: Solo cargar datos de los últimos 30 días
-        fecha_inicio = (datetime.strptime(fecha, "%Y-%m-%d") - timedelta(days=30)).strftime("%Y-%m-%d")
+        # Optimización: Solo cargar datos de los últimos 7 días para cálculos (más eficiente)
+        fecha_inicio = (datetime.strptime(fecha, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
         
-        # Consultas optimizadas
-        pedidos_query = supabase.table("pedidos").select("cliente, fecha, clp, brs").eq("eliminado", False).gte("fecha", fecha_inicio).lte("fecha", fecha)
+        # Consultas optimizadas - Rango de 7 días con límite aumentado
+        pedidos_query = supabase.table("pedidos").select("cliente, fecha, clp, brs").eq("eliminado", False).gte("fecha", fecha_inicio).lte("fecha", fecha).order("fecha", desc=True).limit(5000)
         pagos_query = supabase.table("pagos_realizados").select("cliente, monto_total, fecha_registro").eq("eliminado", False).gte("fecha_registro", fecha_inicio + "T00:00:00").lte("fecha_registro", fecha + "T23:59:59")
         
         pedidos_hist = pedidos_query.execute().data or []
@@ -394,6 +446,8 @@ def api_datos():
         for p in pedidos_hist:
             if p.get("cliente") and p.get("fecha") and p.get("clp") is not None:
                 cliente = p["cliente"]
+                
+
                 
                 if cliente not in resumen:
                     resumen[cliente] = {
@@ -408,6 +462,8 @@ def api_datos():
                 if p["fecha"] == fecha:
                     resumen[cliente]["brs"] += float(p.get("brs", 0))
                     resumen[cliente]["clp"] += float(p["clp"])
+                    
+
         
         # Procesar pagos
         for p in pagos_hist:
@@ -665,6 +721,8 @@ def exportar_csv():
             "success": False,
             "error": str(e)
         }), 500
+
+
 
 @dashboard_bp.route("/api/cliente/<cliente>")
 @login_required

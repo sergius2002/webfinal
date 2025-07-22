@@ -18,6 +18,35 @@
 {% block content %}
 <div class="container mt-4">
   <h1>Resumen de pedidos por cliente</h1>
+  
+  <!-- Tarjetas de resumen -->
+  <div class="row mb-4">
+    <div class="col-md-6 mb-3">
+      <div class="card border-danger h-100">
+        <div class="card-body text-center">
+          <div class="d-flex align-items-center justify-content-center mb-2">
+            <i class="fas fa-exclamation-triangle text-danger me-2" style="font-size: 1.5rem;"></i>
+            <h5 class="card-title mb-0 text-danger">Deudas Clientes</h5>
+          </div>
+          <h3 class="text-danger fw-bold" id="total-deudas">$0</h3>
+          <small class="text-muted">Suma de saldos finales positivos</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-3">
+      <div class="card border-success h-100">
+        <div class="card-body text-center">
+          <div class="d-flex align-items-center justify-content-center mb-2">
+            <i class="fas fa-hand-holding-usd text-success me-2" style="font-size: 1.5rem;"></i>
+            <h5 class="card-title mb-0 text-success">A Favor Clientes</h5>
+          </div>
+          <h3 class="text-success fw-bold" id="total-favor">$0</h3>
+          <small class="text-muted">Suma de saldos finales negativos</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   <div class="d-flex justify-content-end align-items-center mb-2" style="gap:1rem;">
     <label class="mb-0">Actualizar cada 
       <select id="refresh-interval" class="form-select form-select-sm d-inline-block w-auto" style="width:auto;">
@@ -128,8 +157,26 @@
     }
     th.sortable { cursor: pointer; user-select: none; }
     th.sortable .sort-arrow { font-size: 0.9em; margin-left: 2px; }
+    
+    /* Estilos para las tarjetas de resumen */
+    .card.border-danger {
+      box-shadow: 0 4px 8px rgba(220, 53, 69, 0.15);
+      transition: all 0.3s ease;
+    }
+    .card.border-danger:hover {
+      box-shadow: 0 6px 12px rgba(220, 53, 69, 0.25);
+      transform: translateY(-2px);
+    }
+    .card.border-success {
+      box-shadow: 0 4px 8px rgba(40, 167, 69, 0.15);
+      transition: all 0.3s ease;
+    }
+    .card.border-success:hover {
+      box-shadow: 0 6px 12px rgba(40, 167, 69, 0.25);
+      transform: translateY(-2px);
+    }
   </style>
-<script>
+  <script>
   // Variables globales
   let dashboardData = [];
   let currentFecha = '{{ fecha }}';
@@ -137,6 +184,12 @@
   let autoRefresh = true;
   let refreshTimer = null;
   let isLoading = false;
+
+  // Función para inicializar las tarjetas con datos del servidor
+  function inicializarTarjetas() {
+    // Las tarjetas se actualizarán cuando se carguen los datos del dashboard
+    // Esta función se llama después de cargarDashboard()
+  }
 
   // Instancia global del modal de cliente
   let clienteModalInstance = null;
@@ -183,6 +236,19 @@
       
       if (result.success) {
         dashboardData = result.data;
+        
+        // Debug: Verificar si MaxiGiros Richard está en los datos
+        const maxigirosData = dashboardData.find(item => 
+          item.cliente && item.cliente.toLowerCase().includes('maxigiros') || 
+          item.cliente && item.cliente.toLowerCase().includes('richard')
+        );
+        if (maxigirosData) {
+          console.log('✅ MaxiGiros Richard encontrado en dashboardData:', maxigirosData);
+        } else {
+          console.log('❌ MaxiGiros Richard NO encontrado en dashboardData');
+          console.log('Clientes disponibles:', dashboardData.map(item => item.cliente));
+        }
+        
         actualizarTabla();
         actualizarTimestamp(result.timestamp);
       } else {
@@ -213,12 +279,17 @@
     if (dashboardData.length === 0) {
       tbody.innerHTML = '<tr><td colspan="8" class="text-center">No hay movimientos para la fecha seleccionada.</td></tr>';
       tfoot.style.display = 'none';
+      // Limpiar tarjetas de resumen
+      document.getElementById('total-deudas').textContent = '$0';
+      document.getElementById('total-favor').textContent = '$0';
       return;
     }
     
     tfoot.style.display = '';
     let totalPagos = 0;
     let totalSaldoFinal = 0;
+    let totalDeudas = 0;
+    let totalFavor = 0;
     
     const rows = dashboardData.map((r, index) => {
       const estado = r.diferencia > 0 ? 'deuda' : r.diferencia < 0 ? 'favor' : 'cero';
@@ -228,6 +299,13 @@
       
       totalPagos += r.pagos;
       totalSaldoFinal += r.diferencia;
+      
+      // Calcular totales para las tarjetas de resumen
+      if (r.diferencia > 0) {
+        totalDeudas += r.diferencia;
+      } else if (r.diferencia < 0) {
+        totalFavor += Math.abs(r.diferencia);
+      }
       
       return `
         <tr data-cliente="${r.cliente.toLowerCase()}" data-estado="${estado}">
@@ -270,6 +348,10 @@
     // Actualizar totales
     document.getElementById('total-pagos').textContent = formatNumber(totalPagos);
     document.getElementById('total-saldo-final').textContent = formatNumber(totalSaldoFinal);
+    
+    // Actualizar tarjetas de resumen
+    document.getElementById('total-deudas').textContent = '$' + formatNumber(totalDeudas);
+    document.getElementById('total-favor').textContent = '$' + formatNumber(totalFavor);
     
     // Aplicar filtros si existen
     aplicarFiltros();
@@ -513,6 +595,9 @@
 
          // Cargar datos iniciales
      cargarDashboard();
+     
+     // Inicializar tarjetas con datos del servidor
+     inicializarTarjetas();
      
      // Iniciar auto-refresh si está habilitado
   if (autoRefresh) {
