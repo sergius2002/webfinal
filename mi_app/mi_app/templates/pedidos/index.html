@@ -43,10 +43,6 @@
             <h4 class="text-info">{{ pedidos|sum(attribute='clp')|format_int }}</h4>
           </div>
           <div class="col-md-2">
-            <h6 class="text-muted">Tasa Ponderada</h6>
-            <h4 class="text-warning">{{ tasa_ponderada|format_decimal5 }}</h4>
-          </div>
-          <div class="col-md-2">
             <h6 class="text-muted">Total Comisión</h6>
             <h4 class="text-danger">{{ total_comisiones|format_int }}</h4>
           </div>

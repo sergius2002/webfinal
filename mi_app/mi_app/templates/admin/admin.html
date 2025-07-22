@@ -29,7 +29,7 @@
   <div class="col-md-3">
     <div class="list-group admin-menu">
       <a href="{{ url_for('admin.index') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.index' %}active{% endif %}">
-        <i class="fas fa-calculator"></i> Calcular tasa ponderada
+        <i class="fas fa-calculator"></i> Panel Principal
       </a>
       <a href="{{ url_for('admin.tasa_compras') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.tasa_compras' %}active{% endif %}">
         <i class="fas fa-shopping-cart"></i> Tasa de Compras
@@ -50,7 +50,7 @@
   <!-- Contenido principal del módulo administrativo -->
   <div class="col-md-9">
     {% block admin_content %}
-    <!-- Aquí se mostrará, por ejemplo, el cálculo de la tasa ponderada -->
+    <!-- Aquí se mostrará el contenido del panel administrativo -->
     {% endblock %}
   </div>
 </div>

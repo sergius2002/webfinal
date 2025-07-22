@@ -784,14 +784,11 @@ def api_cliente_detalle(cliente):
         for p in pedidos:
             brs = float(p.get("brs", 0))
             clp = float(p["clp"])
-            # Calcular tasa en tiempo real (BRS/CLP)
-            tasa = (brs / clp) if clp > 0 else 0
             
             pedidos_formateados.append({
                 "fecha": p["fecha"],
                 "brs": brs,
-                "clp": clp,
-                "tasa": tasa
+                "clp": clp
             })
         
         pagos_formateados = []

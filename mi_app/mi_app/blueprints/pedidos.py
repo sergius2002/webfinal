@@ -197,10 +197,7 @@ def index():
             logging.error("Error al obtener cuentas activas: %s", e)
             cuentas_activas = []
         
-        # Calcular tasa ponderada por BRS
-        suma_brs = sum(p["brs"] for p in pedidos_data if p.get("brs") and p.get("tasa"))
-        suma_brs_tasa = sum(p["brs"] * p["tasa"] for p in pedidos_data if p.get("brs") and p.get("tasa"))
-        tasa_ponderada = (suma_brs_tasa / suma_brs) if suma_brs else 0
+
         # Obtener tasas desde la tabla de configuración
         tasas_resp = supabase.table("configuracion").select("clave, valor").in_("clave", ["tasa_banesco", "tasa_venezuela", "tasa_otros"]).execute()
         tasas_dict = {t["clave"]: t["valor"] for t in tasas_resp.data} if tasas_resp.data else {}
@@ -236,13 +233,12 @@ def index():
         cuentas_activas = []
         tasa_banesco = tasa_venezuela = tasa_otros = "0.000"
         is_admin = False
-        tasa_ponderada = 0
         total_comisiones = 0
     current_date = adjust_datetime(datetime.now(chile_tz)).strftime("%Y-%m-%d")
     return render_template("pedidos/index.html", pedidos=pedidos_data, cliente=clientes, cuentas_activas=cuentas_activas, active_page="pedidos",
                            current_date=current_date,
                            tasa_banesco=tasa_banesco, tasa_venezuela=tasa_venezuela, tasa_otros=tasa_otros,
-                           is_admin=is_admin, tasa_ponderada=tasa_ponderada,
+                           is_admin=is_admin,
                            total_comisiones=total_comisiones)
 
 @pedidos_bp.route("/nuevo", methods=["GET", "POST"])
