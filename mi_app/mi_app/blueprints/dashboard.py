@@ -146,8 +146,18 @@ def index():
         
         # Consulta para TODOS los pedidos hasta el día anterior
         pedidos_anterior = supabase.table("pedidos").select("cliente, clp").eq("eliminado", False).lte("fecha", fecha_anterior).execute().data or []
-        # Consulta para TODOS los pagos hasta el día anterior
-        pagos_anterior = supabase.table("pagos_realizados").select("cliente, monto_total").eq("eliminado", False).lte("fecha_registro", fecha_anterior + "T23:59:59").execute().data or []
+        # Consulta para TODOS los pagos hasta el día anterior CON PAGINACIÓN
+        pagos_anterior = []
+        offset = 0
+        limit = 1000
+        while True:
+            pagos_batch = supabase.table("pagos_realizados").select("cliente, monto_total").eq("eliminado", False).lte("fecha_registro", fecha_anterior + "T23:59:59").range(offset, offset + limit - 1).execute().data or []
+            if not pagos_batch:
+                break
+            pagos_anterior.extend(pagos_batch)
+            offset += limit
+            if len(pagos_batch) < limit:
+                break
         
         # Calcular deuda anterior por cliente (acumulada)
         deuda_anterior_por_cliente = {}
@@ -421,10 +431,30 @@ def api_datos():
         # Calcular deuda anterior (todos los pedidos hasta el día anterior)
         fecha_anterior = (datetime.strptime(fecha, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
         
-        # Consulta para TODOS los pedidos hasta el día anterior
-        pedidos_anterior = supabase.table("pedidos").select("cliente, clp").eq("eliminado", False).lte("fecha", fecha_anterior).execute().data or []
-        # Consulta para TODOS los pagos hasta el día anterior
-        pagos_anterior = supabase.table("pagos_realizados").select("cliente, monto_total").eq("eliminado", False).lte("fecha_registro", fecha_anterior + "T23:59:59").execute().data or []
+        # Consulta para TODOS los pedidos hasta el día anterior CON PAGINACIÓN
+        pedidos_anterior = []
+        offset = 0
+        limit = 1000
+        while True:
+            pedidos_batch = supabase.table("pedidos").select("cliente, clp").eq("eliminado", False).lte("fecha", fecha_anterior).order("fecha", desc=True).range(offset, offset + limit - 1).execute().data or []
+            if not pedidos_batch:
+                break
+            pedidos_anterior.extend(pedidos_batch)
+            offset += limit
+            if len(pedidos_batch) < limit:
+                break
+        # Consulta para TODOS los pagos hasta el día anterior CON PAGINACIÓN
+        pagos_anterior = []
+        offset = 0
+        limit = 1000
+        while True:
+            pagos_batch = supabase.table("pagos_realizados").select("cliente, monto_total").eq("eliminado", False).lte("fecha_registro", fecha_anterior + "T23:59:59").range(offset, offset + limit - 1).execute().data or []
+            if not pagos_batch:
+                break
+            pagos_anterior.extend(pagos_batch)
+            offset += limit
+            if len(pagos_batch) < limit:
+                break
         
         deuda_anterior_por_cliente = {}
         for p in pedidos_anterior:
@@ -546,8 +576,18 @@ def exportar_csv():
         
         # Consulta para TODOS los pedidos hasta el día anterior
         pedidos_anterior = supabase.table("pedidos").select("cliente, clp").eq("eliminado", False).lte("fecha", fecha_anterior).execute().data or []
-        # Consulta para TODOS los pagos hasta el día anterior
-        pagos_anterior = supabase.table("pagos_realizados").select("cliente, monto_total").eq("eliminado", False).lte("fecha_registro", fecha_anterior + "T23:59:59").execute().data or []
+        # Consulta para TODOS los pagos hasta el día anterior CON PAGINACIÓN
+        pagos_anterior = []
+        offset = 0
+        limit = 1000
+        while True:
+            pagos_batch = supabase.table("pagos_realizados").select("cliente, monto_total").eq("eliminado", False).lte("fecha_registro", fecha_anterior + "T23:59:59").range(offset, offset + limit - 1).execute().data or []
+            if not pagos_batch:
+                break
+            pagos_anterior.extend(pagos_batch)
+            offset += limit
+            if len(pagos_batch) < limit:
+                break
         
         deuda_anterior_por_cliente = {}
         for p in pedidos_anterior:
