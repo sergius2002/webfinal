@@ -174,7 +174,11 @@
               <tbody>
                 {% for p in pedidos %}
                 <tr>
-                  <td class="td-cliente" data-cliente-original="{{ p.cliente }}">{{ p.cliente }}</td>
+                  <td class="td-cliente" data-cliente-original="{{ p.cliente }}">
+                    <a href="#" class="text-decoration-none cliente-link" data-cliente="{{ p.cliente }}" title="Ver resumen de pedidos del día">
+                      {{ p.cliente }}
+                    </a>
+                  </td>
                   <td>{{ p.fecha | format_date }}</td>
                   <td class="text-end">{{ p.brs | format_int }}</td>
                   <td class="text-end">{{ p.tasa | format_decimal5 | replace('.', ',') }}</td>
@@ -274,7 +278,144 @@
     </div>
   </div>
 </div>
+
+<!-- Modal Resumen de Pedidos del Día -->
+<div class="modal fade" id="modalResumenPedidosDia" tabindex="-1" aria-labelledby="modalResumenPedidosDiaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="modalResumenPedidosDiaLabel">
+          <i class="fas fa-calendar-day me-2"></i>Resumen de Pedidos del Día
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="loading-resumen" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="mt-2">Cargando resumen...</p>
+        </div>
+        
+        <div id="contenido-resumen" style="display: none;">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <h6 class="text-muted mb-1">Cliente:</h6>
+              <h5 id="cliente-resumen" class="text-primary"></h5>
+            </div>
+            <div class="col-md-6">
+              <h6 class="text-muted mb-1">Fecha:</h6>
+              <h5 id="fecha-resumen" class="text-info"></h5>
+            </div>
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <div class="card bg-light">
+                <div class="card-body text-center">
+                  <h6 class="text-muted">Total Pedidos</h6>
+                  <h4 id="total-pedidos" class="text-primary">0</h4>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-light">
+                <div class="card-body text-center">
+                  <h6 class="text-muted">Total BRS</h6>
+                  <h4 id="total-brs" class="text-success">0</h4>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-light">
+                <div class="card-body text-center">
+                  <h6 class="text-muted">Total CLP</h6>
+                  <h4 id="total-clp" class="text-info">0</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div id="tabla-pedidos-resumen" style="display: none;">
+            <h6 class="text-muted mb-2">Detalle de Pedidos:</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped">
+                <thead class="table-dark">
+                  <tr>
+                    <th>#</th>
+                    <th>BRS</th>
+                    <th>CLP</th>
+                    <th>Tasa</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-pedidos-resumen">
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <div id="sin-pedidos" class="text-center py-4" style="display: none;">
+            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No hay pedidos para hoy</h5>
+            <p class="text-muted">Este cliente no tiene pedidos registrados para la fecha actual.</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-success" id="btn-copiar-whatsapp" style="display: none;">
+          <i class="fab fa-whatsapp me-2"></i>Copiar para WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
+
+<style>
+.cliente-link {
+  color: #007bff !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+}
+
+.cliente-link:hover {
+  color: #0056b3 !important;
+  text-decoration: underline !important;
+  cursor: pointer !important;
+}
+
+.cliente-link:active {
+  color: #004085 !important;
+}
+
+.td-cliente a {
+  color: #007bff !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+}
+
+.td-cliente a:hover {
+  color: #0056b3 !important;
+  text-decoration: underline !important;
+}
+
+#modalResumenPedidosDia .modal-dialog {
+  max-width: 800px;
+}
+
+#tabla-pedidos-resumen .table {
+  font-size: 0.9rem;
+}
+
+#tabla-pedidos-resumen th {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+</style>
 
 {% block scripts %}
 <script>
@@ -403,5 +544,147 @@ function confirmarEliminacion(pedidoId, cliente) {
   const modal = new bootstrap.Modal(document.getElementById('modalConfirmarEliminacion'));
   modal.show();
 }
+
+// Función para mostrar resumen de pedidos del día
+function mostrarResumenPedidosDia(cliente) {
+  // Mostrar loading
+  $('#loading-resumen').show();
+  $('#contenido-resumen').hide();
+  $('#btn-copiar-whatsapp').hide();
+  
+  // Hacer petición AJAX
+  $.ajax({
+    url: `/pedidos/api/cliente/${encodeURIComponent(cliente)}`,
+    method: 'GET',
+    success: function(response) {
+      if (response.success) {
+        // Ocultar loading y mostrar contenido
+        $('#loading-resumen').hide();
+        $('#contenido-resumen').show();
+        
+        // Llenar datos del cliente
+        $('#cliente-resumen').text(response.cliente);
+        $('#fecha-resumen').text(response.fecha);
+        $('#total-pedidos').text(response.cantidad_pedidos);
+        $('#total-brs').text(response.total_brs);
+        $('#total-clp').text(response.total_clp);
+        
+        if (response.cantidad_pedidos > 0) {
+          // Mostrar tabla de pedidos
+          $('#tabla-pedidos-resumen').show();
+          $('#sin-pedidos').hide();
+          $('#btn-copiar-whatsapp').show();
+          
+          // Llenar tabla
+          const tbody = $('#tbody-pedidos-resumen');
+          tbody.empty();
+          
+          response.pedidos.forEach(function(pedido) {
+            const row = `
+              <tr>
+                <td><strong>${pedido.numero}</strong></td>
+                <td class="text-end">${pedido.brs}</td>
+                <td class="text-end fw-bold">${pedido.clp}</td>
+                <td class="text-end">${pedido.tasa}</td>
+              </tr>
+            `;
+            tbody.append(row);
+          });
+        } else {
+          // Mostrar mensaje de sin pedidos
+          $('#tabla-pedidos-resumen').hide();
+          $('#sin-pedidos').show();
+        }
+      } else {
+        // Mostrar error
+        $('#loading-resumen').hide();
+        $('#contenido-resumen').show();
+        $('#tabla-pedidos-resumen').hide();
+        $('#sin-pedidos').show();
+        $('#sin-pedidos h5').text('Error al cargar datos');
+        $('#sin-pedidos p').text(response.error || 'Ocurrió un error al obtener los datos.');
+      }
+    },
+    error: function(xhr, status, error) {
+      // Mostrar error
+      $('#loading-resumen').hide();
+      $('#contenido-resumen').show();
+      $('#tabla-pedidos-resumen').hide();
+      $('#sin-pedidos').show();
+      $('#sin-pedidos h5').text('Error de conexión');
+      $('#sin-pedidos p').text('No se pudo conectar con el servidor.');
+    }
+  });
+}
+
+// Función para copiar mensaje de WhatsApp
+function copiarMensajeWhatsApp() {
+  const cliente = $('#cliente-resumen').text();
+  const fecha = $('#fecha-resumen').text();
+  const totalBrs = $('#total-brs').text();
+  const totalClp = $('#total-clp').text();
+  const cantidadPedidos = $('#total-pedidos').text();
+  
+  let mensaje = `📋 *RESUMEN DE PEDIDOS DEL DÍA*\n\n`;
+  mensaje += `👤 *Cliente:* ${cliente}\n`;
+  mensaje += `📅 *Fecha:* ${fecha}\n`;
+  mensaje += `📊 *Total Pedidos:* ${cantidadPedidos}\n\n`;
+  
+  // Agregar detalles de pedidos si existen
+  const filas = $('#tbody-pedidos-resumen tr');
+  if (filas.length > 0) {
+    mensaje += `📝 *DETALLE DE PEDIDOS:*\n\n`;
+    filas.each(function() {
+      const numero = $(this).find('td:first').text().trim();
+      const brs = $(this).find('td:nth-child(2)').text().trim();
+      const clp = $(this).find('td:nth-child(3)').text().trim();
+      mensaje += `Pedido ${numero}:\n`;
+      mensaje += `BRS: ${brs} | CLP: ${clp}\n\n`;
+    });
+  }
+  
+  mensaje += `💰 *TOTALES:*\n`;
+  mensaje += `BRS: ${totalBrs} | CLP: ${totalClp}\n\n`;
+  mensaje += `✅ *Resumen generado automáticamente*`;
+  
+  // Copiar al portapapeles
+  navigator.clipboard.writeText(mensaje).then(function() {
+    // Mostrar notificación de éxito
+    const btn = $('#btn-copiar-whatsapp');
+    const originalText = btn.html();
+    btn.html('<i class="fas fa-check me-2"></i>¡Copiado!');
+    btn.removeClass('btn-success').addClass('btn-success');
+    
+    setTimeout(function() {
+      btn.html(originalText);
+    }, 2000);
+  }).catch(function(err) {
+    console.error('Error al copiar: ', err);
+    alert('Error al copiar al portapapeles. Por favor, copia manualmente el mensaje.');
+  });
+}
+
+// Event listeners
+$(document).ready(function() {
+  console.log('Document ready - Pedidos page');
+  
+  // Click en enlaces de cliente
+  $(document).on('click', '.cliente-link', function(e) {
+    e.preventDefault();
+    console.log('Cliente link clicked:', $(this).data('cliente'));
+    const cliente = $(this).data('cliente');
+    mostrarResumenPedidosDia(cliente);
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('modalResumenPedidosDia'));
+    modal.show();
+  });
+  
+  // Click en botón de copiar WhatsApp
+  $('#btn-copiar-whatsapp').on('click', copiarMensajeWhatsApp);
+  
+  // Verificar que los enlaces existen
+  console.log('Enlaces de cliente encontrados:', $('.cliente-link').length);
+});
 </script>
 {% endblock %}

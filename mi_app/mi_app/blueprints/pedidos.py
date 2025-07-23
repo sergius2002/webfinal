@@ -1037,6 +1037,63 @@ def pedidos_cliente():
     except Exception as e:
         return {'success': False, 'error': str(e)}, 500
 
+@pedidos_bp.route('/api/cliente/<cliente>')
+@login_required
+def obtener_pedidos_cliente_dia(cliente):
+    """
+    Obtiene los pedidos del día para un cliente específico.
+    Similar a la función del dashboard pero para la página de pedidos.
+    """
+    try:
+        # Obtener fecha actual en zona horaria de Chile
+        fecha_actual = datetime.now(chile_tz).strftime('%Y-%m-%d')
+        
+        # Aplicar ajuste de hora si es necesario
+        if HOUR_ADJUSTMENT != 0:
+            fecha_actual = (datetime.now(chile_tz) + timedelta(hours=HOUR_ADJUSTMENT)).strftime('%Y-%m-%d')
+        
+        # Obtener pedidos del día para el cliente
+        response = supabase.table('pedidos').select('*').eq('cliente', cliente).eq('fecha', fecha_actual).eq('eliminado', False).order('fecha', desc=False).execute()
+        
+        if response.data:
+            pedidos = response.data
+            total_brs = sum(p['brs'] for p in pedidos)
+            total_clp = sum(p['clp'] for p in pedidos)
+            
+            # Formatear pedidos para el modal
+            pedidos_formateados = []
+            for i, pedido in enumerate(pedidos, 1):
+                pedidos_formateados.append({
+                    'numero': i,
+                    'brs': f"{pedido['brs']:,.0f}".replace(',', '.'),
+                    'clp': f"{pedido['clp']:,.0f}".replace(',', '.'),
+                    'tasa': f"{pedido['tasa']:.6f}".replace('.', ',')
+                })
+            
+            return jsonify({
+                'success': True,
+                'cliente': cliente,
+                'fecha': fecha_actual,
+                'pedidos': pedidos_formateados,
+                'total_brs': f"{total_brs:,.0f}".replace(',', '.'),
+                'total_clp': f"{total_clp:,.0f}".replace(',', '.'),
+                'cantidad_pedidos': len(pedidos)
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'cliente': cliente,
+                'fecha': fecha_actual,
+                'pedidos': [],
+                'total_brs': '0',
+                'total_clp': '0',
+                'cantidad_pedidos': 0
+            })
+            
+    except Exception as e:
+        logging.error(f"Error al obtener detalles del cliente {cliente}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @pedidos_bp.route('/nuevos_multiples', methods=['POST'])
 @login_required
 def nuevos_multiples():

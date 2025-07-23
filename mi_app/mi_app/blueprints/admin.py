@@ -265,28 +265,84 @@ def ingresar_usdt():
 @user_allowed
 def tasa_actual():
     try:
-        query = supabase.table("vista_compras_fifo").select("costo_no_vendido, createtime, stock_usdt") \
+        # Obtener el costo_no_vendido de la vista_compras_fifo (para mostrar como referencia)
+        query = supabase.table("vista_compras_fifo").select("costo_no_vendido, createtime") \
             .order("createtime", desc=True) \
             .limit(1)
         response = query.execute()
         if response.data and len(response.data) > 0:
             record = response.data[0]
             costo_no_vendido = record.get("costo_no_vendido")
-            stock_usdt = record.get("stock_usdt")
         else:
             costo_no_vendido = None
-            stock_usdt = None
-            flash("No se encontró ningún registro.", "warning")
+            flash("No se encontró ningún registro de costo.", "warning")
+        
+        # Calcular el stock USDT usando la misma lógica exacta del módulo de márgenes
+        # SIEMPRE usar cálculo dinámico, NO depender de stock_diario de hoy
+        fecha_hoy = datetime.now().strftime("%Y-%m-%d")
+        fecha_ayer = (datetime.strptime(fecha_hoy, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        # 1. Obtener saldo anterior USDT (de stock_diario del día anterior)
+        row_anterior = supabase.table("stock_diario").select("usdt_stock").eq("fecha", fecha_ayer).execute().data
+        usdt_anterior = float(row_anterior[0]["usdt_stock"]) if row_anterior and row_anterior[0].get("usdt_stock") is not None else 0
+        
+        # 2. Obtener USDT COMPRADOS hoy (costo_real de compras CLP BUY)
+        inicio = fecha_hoy + "T00:00:00"
+        fin = fecha_hoy + "T23:59:59"
+        compras_usdt = supabase.table("compras").select("costo_real, unitprice").eq("fiat", "CLP").eq("tradetype", "BUY").gte("createtime", inicio).lte("createtime", fin).execute().data
+        usdt_comprados = sum(float(c["costo_real"]) for c in compras_usdt) if compras_usdt else 0
+        
+        # 3. Obtener USDT VENDIDOS hoy (amount de compras CLP SELL) - ¡IMPORTANTE! Usar 'amount', no 'costo_real'
+        ventas_usdt_clp = supabase.table("compras").select("amount").eq("fiat", "CLP").eq("tradetype", "SELL").gte("createtime", inicio).lte("createtime", fin).execute().data
+        usdt_vendidos_clp = sum(float(c["amount"]) for c in ventas_usdt_clp) if ventas_usdt_clp else 0
+
+        # 3.1. Obtener USDT VENDIDOS hoy en VES (amount + commission de compras VES SELL) - ¡IMPORTANTE! Usar amount + commission como en márgenes
+        ventas_usdt_ves = supabase.table("compras").select("amount, commission").eq("fiat", "VES").eq("tradetype", "SELL").gte("createtime", inicio).lte("createtime", fin).execute().data
+        usdt_vendidos_ves = sum(float(c["amount"]) + float(c.get("commission", 0)) for c in ventas_usdt_ves) if ventas_usdt_ves else 0
+
+        # 4. Calcular stock USDT actual: Saldo Anterior + USDT COMPRADOS - USDT VENDIDOS (CLP + VES)
+        stock_usdt = usdt_anterior + usdt_comprados - usdt_vendidos_clp - usdt_vendidos_ves
+        
+        # 5. OPCIÓN 1: Calcular el costo promedio ponderado real del stock USDT actual
+        if stock_usdt > 0:
+            # Calcular el valor CLP total del stock actual
+            # Esto incluye: stock anterior + compras de hoy - ventas de hoy
+            valor_clp_stock_anterior = usdt_anterior * costo_no_vendido
+            
+            # Calcular valor CLP de las compras de hoy
+            valor_clp_compras_hoy = 0
+            if compras_usdt:
+                for compra in compras_usdt:
+                    # Usar costo_real * unitprice para obtener el valor CLP total
+                    valor_clp_compras_hoy += float(compra.get("costo_real", 0)) * float(compra.get("unitprice", 0))
+            
+            # Calcular valor CLP de las ventas de hoy (para restar)
+            valor_clp_ventas_clp_hoy = usdt_vendidos_clp * costo_no_vendido
+            valor_clp_ventas_ves_hoy = usdt_vendidos_ves * costo_no_vendido
+            
+            # Valor CLP total del stock actual
+            valor_clp_stock = valor_clp_stock_anterior + valor_clp_compras_hoy - valor_clp_ventas_clp_hoy - valor_clp_ventas_ves_hoy
+            
+            # Costo promedio ponderado real del stock actual
+            costo_promedio_stock = valor_clp_stock / stock_usdt if stock_usdt > 0 else costo_no_vendido
+        else:
+            valor_clp_stock = 0
+            costo_promedio_stock = costo_no_vendido if costo_no_vendido else 0
+        
     except Exception as e:
         logging.error("Error al obtener la tasa actual desde Supabase: %s", e)
         flash("Error al obtener la tasa actual: " + str(e), "danger")
         costo_no_vendido = None
         stock_usdt = None
+        valor_clp_stock = 0
+        costo_promedio_stock = 0
 
     resultado_banesco = None
     resultado_bank = None
+    resultado_banesco_stock = None
+    resultado_bank_stock = None
 
-    if costo_no_vendido is not None:
+    if costo_no_vendido is not None and stock_usdt is not None and stock_usdt > 0:
         try:
             async def obtener_valores():
                 logging.info("Intentando obtener valor de Banesco...")
@@ -298,9 +354,22 @@ def tasa_actual():
                 return banesco_val, bank_val
             banesco_val, bank_val = asyncio.run(obtener_valores())
             if banesco_val and bank_val:
+                # Tasa tradicional (usando costo_no_vendido)
                 resultado_banesco = format_tasa_6_digits(float(banesco_val) / float(costo_no_vendido))
                 resultado_bank = format_tasa_6_digits(float(bank_val) / float(costo_no_vendido))
+                
+                # OPCIÓN 1: Tasa basada en stock USDT real
+                if valor_clp_stock > 0:
+                    # Fórmula: precio_binance / (valor_clp_stock / stock_usdt)
+                    # Esto es equivalente a: precio_binance / costo_promedio_stock
+                    # Pero más preciso porque usa el stock real
+                    tasa_banesco_stock = float(banesco_val) / costo_promedio_stock
+                    tasa_bank_stock = float(bank_val) / costo_promedio_stock
+                    resultado_banesco_stock = format_tasa_6_digits(tasa_banesco_stock)
+                    resultado_bank_stock = format_tasa_6_digits(tasa_bank_stock)
+                
                 logging.info(f"Tasas calculadas - Banesco: {resultado_banesco}, Venezuela: {resultado_bank}")
+                logging.info(f"Tasas basadas en stock - Banesco: {resultado_banesco_stock}, Venezuela: {resultado_bank_stock}")
             else:
                 logging.warning("No se pudieron obtener los valores de los bancos")
                 flash("No se pudieron obtener las tasas de conversión de Banesco y BANK.", "warning")
@@ -313,8 +382,12 @@ def tasa_actual():
         active_page="admin",
         costo_no_vendido=costo_no_vendido,
         stock_usdt=stock_usdt,
+        valor_clp_stock=valor_clp_stock,
+        costo_promedio_stock=costo_promedio_stock,
         resultado_banesco=resultado_banesco,
-        resultado_bank=resultado_bank
+        resultado_bank=resultado_bank,
+        resultado_banesco_stock=resultado_banesco_stock,
+        resultado_bank_stock=resultado_bank_stock
     )
 
 @admin_bp.route("/resumen_compras_usdt", methods=["GET"])
