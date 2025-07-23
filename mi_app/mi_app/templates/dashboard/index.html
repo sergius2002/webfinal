@@ -587,8 +587,8 @@ ${lineasDetalle}`;
       const data = await response.json();
       
       if (data.success) {
-        // Filtrar solo pedidos de hoy
-        const fechaHoy = new Date().toISOString().split('T')[0];
+        // Filtrar solo pedidos de hoy usando la fecha del servidor
+        const fechaHoy = data.fecha_servidor || new Date().toISOString().split('T')[0];
         const pedidosHoy = data.pedidos.filter(p => p.fecha === fechaHoy);
         
         // Actualizar resumen general

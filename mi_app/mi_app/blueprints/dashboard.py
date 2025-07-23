@@ -802,6 +802,7 @@ def api_cliente_detalle(cliente):
         return jsonify({
             "success": True,
             "cliente": cliente,
+            "fecha_servidor": fecha_actual,  # Agregar fecha del servidor
             "pedidos": pedidos_formateados,
             "pagos": pagos_formateados,
             "resumen": {
