@@ -515,16 +515,40 @@ $(document).ready(function(){
         cliente: cliente 
       }),
       success: function(response) {
+        console.log('[DEBUG] Respuesta del backend:', response);
         if (response.success) {
           toastr.success(response.message || 'Pago asignado correctamente.');
           var modal = bootstrap.Modal.getInstance(document.getElementById('modalAsignarPago'));
           modal.hide();
-          // Animación de resaltado antes de eliminar la fila
+          // Actualizar el estado de la fila en lugar de eliminarla
+          console.log('[DEBUG] Actualizando fila para transferencia ID:', transferId);
           var row = $('#row-' + transferId);
+          console.log('[DEBUG] Fila encontrada:', row.length > 0);
           row.addClass('resaltado-animado');
+          
+          // Actualizar el atributo data-asignado
+          row.attr('data-asignado', 'asignado');
+          console.log('[DEBUG] Atributo data-asignado actualizado');
+          
+          // Actualizar el dropdown y botón
+          var dropdown = row.find('.js-example-basic-single');
+          var button = row.find('.asignar-pago-confirmar');
+          var buttonContainer = button.parent();
+          console.log('[DEBUG] Elementos encontrados - Dropdown:', dropdown.length, 'Botón:', button.length);
+          
+          // Deshabilitar el dropdown
+          dropdown.prop('disabled', true);
+          
+          // Reemplazar el botón "Asignar pago" por "Asignado"
+          button.remove();
+          buttonContainer.append('<button class="btn btn-sm btn-danger d-flex align-items-center" type="button" disabled title="Esta transferencia ya fue asignada"><i class="fas fa-check me-1"></i>Asignado</button>');
+          console.log('[DEBUG] Botón actualizado a "Asignado"');
+          
+          // Remover la animación después de 1 segundo
           setTimeout(function() {
-            row.fadeOut(400, function() { $(this).remove(); });
-          }, 600);
+            row.removeClass('resaltado-animado');
+            console.log('[DEBUG] Animación removida');
+          }, 1000);
           
           // Mostrar botón flotante para ir al dashboard
           $('#btnDashboardFlotante').fadeIn(500);

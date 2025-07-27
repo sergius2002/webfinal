@@ -169,11 +169,18 @@ def index():
         total_records = count_response.count if hasattr(count_response, 'count') else 0
         total_pages = (total_records + per_page - 1) // per_page
 
-        # Obtener todos los IDs de transferencias asignadas de una sola vez
-        asignadas_resp = supabase.table('transferencias_pagos').select('transferencia_id').execute()
+        # Obtener todos los IDs de transferencias asignadas de una sola vez (sin límite)
         ids_asignadas = set()
-        if asignadas_resp.data:
-            ids_asignadas = {item['transferencia_id'] for item in asignadas_resp.data}
+        offset = 0
+        limit = 1000
+        while True:
+            asignadas_resp = supabase.table('transferencias_pagos').select('transferencia_id').range(offset, offset + limit - 1).execute()
+            if not asignadas_resp.data:
+                break
+            ids_asignadas.update({item['transferencia_id'] for item in asignadas_resp.data})
+            if len(asignadas_resp.data) < limit:
+                break
+            offset += limit
 
         transfers_data = []
         clientes_en_transferencias = set()
@@ -360,23 +367,31 @@ def asignar_pago():
         data = request.get_json()
         transferencia_id = data.get('transferencia_id')
         cliente = data.get('cliente')
+        
+        logging.info(f"[ASIGNAR_PAGO] Iniciando asignación - Transferencia ID: {transferencia_id}, Cliente: {cliente}")
+        
         if not transferencia_id or not cliente:
+            logging.error("[ASIGNAR_PAGO] Faltan datos requeridos")
             return jsonify({'success': False, 'message': 'Faltan datos requeridos.'}), 400
 
         # Verificar si ya existe una asignación para esta transferencia
         asignacion_existente = supabase.table('transferencias_pagos').select('id, cliente').eq('transferencia_id', transferencia_id).execute()
         if asignacion_existente.data:
             cliente_actual = asignacion_existente.data[0]['cliente']
+            logging.warning(f"[ASIGNAR_PAGO] Transferencia ya asignada al cliente {cliente_actual}")
             return jsonify({'success': False, 'message': f'Esta transferencia ya tiene un pago asignado al cliente {cliente_actual}.'}), 400
 
         # Obtener información de la transferencia
         transferencia_response = supabase.table('transferencias').select('monto, fecha').eq('id', transferencia_id).execute()
         if not transferencia_response.data:
+            logging.error(f"[ASIGNAR_PAGO] Transferencia {transferencia_id} no encontrada")
             return jsonify({'success': False, 'message': 'Transferencia no encontrada.'}), 404
         
         transferencia = transferencia_response.data[0]
         monto = transferencia.get('monto')
         fecha_transferencia = transferencia.get('fecha')
+        
+        logging.info(f"[ASIGNAR_PAGO] Transferencia encontrada - Monto: {monto}, Fecha: {fecha_transferencia}")
 
         # SIEMPRE crear un nuevo pago, aunque ya exista otro igual
         fecha_hora = datetime.now(chile_tz).isoformat()
@@ -388,24 +403,30 @@ def asignar_pago():
         
         if nuevo_pago.data:
             pago_id = nuevo_pago.data[0]['id']
+            logging.info(f"[ASIGNAR_PAGO] Pago creado exitosamente - ID: {pago_id}")
         else:
+            logging.error("[ASIGNAR_PAGO] Error al crear el pago")
             return jsonify({'success': False, 'message': 'Error al crear el pago.'}), 500
 
         # Obtener el usuario actual de la sesión
         usuario = session.get('email', 'desconocido')
 
         # Insertar la relación en la tabla transferencias_pagos
-        supabase.table('transferencias_pagos').insert({
+        relacion_result = supabase.table('transferencias_pagos').insert({
             'transferencia_id': transferencia_id,
             'pago_id': pago_id,
             'cliente': cliente,
             'usuario_asignacion': usuario
         }).execute()
+        
+        logging.info(f"[ASIGNAR_PAGO] Relación transferencia-pago creada: {relacion_result.data}")
 
         # Actualizar también el cliente en la tabla transferencias
-        supabase.table('transferencias').update({
+        update_result = supabase.table('transferencias').update({
             'cliente': cliente
         }).eq('id', transferencia_id).execute()
+        
+        logging.info(f"[ASIGNAR_PAGO] Cliente actualizado en transferencias: {update_result.data}")
 
         # Log específico para diagnóstico de MaxiGiros Richard
         if 'maxigiros' in cliente.lower() or 'richard' in cliente.lower():
@@ -421,8 +442,10 @@ def asignar_pago():
             except Exception as cache_error:
                 logging.error(f"[DIAGNÓSTICO] Error al limpiar caché: {cache_error}")
 
+        logging.info(f"[ASIGNAR_PAGO] Asignación completada exitosamente para transferencia {transferencia_id}")
         return jsonify({'success': True, 'message': 'Pago asignado correctamente.'})
     except Exception as e:
+        logging.error(f"[ASIGNAR_PAGO] Error inesperado: {str(e)}")
         return jsonify({'success': False, 'message': f'Error inesperado: {str(e)}'}), 500
 
 @transferencias_bp.route('/diagnostico_cliente/<cliente>')
