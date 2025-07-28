@@ -740,21 +740,21 @@ def exportar_csv():
 def api_cliente_detalle(cliente):
     """API para obtener detalles del cliente para el modal"""
     try:
-        # Obtener pedidos recientes (últimos 8)
+        # Obtener TODOS los pedidos del cliente (sin límite)
         pedidos_resp = supabase.table("pedidos").select(
             "id, fecha, brs, clp, tasa"
         ).eq("cliente", cliente).eq("eliminado", False).order(
             "fecha", desc=True
-        ).limit(8).execute()
+        ).execute()
         
         pedidos = pedidos_resp.data or []
         
-        # Obtener pagos recientes (últimos 8)
+        # Obtener TODOS los pagos del cliente (sin límite)
         pagos_resp = supabase.table("pagos_realizados").select(
             "id, monto_total, fecha_registro"
         ).eq("cliente", cliente).eq("eliminado", False).order(
             "fecha_registro", desc=True
-        ).limit(8).execute()
+        ).execute()
         
         pagos = pagos_resp.data or []
         
