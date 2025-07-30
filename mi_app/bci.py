@@ -192,11 +192,11 @@ def process_and_store_excel(file_path):
     ]
     df = df[column_order]
 
-    # Filtrar los RUTs que no deben subirse
-    initial_count = len(df)
-    df = df[~df["rut"].isin(RUTS_A_ELIMINAR)]
-    filtered_count = len(df)
-    print(f"[{datetime.now()}] Se eliminaron {initial_count - filtered_count} registros con RUTs no permitidos.")
+    # Filtrar los RUTs que no deben subirse (COMENTADO TEMPORALMENTE)
+    # initial_count = len(df)
+    # df = df[~df["rut"].isin(RUTS_A_ELIMINAR)]
+    # filtered_count = len(df)
+    # print(f"[{datetime.now()}] Se eliminaron {initial_count - filtered_count} registros con RUTs no permitidos.")
 
     if df.empty:
         print(f"[{datetime.now()}] No hay registros para insertar después del filtrado. Saltando inserción.")

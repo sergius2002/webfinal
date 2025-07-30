@@ -293,8 +293,8 @@ def SANTANDER():
                 # Normalizar RUT
                 columnas_relevantes["rut"] = columnas_relevantes["rut"].apply(normalizar_rut)
 
-                # Eliminar filas con RUTs a eliminar
-                columnas_relevantes = columnas_relevantes[~columnas_relevantes['rut'].isin(RUTS_A_ELIMINAR)]
+                # Eliminar filas con RUTs a eliminar (COMENTADO TEMPORALMENTE)
+                # columnas_relevantes = columnas_relevantes[~columnas_relevantes['rut'].isin(RUTS_A_ELIMINAR)]
                 if columnas_relevantes.empty:
                     logger.info(
                         f"Todos los registros en el archivo {archivo} están en la lista de RUTs a eliminar o no hay datos válidos. Omitiendo archivo.")
