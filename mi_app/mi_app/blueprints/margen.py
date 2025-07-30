@@ -167,9 +167,21 @@ def flujo_capital():
     if not fecha_fin:
         fecha_fin = datetime.now().strftime('%Y-%m-%d')
     
-    # Obtener datos del flujo de capital
+    # Obtener datos del flujo de capital (CONSULTA OPTIMIZADA)
     try:
-        flujo_data = supabase.table("flujo_capital").select("*").gte("fecha", fecha_inicio).lte("fecha", fecha_fin).order("fecha").execute().data
+        # Solo seleccionar las columnas necesarias para mejorar rendimiento
+        # CORRECCIÓN: Usar operadores más específicos para el filtro de fechas
+        flujo_data = supabase.table("flujo_capital").select(
+            "fecha, capital_inicial, ganancias, costo_gastos, gastos_manuales, capital_final"
+        ).gte("fecha", fecha_inicio).lte("fecha", fecha_fin).order("fecha").execute().data
+        
+        # FILTRO ADICIONAL: Verificar que las fechas estén realmente en el rango
+        flujo_data_filtrado = []
+        for item in flujo_data:
+            if fecha_inicio <= item['fecha'] <= fecha_fin:
+                flujo_data_filtrado.append(item)
+        
+        flujo_data = flujo_data_filtrado
         
         # Si se solicita recálculo o hay datos desactualizados, recalcular automáticamente
         if recalcular or verificar_datos_desactualizados(flujo_data, fecha_inicio, fecha_fin):
@@ -180,8 +192,10 @@ def flujo_capital():
                 except Exception as e:
                     print(f"Error al recalcular {item['fecha']}: {e}")
             
-            # Obtener datos actualizados
-            flujo_data = supabase.table("flujo_capital").select("*").gte("fecha", fecha_inicio).lte("fecha", fecha_fin).order("fecha").execute().data
+            # Obtener datos actualizados (CONSULTA OPTIMIZADA)
+            flujo_data = supabase.table("flujo_capital").select(
+                "fecha, capital_inicial, ganancias, costo_gastos, gastos_manuales, capital_final"
+            ).gte("fecha", fecha_inicio).lte("fecha", fecha_fin).order("fecha").execute().data
         
         # Calcular métricas
         total_entradas = sum(float(item.get('ganancias', 0)) for item in flujo_data)
@@ -420,8 +434,7 @@ def actualizar_flujo_capital():
             'ponderado_ves_clp': ponderado_ves_clp,
             'gastos_brs': gastos,
             'pago_movil_brs': pago_movil,
-            'envios_al_detal_brs': envios_al_detal,
-            'descripcion': f"Flujo de capital del {fecha} - Margen neto: ${margen_neto:,.0f}"
+            'envios_al_detal_brs': envios_al_detal
         }
         
         # Verificar si ya existe un registro para esta fecha
@@ -476,12 +489,12 @@ def verificar_datos_desactualizados(flujo_data, fecha_inicio, fecha_fin):
             # Obtener última actualización del flujo
             ultima_actualizacion_flujo = item.get('updated_at')
             
-            # Obtener último pedido de esa fecha
-            ultimo_pedido = supabase.table("pedidos").select("created_at").eq("fecha", fecha).eq("eliminado", False).order("created_at", desc=True).limit(1).execute().data
+            # Obtener último pedido de esa fecha (usando fecha en lugar de created_at)
+            ultimo_pedido = supabase.table("pedidos").select("fecha").eq("fecha", fecha).eq("eliminado", False).order("fecha", desc=True).limit(1).execute().data
             
             if ultimo_pedido and ultima_actualizacion_flujo:
                 ultima_actualizacion_flujo = datetime.fromisoformat(ultima_actualizacion_flujo.replace('Z', '+00:00'))
-                ultimo_pedido_time = datetime.fromisoformat(ultimo_pedido[0]['created_at'].replace('Z', '+00:00'))
+                ultimo_pedido_time = datetime.strptime(ultimo_pedido[0]['fecha'], '%Y-%m-%d')
                 
                 # Si hay pedidos más recientes que la última actualización del flujo
                 if ultimo_pedido_time > ultima_actualizacion_flujo:
@@ -495,47 +508,51 @@ def verificar_datos_desactualizados(flujo_data, fecha_inicio, fecha_fin):
         return True
 
 def calcular_flujo_capital_automatico(fecha):
-    """Calcula automáticamente el flujo de capital para una fecha específica"""
+    """Calcula automáticamente el flujo de capital para una fecha específica (OPTIMIZADO)"""
     try:
         fecha_dt = datetime.strptime(fecha, '%Y-%m-%d')
         fecha_ayer = (fecha_dt - timedelta(days=1)).strftime('%Y-%m-%d')
         
-        # Obtener capital inicial (capital final del día anterior)
+        # CONSULTAS OPTIMIZADAS - Proyecciones específicas
+        # 1. Capital anterior - solo la columna necesaria
         capital_anterior = supabase.table("flujo_capital").select("capital_final").eq("fecha", fecha_ayer).execute().data
         capital_inicial = float(capital_anterior[0]['capital_final']) if capital_anterior else 32000000
         
-        # Obtener datos completos de márgenes para esta fecha
-        row_gastos = supabase.table("stock_diario").select("gastos, pago_movil, envios_al_detal").eq("fecha", fecha).execute().data
-        if row_gastos and row_gastos[0]:
-            gastos = float(row_gastos[0].get('gastos', 15330))
-            pago_movil = float(row_gastos[0].get('pago_movil', 7190))
-            envios_al_detal = float(row_gastos[0].get('envios_al_detal', 170984))
+        # 2. Stock diario - una sola consulta con todas las columnas necesarias
+        stock_data = supabase.table("stock_diario").select(
+            "gastos, pago_movil, envios_al_detal, brs_stock, usdt_stock, tasa_ves_clp, usdt_tasa"
+        ).eq("fecha", fecha).execute().data
+        
+        if stock_data and stock_data[0]:
+            gastos = float(stock_data[0].get('gastos', 15330))
+            pago_movil = float(stock_data[0].get('pago_movil', 7190))
+            envios_al_detal = float(stock_data[0].get('envios_al_detal', 170984))
+            saldo_anterior = stock_data[0]
         else:
             gastos = 15330
             pago_movil = 7190
             envios_al_detal = 170984
+            saldo_anterior = None
         
-        # Obtener saldo anterior
-        row = supabase.table("stock_diario").select("brs_stock, usdt_stock, tasa_ves_clp, usdt_tasa").eq("fecha", fecha_ayer).execute().data
-        saldo_anterior = row[0] if row else None
-        
-        # Calcular ponderado VES/CLP usando la lógica completa de márgenes
-        pedidos = supabase.table("pedidos").select("brs, clp").eq("fecha", fecha).eq("eliminado", False).execute().data
+        # 3. Pedidos - filtros optimizados con solo las columnas necesarias
+        pedidos = supabase.table("pedidos").select("brs, clp, cliente").eq("fecha", fecha).eq("eliminado", False).execute().data
         brs_vendidos_hoy = sum(float(p["brs"]) for p in pedidos) if pedidos else 0
         
-        # Sumar todos los BRS comprados (VES recibidos por cambio de USDT) de la tabla compras
+        # 4. Compras - consultas específicas con rangos de fecha optimizados
         inicio = fecha + "T00:00:00"
         fin = fecha + "T23:59:59"
+        
+        # Compras BRS (VES recibidos por cambio de USDT)
         compras_brs = supabase.table("compras").select("totalprice, amount, commission").eq("fiat", "VES").eq("tradetype", "SELL").gte("createtime", inicio).lte("createtime", fin).execute().data
         brs_comprados = sum(float(c["totalprice"]) for c in compras_brs) if compras_brs else 0
         usdt_vendidos = sum(float(c["amount"]) + float(c.get("commission", 0)) for c in compras_brs) if compras_brs else 0
         
-        # Sumar todos los USDT comprados (costo_real) de la tabla compras
+        # Compras USDT (costo_real)
         compras_usdt = supabase.table("compras").select("costo_real, totalprice").eq("fiat", "CLP").eq("tradetype", "BUY").gte("createtime", inicio).lte("createtime", fin).execute().data
         usdt_comprados = sum(float(c["costo_real"]) for c in compras_usdt) if compras_usdt else 0
         clp_invertidos = sum(float(c["totalprice"]) for c in compras_usdt) if compras_usdt else 0
         
-        # Sumar todos los USDT vendidos en CLP (amount) de la tabla compras
+        # Ventas USDT en CLP
         ventas_usdt_clp = supabase.table("compras").select("amount, totalprice").eq("fiat", "CLP").eq("tradetype", "SELL").gte("createtime", inicio).lte("createtime", fin).execute().data
         usdt_vendidos_clp = sum(float(c["amount"]) for c in ventas_usdt_clp) if ventas_usdt_clp else 0
         clp_recibidos_usdt = sum(float(c["totalprice"]) for c in ventas_usdt_clp) if ventas_usdt_clp else 0
@@ -567,18 +584,16 @@ def calcular_flujo_capital_automatico(fecha):
         if total_brs > 0:
             ponderado_ves_clp = (brs_anterior * tasa_ves_clp_anterior + brs_comprados * tasa_ves_clp_actual) / total_brs
         
+        # OPTIMIZACIÓN: Usar los datos de pedidos ya obtenidos en lugar de hacer consultas adicionales
         # Calcular BRS vendidos al cliente DETAL
-        pedidos_detal = supabase.table("pedidos").select("brs").eq("fecha", fecha).eq("eliminado", False).eq("cliente", "DETAL").execute().data
-        brs_vendidos_detal = sum(float(p["brs"]) for p in pedidos_detal) if pedidos_detal else 0
+        brs_vendidos_detal = sum(float(p["brs"]) for p in pedidos if p.get("cliente") == "DETAL") if pedidos else 0
         brs_vendidos_mayor = brs_vendidos_hoy - brs_vendidos_detal
         
         # CLP recibidos del cliente DETAL
-        pedidos_detal_clp = supabase.table("pedidos").select("clp").eq("fecha", fecha).eq("eliminado", False).eq("cliente", "DETAL").execute().data
-        clp_recibidos_detal = sum(float(p["clp"]) for p in pedidos_detal_clp) if pedidos_detal_clp else 0
+        clp_recibidos_detal = sum(float(p["clp"]) for p in pedidos if p.get("cliente") == "DETAL") if pedidos else 0
         
         # CLP recibidos de todos menos DETAL
-        pedidos_mayor_clp = supabase.table("pedidos").select("clp").eq("fecha", fecha).eq("eliminado", False).neq("cliente", "DETAL").execute().data
-        clp_recibidos_mayor = sum(float(p["clp"]) for p in pedidos_mayor_clp) if pedidos_mayor_clp else 0
+        clp_recibidos_mayor = sum(float(p["clp"]) for p in pedidos if p.get("cliente") != "DETAL") if pedidos else 0
         
         # Calcular márgenes
         if ponderado_ves_clp > 0:
@@ -617,8 +632,7 @@ def calcular_flujo_capital_automatico(fecha):
             'ponderado_ves_clp': ponderado_ves_clp,
             'gastos_brs': gastos,
             'pago_movil_brs': pago_movil,
-            'envios_al_detal_brs': envios_al_detal,
-            'descripcion': f"Flujo de capital del {fecha} - Margen neto: ${margen_neto:,.0f}"
+            'envios_al_detal_brs': envios_al_detal
         }
         
         # Verificar si ya existe un registro para esta fecha
@@ -787,8 +801,6 @@ def index():
     brs_vendidos_detal = sum(float(p["brs"]) for p in pedidos_detal) if pedidos_detal else 0
     brs_vendidos_mayor = brs_vendidos_hoy - brs_vendidos_detal
     
-    print(f"[DEBUG] total_brs={total_brs}, brs_vendidos_mayor={brs_vendidos_mayor}, gastos={gastos}, pago_movil={pago_movil}, envios_al_detal={envios_al_detal}")
-    print(f"[DEBUG] usdt_vendidos_clp={usdt_vendidos_clp}, clp_recibidos_usdt={clp_recibidos_usdt}, total_usdt={total_usdt}, sobrante_usdt={sobrante_usdt}")
     sobrante_al_mayor = total_brs - brs_vendidos_mayor - gastos - pago_movil - envios_al_detal
     
     # CLP recibidos del cliente DETAL
