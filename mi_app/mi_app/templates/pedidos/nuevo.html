@@ -2,8 +2,32 @@
 {% block title %}Nuevo Pedido{% endblock %}
 
 {% block content %}
-<div class="container">
-  <div class="row justify-content-center">
+<div class="container-fluid">
+  <div class="row">
+    <!-- Columna izquierda: Tasas del día -->
+    <div class="col-lg-3 col-md-4 col-12 mb-3">
+      <div class="card" id="tasas-dia-container">
+        <div class="card-header bg-warning text-dark">
+          <i class="fas fa-chart-line me-1"></i>Tasas del día
+        </div>
+        <div class="card-body p-2">
+          <div id="tasas-dia-msg" class="text-center text-muted small">Cargando tasas...</div>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0" id="tabla-tasas-dia" style="display:none;">
+              <thead>
+                <tr>
+                  <th>Tasa</th>
+                  <th>Cliente</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Columna central: Formulario -->
     <div class="col-lg-6 col-md-8 col-12 mb-3">
       <div class="card shadow-lg" style="width: 100%;">
         <div class="card-header bg-azul-oscuro text-white text-center">
@@ -43,11 +67,16 @@
           <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
           <form id="form-nuevo-pedido" action="{{ url_for('pedidos.nuevo') }}" method="post" novalidate autocomplete="off">
             <div class="mb-3">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="envios-multiples">
-                <label class="form-check-label" for="envios-multiples">
-                  Envíos múltiples
-                </label>
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="envios-multiples">
+                  <label class="form-check-label" for="envios-multiples">
+                    Envíos múltiples
+                  </label>
+                </div>
+                <button type="button" class="btn btn-outline-info btn-sm" id="btn-ver-pedidos-cliente" style="display:none;" data-bs-toggle="modal" data-bs-target="#modalPedidosCliente">
+                  <i class="fas fa-list me-1"></i>Ver pedidos
+                </button>
               </div>
             </div>
             <div id="formulario-individual">
@@ -180,7 +209,8 @@
         </div>
       </div>
     </div>
-    <div class="col-lg-5 col-md-8 col-12 mb-3 d-flex align-items-start">
+    <!-- Columna derecha: Pedidos del cliente (ahora oculta, se muestra en modal) -->
+    <div class="col-lg-3 col-md-8 col-12 mb-3 d-flex align-items-start d-none" style="display:none !important;">
       <!-- Tabla de pedidos del cliente seleccionado -->
       <div class="w-100" id="pedidos-cliente-container" style="display:none; max-width: 500px;">
         <div class="card">
@@ -268,6 +298,60 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="btn-cancelar-clp">Cancelar</button>
         <button type="button" class="btn btn-danger" id="btn-confirmar-clp">Continuar de todas formas</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para mostrar pedidos del cliente -->
+<div class="modal fade" id="modalPedidosCliente" tabindex="-1" aria-labelledby="modalPedidosClienteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title" id="modalPedidosClienteLabel">
+          <i class="fas fa-list me-2"></i>Pedidos del cliente
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div id="resumen-pedidos-modal" style="display:none;">
+            <span class="badge bg-primary me-2">Total BRS: <span id="total-brs-modal">0</span></span>
+            <span class="badge bg-success" id="badge-total-clp-modal">Total CLP: <span id="total-clp-modal">0</span></span>
+            <div id="alerta-clp-limite-modal" class="mt-2 text-danger fw-bold" style="display:none;">
+              <i class="fas fa-exclamation-triangle me-1"></i>¡El total CLP del período supera el límite del cliente!
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <label for="dias-pedidos-modal" class="form-label mb-0 me-1">Ver últimos</label>
+            <select id="dias-pedidos-modal" class="form-select form-select-sm d-inline-block" style="width:auto;">
+              <option value="1">1 día</option>
+              <option value="3">3 días</option>
+              <option value="7">7 días</option>
+            </select>
+            <button id="btn-copiar-pedidos-modal" class="btn btn-outline-secondary btn-sm ms-2" title="Copiar resumen" style="display:none;">
+              <i class="fas fa-copy"></i>
+            </button>
+          </div>
+        </div>
+        <div id="pedidos-cliente-msg-modal" class="text-center text-muted"></div>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered mb-0" id="tabla-pedidos-modal" style="display:none;">
+            <thead class="table-dark">
+              <tr>
+                <th><i class="fas fa-coins me-1"></i>BRS</th>
+                <th><i class="fas fa-calculator me-1"></i>CLP</th>
+                <th><i class="fas fa-percentage me-1"></i>Tasa</th>
+                <th><i class="fas fa-calendar me-1"></i>Fecha</th>
+                <th><i class="fas fa-clock me-1"></i>Hora</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
       </div>
     </div>
   </div>
@@ -399,6 +483,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const fecha = document.getElementById('fecha').value;
     const dias = document.getElementById('dias-pedidos').value;
     cargarPedidosCliente(cliente, fecha, dias);
+    
+    // Actualizar tasas del día filtradas por cliente
+    cargarTasasDia(cliente);
+    
+    // Mostrar/ocultar botón del modal de pedidos
+    const btnVerPedidos = document.getElementById('btn-ver-pedidos-cliente');
+    if (cliente) {
+      btnVerPedidos.style.display = 'inline-block';
+      // Actualizar título del modal
+      document.getElementById('modalPedidosClienteLabel').innerHTML = 
+        `<i class="fas fa-list me-2"></i>Pedidos de ${cliente}`;
+    } else {
+      btnVerPedidos.style.display = 'none';
+    }
   });
 
   // Event listener para cambio de tasa
@@ -827,11 +925,222 @@ document.getElementById('dias-pedidos').addEventListener('change', function() {
   const dias = this.value;
   cargarPedidosCliente(cliente, fecha, dias);
 });
+
+// Función para cargar tasas distintas del día
+function cargarTasasDia(clienteFiltro = '') {
+  const msg = document.getElementById('tasas-dia-msg');
+  const tabla = document.getElementById('tabla-tasas-dia');
+  const tbody = tabla.querySelector('tbody');
+  
+  // Si no hay cliente seleccionado, no mostrar tasas
+  if (!clienteFiltro || clienteFiltro.trim() === '') {
+    msg.textContent = 'Selecciona un cliente para ver sus tasas';
+    tabla.style.display = 'none';
+    tbody.innerHTML = '';
+    return;
+  }
+  
+  let url = `/pedidos/api/tasas_dia?cliente=${encodeURIComponent(clienteFiltro)}`;
+  
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.tasas && data.tasas.length > 0) {
+        // Limpiar tabla
+        tbody.innerHTML = '';
+        
+        // Agregar tasas
+        data.tasas.forEach(item => {
+          const tr = document.createElement('tr');
+          
+          // Columna de tasa (clickeable para copiar)
+          const tdTasa = document.createElement('td');
+          tdTasa.innerHTML = `<span class="badge bg-success fs-6 px-3 py-2 cursor-pointer tasa-clickeable" onclick="copiarTasa('${item.tasa_valor}')" title="Click para copiar">${item.tasa}</span>`;
+          tr.appendChild(tdTasa);
+          
+          // Columna de clientes
+          const tdClientes = document.createElement('td');
+          const clientesTexto = item.clientes.length > 2 
+            ? `${item.clientes.slice(0, 2).join(', ')} +${item.clientes.length - 2}`
+            : item.clientes.join(', ');
+          tdClientes.innerHTML = `<small title="${item.clientes.join(', ')}">${clientesTexto}</small>`;
+          tr.appendChild(tdClientes);
+          
+          tbody.appendChild(tr);
+        });
+        
+        msg.textContent = `${data.cantidad_tasas} tasa(s) de ${clienteFiltro}`;
+        tabla.style.display = 'table';
+      } else {
+        msg.textContent = `Sin tasas para ${clienteFiltro} hoy`;
+        tabla.style.display = 'none';
+        tbody.innerHTML = '';
+      }
+    })
+    .catch(error => {
+      console.error('Error al cargar tasas del día:', error);
+      msg.textContent = 'Error al cargar tasas';
+      tabla.style.display = 'none';
+    });
+}
+
+// Función para copiar tasa al campo del formulario
+function copiarTasa(tasaValor) {
+  const campoTasa = document.getElementById('tasa');
+  campoTasa.value = tasaValor.toString().replace('.', ',');
+  
+  // Disparar evento para recalcular CLP
+  campoTasa.dispatchEvent(new Event('input'));
+  
+  // Mostrar feedback visual
+  const badge = event.target;
+  const originalText = badge.textContent;
+  badge.textContent = '¡Copiado!';
+  badge.classList.remove('bg-success');
+  badge.classList.add('bg-warning', 'text-dark');
+  
+  setTimeout(() => {
+    badge.textContent = originalText;
+    badge.classList.remove('bg-warning', 'text-dark');
+    badge.classList.add('bg-success');
+  }, 1000);
+}
+
+// Función para cargar pedidos del cliente en el modal
+function cargarPedidosClienteModal(cliente, fecha, dias=1) {
+  if (!cliente || !fecha) {
+    return;
+  }
+  
+  fetch(`/pedidos/pedidos_cliente?cliente=${encodeURIComponent(cliente)}&fecha=${encodeURIComponent(fecha)}&dias=${dias}`)
+    .then(r => r.json())
+    .then(data => {
+      const msg = document.getElementById('pedidos-cliente-msg-modal');
+      const tabla = document.getElementById('tabla-pedidos-modal');
+      const tbody = tabla.querySelector('tbody');
+      const resumen = document.getElementById('resumen-pedidos-modal');
+      const totalBrs = document.getElementById('total-brs-modal');
+      const totalClp = document.getElementById('total-clp-modal');
+      const badgeClp = document.getElementById('badge-total-clp-modal');
+      const alertaClp = document.getElementById('alerta-clp-limite-modal');
+      const btnCopiar = document.getElementById('btn-copiar-pedidos-modal');
+      
+      tbody.innerHTML = '';
+      let sumaBrs = 0;
+      let sumaClp = 0;
+      
+      if (data.success && data.pedidos.length > 0) {
+        data.pedidos.forEach(p => {
+          sumaBrs += parseFloat(p.brs);
+          sumaClp += parseFloat(p.clp);
+          const tr = document.createElement('tr');
+          // Agregar columna de hora
+          const fechaHora = new Date(p.fecha_completa || p.fecha);
+          const hora = fechaHora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+          tr.innerHTML = `
+            <td>${parseInt(p.brs).toLocaleString('de-DE')}</td>
+            <td>${parseInt(p.clp).toLocaleString('de-DE')}</td>
+            <td>${parseFloat(p.tasa).toLocaleString('de-DE', {minimumFractionDigits: 5})}</td>
+            <td>${p.fecha}</td>
+            <td>${hora}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+        
+        totalBrs.textContent = sumaBrs.toLocaleString('de-DE');
+        totalClp.textContent = sumaClp.toLocaleString('de-DE');
+        
+        // Resaltar si supera el límite
+        if (typeof clpMaximoCliente !== 'undefined' && clpMaximoCliente > 0 && sumaClp >= clpMaximoCliente) {
+          badgeClp.classList.remove('bg-success');
+          badgeClp.classList.add('bg-danger');
+          alertaClp.style.display = '';
+        } else {
+          badgeClp.classList.remove('bg-danger');
+          badgeClp.classList.add('bg-success');
+          alertaClp.style.display = 'none';
+        }
+        
+        resumen.style.display = '';
+        tabla.style.display = '';
+        btnCopiar.style.display = '';
+        msg.textContent = '';
+      } else {
+        resumen.style.display = 'none';
+        tabla.style.display = 'none';
+        btnCopiar.style.display = 'none';
+        msg.textContent = 'No hay pedidos para este cliente en el período seleccionado.';
+      }
+    })
+    .catch(error => {
+      console.error('Error al cargar pedidos:', error);
+      document.getElementById('pedidos-cliente-msg-modal').textContent = 'Error al cargar pedidos.';
+    });
+}
+
+// Event listeners para el modal
+document.getElementById('dias-pedidos-modal').addEventListener('change', function() {
+  const cliente = document.getElementById('cliente').value;
+  const fecha = document.getElementById('fecha').value;
+  const dias = this.value;
+  cargarPedidosClienteModal(cliente, fecha, dias);
+});
+
+// Función para copiar resumen desde el modal
+document.getElementById('btn-copiar-pedidos-modal').addEventListener('click', function() {
+  const cliente = document.getElementById('cliente').value;
+  const fecha = document.getElementById('fecha').value;
+  const dias = document.getElementById('dias-pedidos-modal').value;
+  const totalBrs = document.getElementById('total-brs-modal').textContent;
+  const totalClp = document.getElementById('total-clp-modal').textContent;
+  const tabla = document.getElementById('tabla-pedidos-modal');
+  
+  let texto = `Pedidos de ${cliente} (${dias} día(s)) hasta ${fecha}\n`;
+  texto += `Total BRS: ${totalBrs}\nTotal CLP: ${totalClp}\n\n`;
+  texto += 'BRS\tCLP\tTasa\tFecha\tHora\n';
+  
+  for (const row of tabla.querySelectorAll('tbody tr')) {
+    const cols = Array.from(row.children).map(td => td.textContent.trim());
+    texto += cols.join('\t') + '\n';
+  }
+  
+  navigator.clipboard.writeText(texto).then(() => {
+    const btn = this;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check me-1"></i>¡Copiado!';
+    btn.classList.remove('btn-outline-secondary');
+    btn.classList.add('btn-success');
+    
+    setTimeout(() => {
+      btn.innerHTML = originalHtml;
+      btn.classList.remove('btn-success');
+      btn.classList.add('btn-outline-secondary');
+    }, 2000);
+  }).catch(err => {
+    console.error('Error al copiar:', err);
+  });
+});
+
+// Event listener para cuando se abre el modal
+document.getElementById('modalPedidosCliente').addEventListener('show.bs.modal', function() {
+  const cliente = document.getElementById('cliente').value;
+  const fecha = document.getElementById('fecha').value;
+  const dias = document.getElementById('dias-pedidos-modal').value;
+  cargarPedidosClienteModal(cliente, fecha, dias);
+});
+
 window.addEventListener('DOMContentLoaded', function() {
   const cliente = document.getElementById('cliente').value;
   const fecha = document.getElementById('fecha').value;
   const dias = document.getElementById('dias-pedidos').value;
   cargarPedidosCliente(cliente, fecha, dias);
+  
+  // Cargar tasas del día solo si hay cliente seleccionado
+  if (cliente) {
+    cargarTasasDia(cliente);
+  } else {
+    cargarTasasDia(); // Esto mostrará el mensaje "Selecciona un cliente"
+  }
 });
 </script>
 
@@ -1058,6 +1367,30 @@ $('#envios-multiples').on('change', actualizarTituloClienteMultiple);
 }
 .monto-brs-multiple[type="number"] {
   -moz-appearance: textfield;
+}
+
+/* Estilo para las filas de tasas clickeables */
+.tasa-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.tasa-row:hover {
+  background-color: #f8f9fa;
+}
+
+/* Estilos para las tasas clickeables */
+.tasa-clickeable {
+  transition: all 0.3s ease;
+  font-weight: bold;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+}
+.tasa-clickeable:hover {
+  transform: scale(1.05);
+  border-color: #198754;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  cursor: pointer;
 }
 </style>
 

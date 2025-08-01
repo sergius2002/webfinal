@@ -1094,6 +1094,82 @@ def obtener_pedidos_cliente_dia(cliente):
         logging.error(f"Error al obtener detalles del cliente {cliente}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@pedidos_bp.route('/api/tasas_dia')
+@login_required
+def obtener_tasas_distintas_dia():
+    """
+    Obtiene las tasas distintas del día actual para un cliente específico.
+    Si no se especifica cliente, retorna todas las tasas del día.
+    """
+    try:
+        # Obtener parámetro de cliente
+        cliente = request.args.get('cliente', '').strip()
+        
+        # Obtener fecha actual en zona horaria de Chile
+        fecha_actual = datetime.now(chile_tz).strftime('%Y-%m-%d')
+        
+        # Aplicar ajuste de hora si es necesario
+        if HOUR_ADJUSTMENT != 0:
+            fecha_actual = (datetime.now(chile_tz) + timedelta(hours=HOUR_ADJUSTMENT)).strftime('%Y-%m-%d')
+        
+        # Construir query base
+        query = supabase.table('pedidos').select('tasa, cliente').eq('fecha', fecha_actual).eq('eliminado', False)
+        
+        # Si se especifica cliente, filtrar por él
+        if cliente:
+            query = query.eq('cliente', cliente)
+        
+        response = query.execute()
+        
+        if response.data:
+            # Extraer tasas únicas
+            tasas_set = set()
+            clientes_por_tasa = {}
+            
+            for pedido in response.data:
+                tasa = float(pedido['tasa'])
+                cliente_pedido = pedido['cliente']
+                tasas_set.add(tasa)
+                
+                # Agrupar clientes por tasa
+                if tasa not in clientes_por_tasa:
+                    clientes_por_tasa[tasa] = set()
+                clientes_por_tasa[tasa].add(cliente_pedido)
+            
+            # Convertir a lista y ordenar de mayor a menor
+            tasas_ordenadas = sorted(list(tasas_set), reverse=True)
+            
+            # Formatear tasas para mostrar
+            tasas_formateadas = []
+            for tasa in tasas_ordenadas:
+                clientes_lista = sorted(list(clientes_por_tasa[tasa]))
+                tasas_formateadas.append({
+                    'tasa': f"{tasa:.6f}".replace('.', ','),
+                    'tasa_valor': tasa,
+                    'clientes': clientes_lista,
+                    'cantidad_clientes': len(clientes_lista)
+                })
+            
+            return jsonify({
+                'success': True,
+                'fecha': fecha_actual,
+                'cliente_filtro': cliente,
+                'tasas': tasas_formateadas,
+                'cantidad_tasas': len(tasas_formateadas)
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'fecha': fecha_actual,
+                'cliente_filtro': cliente,
+                'tasas': [],
+                'cantidad_tasas': 0
+            })
+            
+    except Exception as e:
+        logging.error(f"Error al obtener tasas del día: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @pedidos_bp.route('/nuevos_multiples', methods=['POST'])
 @login_required
 def nuevos_multiples():
