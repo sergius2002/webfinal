@@ -477,27 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Event listener para cambio de cliente
-  $('#cliente').on('change', function () {
-    const cliente = this.value;
-    const fecha = document.getElementById('fecha').value;
-    const dias = document.getElementById('dias-pedidos').value;
-    cargarPedidosCliente(cliente, fecha, dias);
-    
-    // Actualizar tasas del día filtradas por cliente
-    cargarTasasDia(cliente);
-    
-    // Mostrar/ocultar botón del modal de pedidos
-    const btnVerPedidos = document.getElementById('btn-ver-pedidos-cliente');
-    if (cliente) {
-      btnVerPedidos.style.display = 'inline-block';
-      // Actualizar título del modal
-      document.getElementById('modalPedidosClienteLabel').innerHTML = 
-        `<i class="fas fa-list me-2"></i>Pedidos de ${cliente}`;
-    } else {
-      btnVerPedidos.style.display = 'none';
-    }
-  });
+  // Event listener para cambio de cliente (ELIMINADO - se usa solo el de Select2)
 
   // Event listener para cambio de tasa
   document.getElementById('tasa').addEventListener('input', function() {
@@ -663,13 +643,12 @@ document.addEventListener('DOMContentLoaded', function() {
     this.classList.add('d-none');
   });
 
-  // Alert Bootstrap desaparece automáticamente
+  // Alert Bootstrap desaparece automáticamente (más rápido para no interferir)
   const alertExito = document.getElementById('alert-exito');
   if (alertExito) {
     setTimeout(() => {
-      alertExito.classList.remove('show');
-      alertExito.classList.add('fade');
-    }, 2500);
+      alertExito.style.display = 'none';
+    }, 1000);
   }
 
   // Inicializar Select2 para el campo cliente
@@ -685,6 +664,75 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
       document.querySelector('.select2-container--open .select2-search__field').focus();
     }, 0);
+  });
+
+  // Event listener de Select2 para el cambio de cliente (ÚNICO)
+  $('#cliente').on('select2:select', function (e) {
+    const cliente = this.value;
+    const fecha = document.getElementById('fecha').value;
+    const dias = document.getElementById('dias-pedidos').value;
+    
+    console.log('Cliente seleccionado:', cliente);
+    
+    // Cargar pedidos del cliente
+    cargarPedidosCliente(cliente, fecha, dias);
+    
+    // Actualizar tasas del día filtradas por cliente
+    cargarTasasDia(cliente);
+    
+    // Mostrar/ocultar botón del modal de pedidos
+    const btnVerPedidos = document.getElementById('btn-ver-pedidos-cliente');
+    console.log('Botón encontrado:', btnVerPedidos);
+    
+    if (cliente && btnVerPedidos) {
+      btnVerPedidos.style.display = 'inline-block';
+      btnVerPedidos.style.visibility = 'visible';
+      btnVerPedidos.classList.remove('d-none');
+      console.log('Botón mostrado para cliente:', cliente);
+      console.log('Estilos aplicados:', btnVerPedidos.style.cssText);
+      
+      // Actualizar título del modal
+      const modalLabel = document.getElementById('modalPedidosClienteLabel');
+      if (modalLabel) {
+        modalLabel.innerHTML = `<i class="fas fa-list me-2"></i>Pedidos de ${cliente}`;
+      }
+    } else {
+      if (btnVerPedidos) {
+        btnVerPedidos.style.display = 'none';
+        console.log('Botón ocultado');
+      } else {
+        console.error('¡Botón btn-ver-pedidos-cliente no encontrado!');
+      }
+    }
+  });
+
+  // También manejar cuando se limpia la selección
+  $('#cliente').on('select2:clear', function (e) {
+    const btnVerPedidos = document.getElementById('btn-ver-pedidos-cliente');
+    if (btnVerPedidos) {
+      btnVerPedidos.style.display = 'none';
+    }
+    document.getElementById('pedidos-cliente-container').style.display = 'none';
+    cargarTasasDia('');
+  });
+
+  // Event listener adicional para el evento change estándar (respaldo)
+  $('#cliente').on('change', function (e) {
+    const cliente = this.value;
+    console.log('Change event - Cliente:', cliente);
+    
+    const btnVerPedidos = document.getElementById('btn-ver-pedidos-cliente');
+    if (btnVerPedidos) {
+      if (cliente) {
+        btnVerPedidos.style.display = 'inline-block';
+        btnVerPedidos.style.visibility = 'visible';
+        btnVerPedidos.classList.remove('d-none');
+        console.log('Change event - Botón mostrado');
+      } else {
+        btnVerPedidos.style.display = 'none';
+        console.log('Change event - Botón ocultado');
+      }
+    }
   });
 
   // Inicializar Select2 para el campo cuenta_id (cuenta corriente)
@@ -906,13 +954,7 @@ function cargarPedidosCliente(cliente, fecha, dias=1) {
       document.getElementById('pedidos-cliente-container').style.display = 'none';
     });
 }
-// Reemplazar el event listener estándar por el de Select2 para el cambio de cliente
-$('#cliente').on('select2:select', function (e) {
-  const cliente = this.value;
-  const fecha = document.getElementById('fecha').value;
-  const dias = document.getElementById('dias-pedidos').value;
-  cargarPedidosCliente(cliente, fecha, dias);
-});
+
 document.getElementById('fecha').addEventListener('change', function() {
   const cliente = document.getElementById('cliente').value;
   const fecha = this.value;
@@ -1567,6 +1609,87 @@ $(document).ready(function() {
       document.querySelector('.select2-container--open .select2-search__field').focus();
     }, 0);
   });
+});
+</script>
+
+<script>
+// Script simple para forzar la visibilidad del botón Ver pedidos
+$(document).ready(function() {
+  console.log('🔧 Script de depuración del botón Ver pedidos iniciado');
+  
+  // Función para mostrar/ocultar el botón
+  function toggleVerPedidosButton() {
+    const clienteSelect = document.getElementById('cliente');
+    const btnVerPedidos = document.getElementById('btn-ver-pedidos-cliente');
+    
+    console.log('🔍 Verificando elementos:');
+    console.log('  - Cliente select:', clienteSelect);
+    console.log('  - Botón Ver pedidos:', btnVerPedidos);
+    
+    if (!clienteSelect || !btnVerPedidos) {
+      console.error('❌ Elementos no encontrados');
+      return;
+    }
+    
+    const clienteValue = clienteSelect.value;
+    console.log('  - Valor del cliente:', clienteValue);
+    
+    if (clienteValue && clienteValue.trim() !== '') {
+      console.log('✅ Cliente seleccionado, mostrando botón');
+      btnVerPedidos.style.display = 'inline-block';
+      btnVerPedidos.style.visibility = 'visible';
+      btnVerPedidos.classList.remove('d-none');
+    } else {
+      console.log('❌ No hay cliente seleccionado, ocultando botón');
+      btnVerPedidos.style.display = 'none';
+    }
+  }
+  
+  // Ejecutar inmediatamente
+  toggleVerPedidosButton();
+  
+  // Agregar listeners a todos los eventos posibles
+  $('#cliente').on('change', function() {
+    console.log('🔄 Evento change detectado en cliente');
+    toggleVerPedidosButton();
+  });
+  
+  $('#cliente').on('select2:select', function() {
+    console.log('🔄 Evento select2:select detectado');
+    setTimeout(toggleVerPedidosButton, 100);
+  });
+  
+  $('#cliente').on('select2:clear', function() {
+    console.log('🔄 Evento select2:clear detectado');
+    setTimeout(toggleVerPedidosButton, 100);
+  });
+  
+  // Observer para cambios en el DOM
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+        console.log('🔄 Cambio de valor detectado por observer');
+        toggleVerPedidosButton();
+      }
+    });
+  });
+  
+  const clienteSelect = document.getElementById('cliente');
+  if (clienteSelect) {
+    observer.observe(clienteSelect, { attributes: true, attributeFilter: ['value'] });
+  }
+  
+  // Verificar cada 2 segundos como respaldo
+  setInterval(function() {
+    const currentValue = $('#cliente').val();
+    if (currentValue && currentValue.trim() !== '') {
+      const btn = document.getElementById('btn-ver-pedidos-cliente');
+      if (btn && btn.style.display === 'none') {
+        console.log('🔧 Forzando visibilidad del botón por intervalo');
+        toggleVerPedidosButton();
+      }
+    }
+  }, 2000);
 });
 </script>
 {% endblock %}
