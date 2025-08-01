@@ -67,7 +67,7 @@ def obtener_credenciales():
     """Obtiene las credenciales desde variables de entorno o usa valores por defecto"""
     # Credenciales de Telegram
     chat_id_telegram = os.getenv('CHAT_ID_TELEGRAM', '-4090514300')
-    token_telegram = os.getenv('TOKEN_TELEGRAM', '8204914856:AAGKiDKMPFXvsBSMOYEyT2eJJqoDWdXgxHg')
+    token_telegram = os.getenv('TOKEN_TELEGRAM', '8065976460:AAFD9jTwj8Ec4eDR7j_0BS0ImIEAVL1_1HE')
     
     # Credenciales de Supabase
     supabase_url = os.getenv('SUPABASE_URL', 'https://tmimwpzxmtezopieqzcl.supabase.co')

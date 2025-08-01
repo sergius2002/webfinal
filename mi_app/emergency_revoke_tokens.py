@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # Tokens encontrados en el código (REVOCAR INMEDIATAMENTE)
 TOKENS_TO_REVOKE = [
     "6962665881:AAG7e9l9rRtcnWyyia8i9jR5aLiU4ldlTzI",  # telegram_bot_always.py - COMPROMETIDO
-    "8204914856:AAGKiDKMPFXvsBSMOYEyT2eJJqoDWdXgxHg",  # telegram_bot_always.py - NUEVO
+    "8065976460:AAFD9jTwj8Ec4eDR7j_0BS0ImIEAVL1_1HE",  # telegram_bot_always.py - CORRECTO
     "7503093829:AAGzK60nUU6w4HtBSM8XVeIk9uK5JonjfHI",  # dolar_bcv.py
     "7522395434:AAHg1uPMnT94tRqoY_gWB8IjKt1GTS4cw3o"   # sumar_comprobantes_telegram.py
 ]

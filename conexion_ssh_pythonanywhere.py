@@ -139,7 +139,7 @@ def main():
     # Configuración de conexión
     HOSTNAME = "ssh.eu.pythonanywhere.com"
     USERNAME = "sacristobalspa"
-    PASSWORD = "Kj6mm866.-"  # Contraseña de PythonAnywhere
+    PASSWORD = "dirqoc-navco2-zethaB"  # Contraseña de PythonAnywhere
     
     print("🚀 Script de conexión SSH a PythonAnywhere")
     print("=" * 50)
@@ -208,4 +208,4 @@ def main():
 
 if __name__ == "__main__":
     main() 
-    main() 
+    main()
