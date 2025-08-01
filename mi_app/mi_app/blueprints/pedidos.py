@@ -367,8 +367,6 @@ def nuevo():
                         if comision > 0:
                             descripcion_comision = f"Comisión 0.3% asociada al pedido #{pedido_id}"
                             registrar_movimiento_cuenta(cuenta_id, "COMISION_PEDIDO", comision, pedido_id, "pedido", descripcion_comision)
-                else:
-                    flash(f"Pedido ingresado con éxito. CLP calculado: {clp_calculado:,.0f}")
                 session['ultimo_cliente_pedidos'] = cliente
                 
                 # Verificación específica para MaxiGiros Richard

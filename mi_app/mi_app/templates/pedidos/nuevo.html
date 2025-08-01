@@ -1310,15 +1310,7 @@ $('#guardar-multiples-pedidos').on('click', function() {
     data: JSON.stringify({pedidos}),
     success: function(resp) {
       if (resp.success) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Pedidos ingresados correctamente',
-          timer: 2000,
-          showConfirmButton: false,
-          toast: true,
-          position: 'top-end'
-        });
-        setTimeout(() => location.reload(), 2100);
+        setTimeout(() => location.reload(), 100);
       } else {
         Swal.fire({
           icon: 'error',
