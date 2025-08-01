@@ -375,9 +375,17 @@ def actualizar_flujo_capital():
         total_clp = clp_anterior + clp_invertidos + clp_recibidos_usdt
         usdt_anterior = float(saldo_anterior["usdt_stock"]) if saldo_anterior and saldo_anterior.get("usdt_stock") is not None else 0
         tasa_usdt_clp_anterior = float(saldo_anterior["usdt_tasa"]) if saldo_anterior and saldo_anterior.get("usdt_tasa") is not None else 0
+        
+        # Calcular tasa de venta USDT/CLP (si hubo ventas)
+        tasa_usdt_clp_venta = clp_recibidos_usdt / usdt_vendidos_clp if usdt_vendidos_clp > 0 else 0
+        
+        # Calcular tasa ponderada USDT/CLP del stock actual (sin incluir ventas en denominador)
         tasa_usdt_clp_general = 0
         if total_usdt > 0:
-            tasa_usdt_clp_general = (usdt_anterior * tasa_usdt_clp_anterior + usdt_comprados * tasa_usdt_clp_actual) / total_usdt
+            # Solo incluir USDT que permanecen en stock: saldo anterior + compras
+            numerador = (usdt_anterior * tasa_usdt_clp_anterior + usdt_comprados * tasa_usdt_clp_actual)
+            denominador = usdt_anterior + usdt_comprados
+            tasa_usdt_clp_general = numerador / denominador if denominador > 0 else 0
         
         clp_por_usdt_vendido = usdt_vendidos * tasa_usdt_clp_general
         tasa_ves_clp_actual = brs_comprados / clp_por_usdt_vendido if clp_por_usdt_vendido > 0 else 0
@@ -781,9 +789,17 @@ def index():
     total_clp = clp_anterior + clp_invertidos + clp_recibidos_usdt
     usdt_anterior = float(saldo_anterior["usdt_stock"]) if saldo_anterior and saldo_anterior.get("usdt_stock") is not None else 0
     tasa_usdt_clp_anterior = float(saldo_anterior["usdt_tasa"]) if saldo_anterior and saldo_anterior.get("usdt_tasa") is not None else 0
+    
+    # Calcular tasa de venta USDT/CLP (si hubo ventas)
+    tasa_usdt_clp_venta = clp_recibidos_usdt / usdt_vendidos_clp if usdt_vendidos_clp > 0 else 0
+    
+    # Calcular tasa ponderada USDT/CLP del stock actual (sin incluir ventas en denominador)
     tasa_usdt_clp_general = 0
     if total_usdt > 0:
-        tasa_usdt_clp_general = (usdt_anterior * tasa_usdt_clp_anterior + usdt_comprados * tasa_usdt_clp_actual) / total_usdt
+        # Solo incluir USDT que permanecen en stock: saldo anterior + compras
+        numerador = (usdt_anterior * tasa_usdt_clp_anterior + usdt_comprados * tasa_usdt_clp_actual)
+        denominador = usdt_anterior + usdt_comprados
+        tasa_usdt_clp_general = numerador / denominador if denominador > 0 else 0
     clp_por_usdt_vendido = usdt_vendidos * tasa_usdt_clp_general
     tasa_ves_clp_actual = brs_comprados / clp_por_usdt_vendido if clp_por_usdt_vendido > 0 else 0
     
@@ -879,4 +895,4 @@ def agregar_transaccion_flujo(fecha, tipo, monto, categoria):
             
     except Exception as e:
         print(f"❌ Error al agregar transacción: {e}")
-        return False 
+        return False

@@ -87,7 +87,8 @@ def calcular_ganancias_margen_real(fecha):
         tasa_usdt_clp_anterior = float(saldo_anterior["usdt_tasa"]) if saldo_anterior and saldo_anterior.get("usdt_tasa") is not None else 0
         tasa_usdt_clp_general = 0
         if total_usdt > 0:
-            tasa_usdt_clp_general = (usdt_anterior * tasa_usdt_clp_anterior + usdt_comprados * tasa_usdt_clp_actual) / total_usdt
+            # Solo incluir USDT que permanecen en stock: saldo anterior + compras
+            tasa_usdt_clp_general = (usdt_anterior * tasa_usdt_clp_anterior + usdt_comprados * tasa_usdt_clp_actual) / (usdt_anterior + usdt_comprados)
         
         clp_por_usdt_vendido = usdt_vendidos * tasa_usdt_clp_general
         tasa_ves_clp_actual = brs_comprados / clp_por_usdt_vendido if clp_por_usdt_vendido > 0 else 0
@@ -212,4 +213,4 @@ def main():
             print(f"   ⚠️  {dia} - Error: {e}")
 
 if __name__ == "__main__":
-    main() 
+    main()
