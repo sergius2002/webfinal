@@ -411,6 +411,13 @@ Desarrollado para PythonAnywhere
                 logger.error(f"Error en el comando /help: {e}")
                 await bot.send_message(message.chat.id, "Ha ocurrido un error al mostrar la ayuda.")
 
+        # Eliminar webhook antes de iniciar polling
+        try:
+            await bot.delete_webhook()
+            logger.info("🗑️ Webhook eliminado exitosamente")
+        except Exception as e:
+            logger.warning(f"⚠️ Error al eliminar webhook (puede que no existiera): {e}")
+        
         # Iniciar el bot
         logger.info("🚀 Bot de Telegram iniciado. Esperando comandos...")
         await bot.polling()
