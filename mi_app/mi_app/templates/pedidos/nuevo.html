@@ -1281,12 +1281,13 @@ $('#guardar-multiples-pedidos').on('click', function() {
   $('#multiples-pedidos-rows .fila-pedido-multiple').each(function() {
     const brs = $(this).find('.monto-brs-multiple').val();
     const cuenta = $(this).find('.cuenta-multiple').val();
+    const agregar_comision = $(this).find('.agregar-comision-multiple').is(':checked');
     if (!brs || !cuenta) {
       valido = false;
       $(this).find('input,select').addClass('is-invalid');
     } else {
       $(this).find('input,select').removeClass('is-invalid');
-      pedidos.push({cliente, tasa, fecha, brs, cuenta_id: cuenta});
+      pedidos.push({cliente, tasa, fecha, brs, cuenta_id: cuenta, agregar_comision});
     }
   });
   if (!valido) {
